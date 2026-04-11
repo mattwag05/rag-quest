@@ -6,7 +6,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from . import config
+from . import config, ui
 from .engine import run_game, GameState, Narrator
 from .knowledge import WorldRAG
 
@@ -21,7 +21,7 @@ def main() -> None:
         console.print("\n[yellow]Game interrupted by user.[/yellow]")
         sys.exit(0)
     except Exception as e:
-        console.print(f"[red]Fatal error: {e}[/red]")
+        ui.print_error(str(e))
         if "--debug" in sys.argv:
             import traceback
             traceback.print_exc()
@@ -30,43 +30,58 @@ def main() -> None:
 
 def _main() -> None:
     """Main logic."""
+    ui.print_welcome_screen()
+    
     # Load or create configuration
-    game_config = config.get_config()
+    try:
+        game_config = config.get_config()
+    except RuntimeError as e:
+        ui.print_error(str(e))
+        sys.exit(1)
 
     # Load LLM provider
-    llm_provider, llm_config = config.load_llm_provider(game_config)
+    try:
+        llm_provider, llm_config = config.load_llm_provider(game_config)
+        ui.print_success("LLM provider loaded!")
+    except Exception as e:
+        ui.print_error(f"Failed to load LLM provider: {e}")
+        if "--debug" in sys.argv:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
 
     # Create world and character
-    world = config.create_world_from_config(game_config)
-    character = config.create_character_from_config(game_config)
+    try:
+        world = config.create_world_from_config(game_config)
+        character = config.create_character_from_config(game_config)
+        ui.print_success(f"Welcome, {character.name}!")
+    except Exception as e:
+        ui.print_error(f"Failed to create world or character: {e}")
+        sys.exit(1)
 
     # Get RAG profile from config
     rag_config = game_config.get("rag", {})
     rag_profile = rag_config.get("profile", "balanced")
     
-    console.print(f"[cyan]Using RAG profile: {rag_profile}[/cyan]")
+    ui.print_info(f"Using RAG profile: {rag_profile}")
 
-    # Initialize RAG system with profile
-    world_rag = WorldRAG(world.name, llm_config, llm_provider, rag_profile=rag_profile)
-    world_rag.initialize()
+    # Initialize RAG system with profile (lazy - will initialize on first use)
+    try:
+        world_rag = WorldRAG(world.name, llm_config, llm_provider, rag_profile=rag_profile)
+        ui.print_success("Knowledge graph system ready!")
+    except Exception as e:
+        ui.print_error(f"Failed to create RAG system: {e}")
+        if "--debug" in sys.argv:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
 
     # Check for lore files to ingest
     lore_path = game_config["world"].get("lore_path")
     if lore_path:
         lore_file = Path(lore_path)
         if lore_file.exists():
-            console.print(f"[cyan]Ingesting lore from {lore_path}...[/cyan]")
-            try:
-                if lore_file.is_file():
-                    world_rag.ingest_file(str(lore_file))
-                else:
-                    from .knowledge.ingest import ingest_directory
-                    files = ingest_directory(str(lore_file), profile=rag_profile)
-                    for filename, content in files.items():
-                        world_rag.ingest_text(content, source=filename)
-                console.print("[green]Lore ingested successfully![/green]")
-            except Exception as e:
-                console.print(f"[yellow]Warning: Could not ingest lore: {e}[/yellow]")
+            ui.print_info(f"Lore file found at {lore_path} (will ingest during game)")
 
     # Create narrator
     from .engine.inventory import Inventory

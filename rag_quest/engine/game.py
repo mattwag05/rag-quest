@@ -12,6 +12,7 @@ from rich.panel import Panel
 
 from ..knowledge import WorldRAG
 from ..llm import BaseLLMProvider
+from .. import ui
 from .character import Character
 from .inventory import Inventory
 from .narrator import Narrator
@@ -84,12 +85,12 @@ def run_game(
 
     try:
         while game_state.character.is_alive():
-            # Print prompt
-            _print_status(game_state)
+            # Print status
+            ui.print_status_bar(game_state.character, game_state.world)
 
             # Get player input
             try:
-                player_input = console.input("\n[bold cyan]> [/bold cyan]").strip()
+                player_input = ui.print_command_prompt()
             except EOFError:
                 break
 
@@ -103,21 +104,17 @@ def run_game(
                 continue
 
             # Process action through narrator with error recovery
-            with console.status("[bold green]Thinking...[/bold green]"):
+            with console.status("[bold green]The Dungeon Master considers your action...[/bold green]"):
                 try:
                     response = game_state.narrator.process_action(player_input)
                     errors_in_row = 0  # Reset error counter on success
                 except Exception as e:
                     errors_in_row += 1
-                    console.print(
-                        f"[yellow]⚠️  Error generating response: {type(e).__name__}[/yellow]"
-                    )
+                    ui.print_error(f"Error generating response: {type(e).__name__}")
                     
                     # If too many errors in a row, suggest exiting
                     if errors_in_row >= max_errors_in_row:
-                        console.print(
-                            f"[red]Too many errors. Consider saving and restarting.[/red]"
-                        )
+                        ui.print_error("Too many errors. Consider saving and restarting.")
                         response = (
                             "The world seems unstable. You should find a safe place to rest "
                             "before continuing your adventure."
@@ -126,7 +123,7 @@ def run_game(
                         continue
 
             # Display response
-            console.print(Panel(response, border_style="blue"))
+            ui.print_narrator_response(response)
 
             # Auto-save frequently to protect progress
             action_count += 1
@@ -136,7 +133,7 @@ def run_game(
                     try:
                         _save_game(game_state, save_path)
                     except Exception as e:
-                        console.print(f"[yellow]Could not auto-save: {e}[/yellow]")
+                        ui.print_warning(f"Could not auto-save: {e}")
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Game interrupted by player.[/yellow]")
@@ -152,7 +149,7 @@ def run_game(
         except Exception as e:
             pass
 
-    _print_game_over(game_state)
+    ui.print_game_over(game_state.character, game_state.world)
 
 
 def _handle_command(
@@ -167,15 +164,11 @@ def _handle_command(
     parts = command.split()
     cmd = parts[0].lower()
 
-    if cmd == "/inventory":
-        console.print(
-            Panel(game_state.inventory.list_items(), title="Inventory")
-        )
+    if cmd == "/inventory" or cmd == "/i":
+        ui.print_inventory_panel(game_state.inventory)
 
-    elif cmd == "/quests":
-        console.print(
-            Panel(game_state.quest_log.list_quests(), title="Quest Log")
-        )
+    elif cmd == "/quests" or cmd == "/q":
+        ui.print_quest_log_panel(game_state.quest_log)
 
     elif cmd == "/look":
         context_query = f"Detailed description of {game_state.character.location}"
@@ -188,52 +181,29 @@ def _handle_command(
         )
 
     elif cmd == "/map":
-        locations = ", ".join(game_state.world.visited_locations)
-        console.print(
-            Panel(
-                locations or "No locations discovered yet.",
-                title="Visited Locations",
-            )
-        )
+        ui.print_world_context(game_state.world)
 
-    elif cmd == "/status":
-        console.print(
-            Panel(game_state.character.get_status(), title="Character Status")
-        )
+    elif cmd == "/status" or cmd == "/s":
+        ui.print_character_status(game_state.character)
 
     elif cmd == "/save":
         if save_path:
             _save_game(game_state, save_path)
-            console.print("[green]Game saved![/green]")
+            ui.print_success("Game saved!")
         else:
-            console.print("[yellow]No save location specified.[/yellow]")
+            ui.print_warning("No save location specified.")
 
     elif cmd == "/help":
-        help_text = """
-**Commands:**
-- `/inventory` - Show inventory
-- `/quests` - Show quest log
-- `/look` - Examine current location
-- `/map` - Show visited locations
-- `/status` - Show character status
-- `/save` - Save game
-- `/help` - Show this help
-- `/quit` - Quit game
-
-**Gameplay:**
-Type natural language actions to interact with the world. The AI narrator will respond to your actions.
-"""
-        console.print(Panel(Markdown(help_text), title="Help"))
+        ui.print_help()
 
     elif cmd == "/quit":
         if save_path:
-            response = console.input("[yellow]Save before quitting? (y/n): [/yellow]")
-            if response.lower() == "y":
+            if ui.get_yes_no_confirmation("[yellow]Save before quitting?[/yellow]"):
                 _save_game(game_state, save_path)
         return False
 
     else:
-        console.print(f"[red]Unknown command: {cmd}[/red]")
+        ui.print_error(f"Unknown command: {cmd}")
 
     return True
 
