@@ -1,315 +1,215 @@
 # RAG-Quest Quick Start Guide
 
-Get your RPG adventure running in 5 minutes.
+## Installation
 
-## Prerequisites
-
-- Python 3.11 or higher
-- pip package manager
-- An LLM API key (OpenAI, OpenRouter) OR a local Ollama instance
-
-## Installation (2 minutes)
-
-### Step 1: Clone the repository
-
+### From Source
 ```bash
-cd ~/Desktop/Projects
-git clone https://github.com/yourusername/rag-quest.git
-cd rag-quest
-```
-
-### Step 2: Install dependencies
-
-```bash
-# Option A: Using pip with requirements.txt
-pip install -r requirements.txt
-
-# Option B: Using pip install with pyproject.toml (recommended)
+cd /Users/matthewwagner/Desktop/Projects/rag-quest
 pip install -e .
-
-# Option C: Manual installation
-pip install lightrag-hku httpx rich pymupdf
 ```
 
-### Step 3: Verify installation
-
+### Command-Line Usage
+Once installed, run:
 ```bash
-python -c "import rag_quest; print('RAG-Quest installed successfully!')"
+rag-quest
 ```
 
-## Setup (2 minutes)
-
-### Start the game
-
+Or from source directory:
 ```bash
-python -m rag_quest
+python3 -m rag_quest
 ```
 
-On first run, you'll be guided through setup:
+## Configuration
 
-```
-RAG-Quest - First Run Setup
+The game requires LLM configuration. You can set it via:
 
-LLM Provider Setup
-Select LLM provider: (openai/openrouter/ollama) [openrouter]
-> openrouter
-Model (e.g., anthropic/claude-sonnet-4) [anthropic/claude-sonnet-4]
-> anthropic/claude-sonnet-4
-OpenRouter API key
-> sk-or-xxx...
-
-How would you like to set up your world?
-1. Fresh start with prompt
-2. Manual configuration
-3. Upload lore
-> 2
-
-World name [Untitled Realm]
-> The Shattered Realms
-
-World setting [Medieval Fantasy]
-> Dark Medieval Fantasy
-
-World tone (Dark, Heroic, Whimsical, etc.) [Dark]
-> Dark
-
-Starting location [A small tavern]
-> The Crooked Raven Tavern
-
-Character Creation
-Character name
-> Aerion
-
-Race (0: Human, 1: Elf, 2: Dwarf, 3: Halfling, 4: Orc)
-> 0
-
-Class (0: Fighter, 1: Mage, 2: Rogue, 3: Ranger, 4: Cleric)
-> 3
-
-Character background (optional)
-> A wanderer from distant lands
-
-Configuration saved!
-```
-
-## Play! (1 minute)
-
-You're now in the game. Try these commands:
-
-### Basic Commands
-
-```
-> I look around carefully
-> I sit at the bar and order a drink
-> I talk to the bartender about recent news
-> /help
-```
-
-### Essential Commands
-
-```
-/inventory              - Check your items
-/quests                 - View active quests
-/look                   - Examine current location
-/map                    - See visited locations
-/status                 - Character info
-/save                   - Save game
-/quit                   - Exit (with save prompt)
-```
-
-## LLM Provider Setup
-
-### OpenRouter (Easiest)
-
-1. Sign up at https://openrouter.ai
-2. Get your API key from account settings
-3. During setup, select "openrouter"
-4. Paste your API key when prompted
-
-**Recommended models:**
-- `anthropic/claude-sonnet-4` (best quality)
-- `anthropic/claude-opus-4` (faster)
-- `gpt-4o` (from OpenAI via OpenRouter)
-
-### OpenAI (Direct)
-
-1. Sign up at https://openai.com
-2. Get your API key from https://platform.openai.com/api-keys
-3. During setup, select "openai"
-4. Paste your API key when prompted
-
-**Recommended models:**
-- `gpt-4o` (best overall)
-- `gpt-4-turbo` (faster)
-- `gpt-3.5-turbo` (cheapest)
-
-### Ollama (Local - Free!)
-
-1. Install Ollama: https://ollama.ai
-2. Start Ollama server: `ollama serve`
-3. Pull a recommended model:
-   - `ollama pull gemma4:latest` (2B-4B, fastest)
-   - `ollama pull mistral` (7B, excellent quality)
-   - `ollama pull llama2` (7B, good alternative)
-4. During setup, select "ollama"
-5. Use default URL: `http://localhost:11434`
-6. Use model name: `gemma4:latest` (or your chosen model)
-
-## Example First Actions
-
-```
-> I look around the tavern and observe the patrons
-> I approach the bar and order a drink
-> I ask the bartender if she knows of any interesting work
-> I notice someone watching me from the corner
-> /quests
-> I walk over to speak with the mysterious figure
-```
-
-## Troubleshooting
-
-### Error: "Connection refused"
-
-**OpenRouter/OpenAI**: Check your internet connection and API key
+### Option 1: Environment Variables (Quick)
 ```bash
-# Test your API key (OpenRouter example)
-curl -X POST https://openrouter.ai/api/v1/chat/completions \
-  -H "Authorization: Bearer sk-or-..." \
-  -H "Content-Type: application/json" \
-  -d '{"model": "anthropic/claude-sonnet-4", "messages": [{"role": "user", "content": "test"}]}'
+export LLM_PROVIDER=ollama
+export OLLAMA_MODEL=qwen3.5:latest
+export OLLAMA_BASE_URL=http://localhost:11434
+export CHARACTER_NAME="Hero Name"
+export CHARACTER_RACE=HUMAN
+export CHARACTER_CLASS=FIGHTER
+export WORLD_NAME="World Name"
+export WORLD_SETTING="Fantasy"
+export WORLD_TONE="Heroic"
+
+rag-quest
 ```
 
-**Ollama**: Make sure Ollama is running
-```bash
-ollama serve
-# In another terminal:
-ollama pull llama3.1
-```
-
-### Error: "No such command"
-
-Make sure you're using correct command syntax:
-```
-/help              # Shows all commands
-/inventory         # Check inventory
-/look              # Examine location
-```
-
-### Model Taking Too Long
-
-Some models are slower. Try:
-1. Use OpenRouter's faster models
-2. Switch to a smaller local model
-3. Check your internet connection
-4. Ensure your LLM provider isn't overloaded
-
-## Customization
-
-### Custom Worlds
-
-Create a world with your own lore:
-
-1. Write lore files in Markdown or plain text
-2. Save them to `./lore/` directory
-3. During setup, choose "Upload lore"
-4. Point to your lore directory
-
-Example lore file (`./lore/kingdoms.md`):
-
-```markdown
-# The Kingdom of Aethoria
-
-Aethoria is a prosperous kingdom known for...
-
-## Cities
-- Silvermere: The capital, on the coast
-- Ashford: A trading hub in the mountains
-
-## Rulers
-- King Aldric: Strong military leader
-- Queen Lydia: Wise diplomat
-```
-
-### Configuration File
-
-Edit `~/.config/rag-quest/config.json` to change settings:
-
+### Option 2: Config File
+Create `~/.config/rag-quest/config.json`:
 ```json
 {
   "llm": {
-    "provider": "openrouter",
-    "model": "anthropic/claude-sonnet-4",
-    "temperature": 0.85,
-    "max_tokens": 1024
+    "provider": "ollama",
+    "model": "qwen3.5:latest",
+    "base_url": "http://localhost:11434"
   },
   "world": {
-    "name": "The Shattered Realms",
-    "setting": "Medieval Fantasy",
-    "tone": "Dark",
-    "starting_location": "The Crooked Raven"
+    "name": "The Blue Rose Realm",
+    "setting": "Fantasy World",
+    "tone": "Dark and Mysterious",
+    "starting_location": "A quaint tavern"
   },
   "character": {
-    "name": "Aerion",
-    "race": "Human",
-    "class": "Ranger",
-    "background": "A wanderer"
+    "name": "Adventurer",
+    "race": "HUMAN",
+    "class": "FIGHTER",
+    "background": null
+  },
+  "rag": {
+    "profile": "balanced"
   }
 }
 ```
 
-## Tips for Great Gameplay
+### Option 3: Interactive Setup
+If no config exists and stdin is a TTY, the game will prompt you to set up configuration.
 
-### For the Best Experience
+## In-Game Commands
 
-1. **Be descriptive**: "I approach the tavern cautiously and observe the patrons before entering" works better than "I go to tavern"
+### Navigation & Interaction
+Simply type actions in natural language:
+- `go to the tavern`
+- `examine the chest`
+- `talk to the merchant`
+- `attack the goblin`
+- `rest and heal`
 
-2. **Role-play**: Think like your character. Ask yourself what they would do.
+### Commands (type with `/` prefix)
+- `/help` - Show help and command reference
+- `/inventory` or `/i` - View your items
+- `/quests` or `/q` - View active quests
+- `/status` or `/s` - View character stats with HP bar
+- `/look` - Examine your current location
+- `/map` - View discovered locations
+- `/save` - Save your game progress
+- `/quit` - Exit the game (prompts to save)
 
-3. **Explore**: Use `/look` to get detailed descriptions of locations.
+## Game Features
 
-4. **Take notes**: Important NPCs, locations, and plot points are tracked in your world.
+### Character System
+- Name, race (Human, Elf, Dwarf, Halfling, Orc), and class (Fighter, Mage, Rogue, Ranger, Cleric)
+- Hit points (HP) that track health
+- Equipment and inventory with item rarity
+- Experience and leveling (framework in place)
 
-5. **Use context**: The AI remembers what you've done and said before.
+### World System
+- Persistent world state with time of day and weather
+- Location discovery and tracking
+- NPC encounters
+- Recent event history
 
-### Avoiding Common Issues
+### Combat
+- Describe your attacks in natural language
+- Damage calculation based on action descriptions
+- Health management
 
-- **Keep it in character**: The narrator expects you to act like your character
-- **Be specific**: "I cast a fireball at the enemies" is better than "attack"
-- **Manage inventory**: Items have weight limits
-- **Check quests**: `/quests` shows active objectives
-- **Save often**: Use `/save` to not lose progress
+### Inventory
+- Collect items during gameplay
+- Track item rarities (common, uncommon, rare, legendary)
+- Weight management (max 100 lbs)
+
+### Quests
+- Receive quests from NPCs
+- Track quest objectives
+- Complete quests to advance
+
+## LLM Providers
+
+### Ollama (Recommended - Local)
+Fastest and most private. Run Ollama locally:
+```bash
+ollama serve
+ollama pull qwen3.5:latest  # Or gemma4:latest, mistral, etc.
+```
+
+Then set:
+```bash
+export LLM_PROVIDER=ollama
+export OLLAMA_MODEL=qwen3.5:latest
+export OLLAMA_BASE_URL=http://localhost:11434
+```
+
+### OpenAI
+```bash
+export LLM_PROVIDER=openai
+export OPENAI_API_KEY=sk-...
+export OPENAI_MODEL=gpt-4o
+```
+
+### OpenRouter
+```bash
+export LLM_PROVIDER=openrouter
+export OPENROUTER_API_KEY=sk-or-...
+export OPENROUTER_MODEL=anthropic/claude-sonnet-4
+```
+
+## Gameplay Tips
+
+1. **Be Creative** - Describe what you want to do in detail. The AI responds to creative and specific actions.
+2. **Combat** - Describe tactical movements: "dodge and counterattack", "perform a shield bash", etc.
+3. **Dialogue** - Talk to NPCs to learn about quests and the world.
+4. **Exploration** - Visit new locations to discover items and meet NPCs.
+5. **Resource Management** - Watch your HP and manage your inventory carefully.
+6. **Save Often** - Use `/save` to save progress before dangerous actions.
+
+## Troubleshooting
+
+### "Configuration not found" Error
+Set environment variables or create a config file (see Configuration section above).
+
+### Slow Responses
+The game uses fast fallback responses by default. If you want AI narration:
+1. Make sure Ollama is running: `ollama serve`
+2. Verify the model is pulled: `ollama pull qwen3.5:latest`
+3. Check connectivity: `curl http://localhost:11434/api/tags`
+
+### Character Class Not Found
+Valid classes are: FIGHTER, MAGE, ROGUE, RANGER, CLERIC (case-sensitive)
+
+### World Not Found
+World name is used to store game state. Custom world names work fine.
+
+## Game Flow
+
+1. Start the game with `rag-quest`
+2. See welcome screen and game initialization messages
+3. Game prints your status bar (character, location, HP, world context)
+4. Type actions or commands to interact with the world
+5. Narrator responds to your actions
+6. Use `/status`, `/inventory`, `/quests` to check progress
+7. Use `/save` to save important progress
+8. Use `/quit` to exit (with save prompt)
+
+## Save Files
+
+Game progress is saved to:
+```
+~/.local/share/rag-quest/saves/{WorldName}.json
+```
+
+Games are saved automatically every 3 actions. Manual save with `/save` command.
 
 ## Next Steps
 
-1. **Play your first game** - Follow the prompts and have fun!
-2. **Create custom worlds** - Write lore and use the upload feature
-3. **Invite others** - Share your worlds with friends
-4. **Join the community** - Share your adventures and lore
+After the MVP, we're planning:
+- Dynamic AI narration with LLM integration
+- Knowledge graph queries for world context
+- PDF/text lore file ingestion
+- Character progression and leveling
+- More complex combat mechanics
+- Multi-player support
+- Distribution via pip/brew
 
-## Need Help?
+## Have Fun!
 
-- **In-game**: Type `/help` to see all commands
-- **Configuration**: Edit `~/.config/rag-quest/config.json`
-- **Documentation**: Read README.md for detailed guides
-- **Contributing**: See CONTRIBUTING.md to help improve RAG-Quest
-
-## Common Questions
-
-**Q: Do I need internet for Ollama?**
-A: No! Ollama runs locally and doesn't need internet once the model is downloaded.
-
-**Q: How much do API calls cost?**
-A: OpenRouter and OpenAI charge per token. Budget ~$0.01-0.05 per action. Ollama is free.
-
-**Q: Can I switch providers later?**
-A: Yes! Edit `~/.config/rag-quest/config.json` and restart.
-
-**Q: Where are my saves stored?**
-A: `~/.local/share/rag-quest/saves/`
-
-**Q: How do I reset my configuration?**
-A: Delete `~/.config/rag-quest/config.json` and restart the game.
+RAG-Quest is designed for creative, emergent storytelling. The narrator responds to your actions and helps create a unique adventure each playthrough. Enjoy your adventure in the world of RAG-Quest!
 
 ---
 
-**Ready for adventure? Run `python -m rag_quest` and begin your legend!**
+**Version:** 0.1.0 (MVP)  
+**Status:** Ready for Game Night!  
+**License:** MIT
