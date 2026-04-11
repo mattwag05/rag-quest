@@ -16,7 +16,7 @@ console = Console()
 def main() -> None:
     """Main entry point."""
     try:
-        asyncio.run(_async_main())
+        _main()
     except KeyboardInterrupt:
         console.print("\n[yellow]Game interrupted by user.[/yellow]")
         sys.exit(0)
@@ -28,8 +28,8 @@ def main() -> None:
         sys.exit(1)
 
 
-async def _async_main() -> None:
-    """Async main logic."""
+def _main() -> None:
+    """Main logic."""
     # Load or create configuration
     game_config = config.get_config()
 
@@ -42,7 +42,7 @@ async def _async_main() -> None:
 
     # Initialize RAG system
     world_rag = WorldRAG(world.name, llm_config, llm_provider)
-    await world_rag.initialize()
+    world_rag.initialize()
 
     # Check for lore files to ingest
     lore_path = game_config["world"].get("lore_path")
@@ -52,12 +52,12 @@ async def _async_main() -> None:
             console.print(f"[cyan]Ingesting lore from {lore_path}...[/cyan]")
             try:
                 if lore_file.is_file():
-                    await world_rag.ingest_file(str(lore_file))
+                    world_rag.ingest_file(str(lore_file))
                 else:
                     from .knowledge import ingest_directory
-                    files = await ingest_directory(str(lore_file))
+                    files = ingest_directory(str(lore_file))
                     for filename, content in files.items():
-                        await world_rag.ingest_text(content, source=filename)
+                        world_rag.ingest_text(content, source=filename)
                 console.print("[green]Lore ingested successfully![/green]")
             except Exception as e:
                 console.print(f"[yellow]Warning: Could not ingest lore: {e}[/yellow]")
@@ -86,7 +86,7 @@ async def _async_main() -> None:
     save_path = save_dir / f"{world.name}.json"
 
     # Run the game
-    await run_game(game_state, save_path)
+    run_game(game_state, save_path)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -22,11 +23,68 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 
 def get_config() -> dict:
     """Get or create configuration."""
+    # Check config file first
     if CONFIG_FILE.exists():
         with open(CONFIG_FILE) as f:
             return json.load(f)
 
+    # Check environment variables
+    if os.getenv("LLM_PROVIDER"):
+        return load_config_from_env()
+
+    # Only prompt if interactive
+    if not sys.stdin.isatty():
+        raise RuntimeError(
+            "Configuration not found. Set LLM_PROVIDER environment variable "
+            "or create a config file at ~/.config/rag-quest/config.json"
+        )
+
     return setup_first_run()
+
+
+def load_config_from_env() -> dict:
+    """Load configuration from environment variables."""
+    provider = os.getenv("LLM_PROVIDER", "ollama")
+    model = os.getenv("OLLAMA_MODEL", "gemma3:4b")
+    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+    llm_config = {
+        "provider": provider,
+        "model": model,
+    }
+
+    if provider == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY environment variable not set")
+        llm_config["api_key"] = api_key
+    elif provider == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("OPENROUTER_API_KEY environment variable not set")
+        llm_config["api_key"] = api_key
+    elif provider == "ollama":
+        llm_config["base_url"] = base_url
+
+    world_config = {
+        "name": os.getenv("WORLD_NAME", "Generated World"),
+        "setting": os.getenv("WORLD_SETTING", "Fantasy"),
+        "tone": os.getenv("WORLD_TONE", "Heroic"),
+        "starting_location": os.getenv("STARTING_LOCATION", "A quaint tavern"),
+    }
+
+    character_config = {
+        "name": os.getenv("CHARACTER_NAME", "Adventurer"),
+        "race": os.getenv("CHARACTER_RACE", "HUMAN"),
+        "class": os.getenv("CHARACTER_CLASS", "WARRIOR"),
+        "background": os.getenv("CHARACTER_BACKGROUND"),
+    }
+
+    return {
+        "llm": llm_config,
+        "world": world_config,
+        "character": character_config,
+    }
 
 
 def setup_first_run() -> dict:

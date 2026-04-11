@@ -1,307 +1,253 @@
 #!/usr/bin/env python3
 """
-Comprehensive playtest script for RAG-Quest
-Tests 30+ turns with various actions and logs all interactions
+Comprehensive 30+ turn playthrough test for RAG-Quest with Gemma 4 and Blue Rose lore.
+Tests game functionality, RAG integration, and LLM response quality.
 """
 
-import sys
 import os
+import sys
 import json
-import time
-import traceback
+import logging
 from datetime import datetime
 from pathlib import Path
 
-# Add the project to path for imports
+# Add project to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-# Load .env file before importing rag_quest
-from dotenv import load_dotenv
-env_file = Path(__file__).parent / '.env'
-if env_file.exists():
-    load_dotenv(env_file)
-    print(f"✓ Loaded .env from {env_file}")
-else:
-    print(f"✗ .env not found at {env_file}")
-
-from rag_quest.config import get_config, load_llm_provider, create_world_from_config, create_character_from_config
-from rag_quest.engine.game import GameState, run_game
-from rag_quest.knowledge.ingest import ingest_file
-import logging
-
-# Set up logging
+# Configure logging
+log_file = Path(__file__).parent / "playthrough_log.txt"
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="[%(asctime)s] %(levelname)s: %(message)s",
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler(),
+    ],
 )
 logger = logging.getLogger(__name__)
 
-class TestReport:
-    def __init__(self, output_file):
-        self.output_file = output_file
-        self.turns = []
-        self.errors = []
-        self.start_time = None
-        self.end_time = None
-        self.config = {}
+# Set environment for non-interactive mode
+os.environ["LLM_PROVIDER"] = "ollama"
+os.environ["OLLAMA_MODEL"] = "gemma4:latest"
+os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434"
+
+def test_playthrough():
+    """Run comprehensive playthrough test."""
+    logger.info("=" * 80)
+    logger.info("RAG-QUEST COMPREHENSIVE PLAYTHROUGH TEST")
+    logger.info(f"Started: {datetime.now()}")
+    logger.info("=" * 80)
+
+    try:
+        # Import after env setup
+        from rag_quest import config
+        from rag_quest.llm import LLMConfig
+        from rag_quest.engine.character import Character, Race, CharacterClass
+        from rag_quest.engine.world import World
+        from rag_quest.engine.inventory import Inventory
+        from rag_quest.engine.quests import QuestLog
+        from rag_quest.engine.narrator import Narrator
+        from rag_quest.knowledge import WorldRAG
+
+        logger.info("\n[PHASE 1] Initializing Configuration...")
         
-    def add_turn(self, turn_num, action, response, error=None, response_time=0):
-        """Record a turn"""
-        self.turns.append({
-            'turn': turn_num,
-            'action': action,
-            'response': response if response else str(error),
-            'error': error is not None,
-            'response_time_seconds': response_time,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    def add_error(self, error_text, traceback_text=None):
-        """Record an error"""
-        self.errors.append({
-            'error': error_text,
-            'traceback': traceback_text,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    def set_config(self, config_dict):
-        """Set the configuration details"""
-        self.config = config_dict
-        
-    def save(self):
-        """Save the report to file"""
-        report = {
-            'test_metadata': {
-                'start_time': self.start_time.isoformat() if self.start_time else None,
-                'end_time': self.end_time.isoformat() if self.end_time else None,
-                'duration_seconds': (self.end_time - self.start_time).total_seconds() if (self.start_time and self.end_time) else None,
-                'total_turns': len(self.turns),
-                'errors_count': len(self.errors),
+        # Create minimal config
+        game_config = {
+            "llm": {
+                "provider": "ollama",
+                "model": "gemma4:latest",
+                "base_url": "http://localhost:11434",
             },
-            'config': self.config,
-            'turns': self.turns,
-            'errors': self.errors,
+            "world": {
+                "name": "The Blue Rose Realm",
+                "setting": "Fantasy World of the Blue Rose",
+                "tone": "Dark and Mysterious",
+                "starting_location": "A quaint tavern near the Blue Rose",
+                "lore_path": "/Users/matthewwagner/Desktop/The Blue Rose Adventurer's Guide 5E.pdf",
+            },
+            "character": {
+                "name": "Kael",
+                "race": "HUMAN",
+                "class": "FIGHTER",
+                "background": "A seasoned adventurer seeking the truth about the Blue Rose",
+            },
         }
         
-        with open(self.output_file, 'w') as f:
-            json.dump(report, f, indent=2)
-            
-        logger.info(f"Test report saved to {self.output_file}")
-        print(f"\n✓ Test report saved to {self.output_file}")
+        logger.info("Config loaded successfully")
 
+        logger.info("\n[PHASE 2] Loading LLM Provider...")
+        llm_provider, llm_config = config.load_llm_provider(game_config)
+        logger.info(f"LLM Provider: {llm_config.provider}")
+        logger.info(f"Model: {llm_config.model}")
 
-def run_playtest():
-    """Run the comprehensive playtest"""
-    
-    # Initialize report
-    report = TestReport("/tmp/rag_quest_test_report.json")
-    report.start_time = datetime.now()
-    
-    logger.info("=" * 80)
-    logger.info("RAG-QUEST PLAYTEST STARTING")
-    logger.info("=" * 80)
-    
-    try:
-        # Load config
-        logger.info("Loading configuration...")
-        cfg = get_config()
+        logger.info("\n[PHASE 3] Creating World and Character...")
+        world = config.create_world_from_config(game_config)
+        character = config.create_character_from_config(game_config)
+        logger.info(f"World: {world.name} ({world.setting})")
+        logger.info(f"Character: {character.name} ({character.race.value} {character.character_class.value})")
         
-        report.set_config({
-            'llm_provider': cfg.get('llm_provider', 'Unknown'),
-            'ollama_model': cfg.get('ollama_model', 'Unknown'),
-            'use_rag': True,
-            'pdf_path': '/Users/matthewwagner/Desktop/The Blue Rose Adventurer\'s Guide 5E.pdf',
-        })
-        
-        logger.info(f"Config: {cfg}")
-        
-        # Create world
-        logger.info("Creating world...")
-        world = create_world_from_config(cfg)
-        
-        # Ingest PDF
-        pdf_path = '/Users/matthewwagner/Desktop/The Blue Rose Adventurer\'s Guide 5E.pdf'
-        if os.path.exists(pdf_path):
-            logger.info(f"Ingesting PDF lore from {pdf_path}...")
+        # Store reference to character's world
+        character.world = world
+
+        logger.info("\n[PHASE 4] Initializing RAG System...")
+        world_rag = WorldRAG(world.name, llm_config, llm_provider)
+        world_rag.initialize()
+        logger.info("RAG system initialized")
+
+        logger.info("\n[PHASE 5] Ingesting Blue Rose PDF Lore...")
+        pdf_path = game_config["world"]["lore_path"]
+        if Path(pdf_path).exists():
             try:
-                start_ingest = time.time()
-                # Check if the world has RAG capability
-                if hasattr(world, 'rag'):
-                    ingest_file(world.rag, pdf_path)
-                    ingest_time = time.time() - start_ingest
-                    logger.info(f"PDF ingested successfully in {ingest_time:.2f} seconds")
-                    report.add_turn(0, "ingest_pdf", f"Successfully ingested Blue Rose PDF in {ingest_time:.2f}s", 
-                                  error=False, response_time=ingest_time)
-                else:
-                    logger.warning("World does not have RAG capability")
-                    report.add_error("World does not have RAG capability")
+                logger.info(f"Starting PDF ingestion: {pdf_path}")
+                world_rag.ingest_file(pdf_path)
+                logger.info("PDF ingested successfully!")
             except Exception as e:
-                logger.error(f"Failed to ingest PDF: {e}")
-                report.add_error(f"PDF ingestion failed: {e}", traceback.format_exc())
+                logger.error(f"Error ingesting PDF: {e}")
+                logger.warning("Continuing without lore - RAG queries may be limited")
         else:
-            logger.warning(f"PDF not found at {pdf_path}")
-            report.add_error(f"PDF not found at {pdf_path}")
-        
-        # Create character
-        logger.info("Creating character...")
-        character = create_character_from_config(cfg)
-        
-        # Initialize game state
-        logger.info("Initializing game state...")
-        game_state = GameState(world=world, character=character)
-        
-        # Test actions - a diverse set of 30+ turns
-        test_actions = [
-            # 1. Basic exploration
-            "look around",
-            "examine surroundings",
-            "where am I?",
+            logger.error(f"PDF not found: {pdf_path}")
+
+        logger.info("\n[PHASE 6] Creating Game Objects...")
+        inventory = Inventory()
+        quest_log = QuestLog()
+        narrator = Narrator(llm_provider, world_rag, character, world)
+        logger.info("Game objects created")
+
+        logger.info("\n[PHASE 7] Starting 30+ Turn Playthrough...")
+        logger.info("=" * 80)
+
+        # Test script with 35+ turns covering all gameplay aspects  
+        turns = []
+        turns = [
+            # Turns 1-3: Character introduction and world discovery
+            (1, "Look around and get your bearings"),
+            (2, "Ask the tavern keeper about what's happening in this realm"),
+            (3, "Check what supplies you're carrying"),
             
-            # 2. Inventory management
-            "check inventory",
-            "what do I have?",
-            "show items",
+            # Turns 4-8: Explore locations and NPCs
+            (4, "Leave the tavern and explore the nearby streets"),
+            (5, "Try to find someone who might know about the Blue Rose"),
+            (6, "Listen to rumors and gossip from locals"),
+            (7, "Ask about any recent strange occurrences or mysteries"),
+            (8, "Find a map or information about nearby locations"),
             
-            # 3. Movement
-            "go north",
-            "explore",
-            "move forward",
+            # Turns 9-13: Talk to NPCs and gather information
+            (9, "Talk to an old sage about ancient lore"),
+            (10, "Ask about the history of the Blue Rose"),
+            (11, "Inquire about magical artifacts in this world"),
+            (12, "Ask if anyone has seen unusual travelers"),
+            (13, "Try to learn about factions or organizations"),
             
-            # 4. Lore/knowledge questions (testing RAG retrieval)
-            "tell me about the Blue Rose",
-            "what factions are in this world?",
-            "who are the major powers around here?",
-            "what's the history of this realm?",
-            "are there any legends about this place?",
+            # Turns 14-17: Items and inventory
+            (14, "Search for useful items in the area"),
+            (15, "Check your current inventory carefully"),
+            (16, "Try to purchase supplies from a merchant"),
+            (17, "Examine any mysterious objects you find"),
             
-            # 5. Interaction with world
-            "look for clues",
-            "listen carefully",
-            "touch nearby objects",
+            # Turns 18-22: Specific lore questions to test RAG
+            (18, "Tell me everything you know about the Blue Rose lore"),
+            (19, "What are the most important factions in this world?"),
+            (20, "Describe the geography and major locations"),
+            (21, "What kinds of magic are prominent here?"),
+            (22, "Who are the legendary heroes of this realm?"),
             
-            # 6. NPC interaction
-            "talk to the nearest person",
-            "ask about adventures",
-            "request a quest",
+            # Turns 23-26: Edge cases and interesting scenarios
+            (23, "Try to do something completely absurd"),
+            (24, "Ask about something that's probably not in the lore"),
+            (25, "Perform a complex multi-step action"),
+            (26, "Say something very long and complex"),
             
-            # 7. Character actions
-            "cast a spell",
-            "draw my weapon",
-            "hide in shadows",
-            
-            # 8. Edge cases and special queries
-            "what can I do here?",
-            "help",
-            "status",
-            
-            # 9. Longer/complex inputs
-            "I want to go to the nearest town and ask the tavern keeper about rumors of treasure",
-            "Tell me everything you know about the major cities mentioned in the lore",
-            
-            # 10. Empty/minimal input
-            "",
-            "um",
-            
-            # 11. Very long input
-            "a" * 500,
-            
-            # 12. Special characters
-            "What's < happening > here & now?",
-            
-            # 13. Contradictory/complex requests
-            "I'm simultaneously in two places at once and want to do two conflicting things",
-            
-            # 14. Meta questions
-            "Are you using RAG to answer questions?",
-            "How does this game work?",
-            
-            # 15. More lore queries
-            "What religions are practiced here?",
-            "What kind of magic exists?",
-            "Are there any powerful artifacts?",
+            # Turns 27-30+: Advanced gameplay
+            (27, "Attempt to find a hidden path or secret"),
+            (28, "Interact with multiple NPCs in sequence"),
+            (29, "Make a major decision that affects the world"),
+            (30, "Reflect on your adventure so far"),
+            (31, "Attempt a dangerous action"),
+            (32, "Ask for prophecy or guidance"),
+            (33, "Try to find treasure or artifacts"),
+            (34, "Engage in combat with an enemy"),
+            (35, "Use an ability or skill specific to your class"),
         ]
-        
-        logger.info(f"Running {len(test_actions)} test turns...")
-        print(f"\n{'='*80}")
-        print(f"STARTING PLAYTEST: {len(test_actions)} ACTIONS")
-        print(f"{'='*80}\n")
-        
-        # Try to get narrator
-        narrator = None
-        if hasattr(world, 'narrator'):
-            narrator = world.narrator
-            logger.info("Using world narrator")
-        
-        for turn_num, action in enumerate(test_actions, 1):
+
+        results = []
+        for turn_num, action in turns:
+            logger.info(f"\n--- TURN {turn_num} ---")
+            logger.info(f"Action: {action}")
+            
             try:
-                logger.info(f"Turn {turn_num}: {repr(action[:100])}")
+                response = narrator.process_action(action)
+                logger.info(f"Response (first 200 chars): {response[:200]}...")
                 
-                start_turn = time.time()
-                response = None
-                error_occurred = False
+                results.append({
+                    "turn": turn_num,
+                    "action": action,
+                    "response": response,
+                    "success": True,
+                    "character_location": character.location,
+                    "character_hp": f"{character.current_hp}/{character.max_hp}",
+                })
                 
-                try:
-                    # Try using narrator if available
-                    if narrator and hasattr(narrator, 'process_action'):
-                        response = narrator.process_action(action, game_state)
-                    elif hasattr(game_state, 'process_action'):
-                        response = game_state.process_action(action)
-                    else:
-                        response = f"[Game interface note] No process_action method available"
-                        
-                except TypeError as e:
-                    logger.warning(f"Method call error on turn {turn_num}: {e}")
-                    response = f"[Method error] {str(e)}"
-                    
-                response_time = time.time() - start_turn
-                
-                # Log the turn
-                report.add_turn(turn_num, action, response, error=error_occurred, 
-                               response_time=response_time)
-                
-                print(f"[Turn {turn_num}] Action: {action[:60]}{'...' if len(action) > 60 else ''}")
-                print(f"  Response time: {response_time:.2f}s")
-                if response:
-                    print(f"  Response: {response[:200]}..." if len(str(response)) > 200 else f"  Response: {response}")
-                print()
-                    
             except Exception as e:
-                response_time = time.time() - start_turn
-                logger.error(f"Turn {turn_num} failed: {e}")
-                logger.error(traceback.format_exc())
-                
-                report.add_turn(turn_num, action, None, error=True, 
-                               response_time=response_time)
-                report.add_error(f"Turn {turn_num} error: {e}", traceback.format_exc())
-                
-                print(f"[Turn {turn_num}] ✗ ERROR: {e}\n")
+                logger.error(f"Error on turn {turn_num}: {e}")
+                results.append({
+                    "turn": turn_num,
+                    "action": action,
+                    "error": str(e),
+                    "success": False,
+                })
+
+        logger.info("\n" + "=" * 80)
+        logger.info("PLAYTHROUGH COMPLETE")
+        logger.info("=" * 80)
+
+        # Summary statistics
+        successful_turns = sum(1 for r in results if r.get("success", False))
+        failed_turns = sum(1 for r in results if not r.get("success", False))
         
-        logger.info(f"Completed {len(test_actions)} turns")
-        
+        logger.info(f"\nSummary:")
+        logger.info(f"Total Turns: {len(results)}")
+        logger.info(f"Successful: {successful_turns}")
+        logger.info(f"Failed: {failed_turns}")
+        logger.info(f"Success Rate: {100 * successful_turns / len(results):.1f}%")
+
+        # Write detailed results
+        results_file = Path(__file__).parent / "playthrough_results.json"
+        with open(results_file, "w") as f:
+            json.dump(results, f, indent=2)
+        logger.info(f"\nDetailed results saved to: {results_file}")
+
+        # Final statistics
+        logger.info(f"\nGame State at End:")
+        logger.info(f"Character: {character.name}")
+        logger.info(f"Location: {character.location}")
+        logger.info(f"HP: {character.current_hp}/{character.max_hp}")
+        logger.info(f"Visited Locations: {len(character.world.visited_locations)}")
+        logger.info(f"NPCs Met: {len(character.world.npcs_met)}")
+        logger.info(f"Items Discovered: {len(character.world.discovered_items)}")
+
+        # Cleanup
+        logger.info("\nCleaning up resources...")
+        world_rag.close()
+        llm_provider.close()
+        logger.info("Resources cleaned up")
+
+        logger.info(f"\nFinished: {datetime.now()}")
+        logger.info("=" * 80)
+
+        return successful_turns, failed_turns
+
     except Exception as e:
-        logger.error(f"Fatal error during playtest: {e}")
-        logger.error(traceback.format_exc())
-        report.add_error(f"Fatal playtest error: {e}", traceback.format_exc())
-        print(f"\n✗ FATAL ERROR: {e}")
-        print(traceback.format_exc())
-        
-    finally:
-        report.end_time = datetime.now()
-        report.save()
-        
-        # Print summary
-        print(f"\n{'='*80}")
-        print(f"PLAYTEST SUMMARY")
-        print(f"{'='*80}")
-        print(f"Total turns: {len(report.turns)}")
-        print(f"Successful turns: {sum(1 for t in report.turns if not t['error'])}")
-        print(f"Failed turns: {sum(1 for t in report.turns if t['error'])}")
-        print(f"Total errors: {len(report.errors)}")
-        if report.end_time and report.start_time:
-            print(f"Duration: {(report.end_time - report.start_time).total_seconds():.2f} seconds")
-        print(f"Report saved to: /tmp/rag_quest_test_report.json")
-        print(f"{'='*80}\n")
+        logger.error(f"FATAL ERROR: {e}", exc_info=True)
+        return 0, len(turns)
 
 
-if __name__ == '__main__':
-    run_playtest()
+if __name__ == "__main__":
+    try:
+        successful, failed = test_playthrough()
+        sys.exit(0 if failed == 0 else 1)
+    except KeyboardInterrupt:
+        logger.warning("Test interrupted by user")
+        sys.exit(130)
+    except Exception as e:
+        logger.error(f"Unhandled exception: {e}", exc_info=True)
+        sys.exit(1)

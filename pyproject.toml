@@ -40,6 +40,9 @@ target-version = ['py311']
 profile = "black"
 line_length = 88
 
+[tool.setuptools]
+packages = ["rag_quest"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = false

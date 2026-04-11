@@ -13,7 +13,7 @@ class OpenAIProvider(BaseLLMProvider):
     def __init__(self, config: LLMConfig):
         super().__init__(config)
         self.base_url = config.base_url or "https://api.openai.com/v1"
-        self.client = httpx.AsyncClient(
+        self.client = httpx.Client(
             base_url=self.base_url,
             headers={
                 "Authorization": f"Bearer {config.api_key}",
@@ -22,11 +22,12 @@ class OpenAIProvider(BaseLLMProvider):
             timeout=60.0,
         )
 
-    async def complete(
+    def complete(
         self,
         messages: list[dict],
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        **kwargs,
     ) -> str:
         """Generate a completion from OpenAI API."""
         temp = temperature if temperature is not None else self.config.temperature
@@ -39,7 +40,7 @@ class OpenAIProvider(BaseLLMProvider):
             "max_tokens": tokens,
         }
 
-        response = await self.client.post(
+        response = self.client.post(
             "/chat/completions",
             json=payload,
         )
@@ -47,6 +48,6 @@ class OpenAIProvider(BaseLLMProvider):
         data = response.json()
         return data["choices"][0]["message"]["content"]
 
-    async def close(self):
+    def close(self):
         """Close the HTTP client."""
-        await self.client.aclose()
+        self.client.close()

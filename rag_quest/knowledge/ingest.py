@@ -1,6 +1,5 @@
 """File ingestion for lore documents."""
 
-import asyncio
 from pathlib import Path
 from typing import Optional
 
@@ -8,7 +7,7 @@ import fitz  # pymupdf
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 
-async def ingest_file(filepath: str) -> str:
+def ingest_file(filepath: str) -> str:
     """
     Ingest a file and return its text content.
     Supports: .txt, .md, .pdf
@@ -19,9 +18,9 @@ async def ingest_file(filepath: str) -> str:
         raise FileNotFoundError(f"File not found: {filepath}")
 
     if path.suffix.lower() == ".pdf":
-        return await _ingest_pdf(filepath)
+        return _ingest_pdf(filepath)
     elif path.suffix.lower() in [".txt", ".md"]:
-        return await _ingest_text_file(filepath)
+        return _ingest_text_file(filepath)
     else:
         raise ValueError(
             f"Unsupported file type: {path.suffix}. "
@@ -29,27 +28,23 @@ async def ingest_file(filepath: str) -> str:
         )
 
 
-async def _ingest_text_file(filepath: str) -> str:
+def _ingest_text_file(filepath: str) -> str:
     """Ingest text or markdown file."""
-    return await asyncio.to_thread(lambda: Path(filepath).read_text())
+    return Path(filepath).read_text()
 
 
-async def _ingest_pdf(filepath: str) -> str:
+def _ingest_pdf(filepath: str) -> str:
     """Extract text from PDF file."""
-
-    def extract_pdf():
-        text_parts = []
-        with fitz.open(filepath) as doc:
-            for page_num, page in enumerate(doc):
-                text = page.get_text()
-                if text.strip():
-                    text_parts.append(f"[Page {page_num + 1}]\n{text}")
-        return "\n\n".join(text_parts)
-
-    return await asyncio.to_thread(extract_pdf)
+    text_parts = []
+    with fitz.open(filepath) as doc:
+        for page_num, page in enumerate(doc):
+            text = page.get_text()
+            if text.strip():
+                text_parts.append(f"[Page {page_num + 1}]\n{text}")
+    return "\n\n".join(text_parts)
 
 
-async def ingest_directory(
+def ingest_directory(
     directory: str, pattern: str = "*.{txt,md,pdf}"
 ) -> dict[str, str]:
     """
@@ -78,7 +73,7 @@ async def ingest_directory(
 
         for filepath in files:
             try:
-                content = await ingest_file(str(filepath))
+                content = ingest_file(str(filepath))
                 results[filepath.name] = content
                 progress.advance(task)
             except Exception as e:

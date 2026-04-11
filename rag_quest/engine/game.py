@@ -68,7 +68,7 @@ class GameState:
         )
 
 
-async def run_game(
+def run_game(
     game_state: GameState,
     save_path: Optional[Path] = None,
 ) -> None:
@@ -94,14 +94,14 @@ async def run_game(
 
             # Handle special commands
             if player_input.startswith("/"):
-                if not await _handle_command(player_input, game_state, save_path):
+                if not _handle_command(player_input, game_state, save_path):
                     break
                 continue
 
             # Process action through narrator
             with console.status("[bold green]Thinking...[/bold green]"):
                 try:
-                    response = await game_state.narrator.process_action(player_input)
+                    response = game_state.narrator.process_action(player_input)
                 except Exception as e:
                     console.print(
                         f"[red]Error generating response: {e}[/red]"
@@ -117,13 +117,13 @@ async def run_game(
 
     finally:
         # Cleanup
-        await game_state.world_rag.close()
-        await game_state.llm.close()
+        game_state.world_rag.close()
+        game_state.llm.close()
 
     _print_game_over(game_state)
 
 
-async def _handle_command(
+def _handle_command(
     command: str,
     game_state: GameState,
     save_path: Optional[Path] = None,
@@ -147,7 +147,7 @@ async def _handle_command(
 
     elif cmd == "/look":
         context_query = f"Detailed description of {game_state.character.location}"
-        description = await game_state.world_rag.query_world(
+        description = game_state.world_rag.query_world(
             context_query, param="hybrid"
         )
         console.print(

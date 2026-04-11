@@ -25,18 +25,19 @@ class BaseLLMProvider(ABC):
         self.config = config
 
     @abstractmethod
-    async def complete(
+    def complete(
         self,
         messages: list[dict],
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        **kwargs,
     ) -> str:
         """Generate a completion from messages."""
         pass
 
     def lightrag_complete_func(self):
-        """Return an async function compatible with LightRAG's llm_model_func."""
-        async def func(
+        """Return a function compatible with LightRAG's llm_model_func."""
+        def func(
             prompt: str,
             system_prompt: Optional[str] = None,
             history_messages: Optional[list] = None,
@@ -49,6 +50,6 @@ class BaseLLMProvider(ABC):
                 messages.extend(history_messages)
             messages.append({"role": "user", "content": prompt})
 
-            return await self.complete(messages, **kwargs)
+            return self.complete(messages, **kwargs)
 
         return func

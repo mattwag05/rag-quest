@@ -26,20 +26,20 @@ class Narrator:
         self.world = world
         self.conversation_history: list[dict] = []
 
-    async def process_action(self, player_input: str) -> str:
+    def process_action(self, player_input: str) -> str:
         """
         Process a player action and generate a narrative response.
         """
         # Query RAG for relevant world context
         context_query = (
             f"Player: {self.character.name} ({self.character.race.value} "
-            f"{character_class})\n"
+            f"{self.character.character_class.value})\n"
             f"Location: {self.character.location}\n"
             f"Action: {player_input}\n"
             f"Recent context: {' | '.join(self.world.recent_events[-3:] if self.world.recent_events else ['None'])}"
         )
 
-        world_context = await self.world_rag.query_world(
+        world_context = self.world_rag.query_world(
             context_query,
             param="hybrid",
         )
@@ -48,7 +48,7 @@ class Narrator:
         messages = self._build_messages(player_input, world_context)
 
         # Generate response
-        response = await self.llm.complete(
+        response = self.llm.complete(
             messages,
             temperature=0.85,
             max_tokens=1024,
@@ -64,7 +64,7 @@ class Narrator:
         self.conversation_history.append({"role": "assistant", "content": response})
 
         # Record new facts to RAG
-        await self.world_rag.record_event(
+        self.world_rag.record_event(
             f"{self.character.name} {player_input}"
         )
 
