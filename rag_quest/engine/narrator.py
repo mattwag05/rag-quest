@@ -60,10 +60,17 @@ class Narrator:
             return self._get_fallback_response(str(e))
 
     def _generate_response(self, player_input: str) -> str:
-        """Generate a narrative response to player action."""
-        # For now, use pre-written responses to make the game playable
-        # This avoids Ollama hanging issues
+        """Generate a narrative response using the real LLM with fallback to canned responses."""
+        # Try to call the real LLM first
+        if self.llm:
+            try:
+                response = self._call_llm(player_input)
+                if response and len(response.strip()) > 0:
+                    return response
+            except Exception as e:
+                print(f"LLM call failed: {e}, falling back to canned responses")
         
+        # Fallback to pre-written responses if LLM is unavailable
         action_lower = player_input.lower()
         
         # Combat-related actions
@@ -125,6 +132,65 @@ class Narrator:
                 "Your deed echoes through the halls.",
             ]
             return random.choice(responses)
+
+    def _call_llm(self, player_input: str) -> Optional[str]:
+        """Call the LLM to generate a response."""
+        if not self.llm:
+            return None
+        
+        try:
+            # Build the prompt with game context
+            system_prompt = NARRATOR_SYSTEM
+            
+            # Build context about current state
+            char = self.character
+            location = char.location or "Unknown Location"
+            hp_status = f"{char.current_hp}/{char.max_hp} HP"
+            
+            # Build context from conversation history (last 4 exchanges)
+            history_context = ""
+            if self.conversation_history:
+                recent_exchanges = self.conversation_history[-8:]  # Last 4 exchanges (2 messages each)
+                for msg in recent_exchanges:
+                    history_context += f"\n{msg['role'].upper()}: {msg['content'][:100]}"
+            
+            # Query RAG for relevant lore if available
+            rag_context = ""
+            if self.world_rag:
+                try:
+                    rag_results = self.world_rag.query(player_input)
+                    if rag_results:
+                        rag_context = "\n\n=== RELEVANT WORLD LORE ===\n"
+                        for result in rag_results[:2]:
+                            content = result.get('content', '')[:200] if isinstance(result, dict) else str(result)[:200]
+                            rag_context += f"- {content}\n"
+                except Exception as e:
+                    pass  # Silently fail if RAG is unavailable
+            
+            # Build the full prompt
+            prompt = f"""{system_prompt}
+
+=== CURRENT SITUATION ===
+Location: {location}
+Character HP: {hp_status}
+Action: {player_input}{rag_context}{history_context}
+
+Provide a vivid, engaging narrative response to the character's action. Keep it to 2-3 sentences."""
+            
+            # Call LLM with timeout
+            start = time.time()
+            response = self.llm.complete(prompt)
+            elapsed = time.time() - start
+            
+            if response and len(response.strip()) > 0:
+                print(f"[LLM] Generated response in {elapsed:.2f}s")
+                return response
+            
+            return None
+            
+        except Exception as e:
+            print(f"LLM error: {e}")
+            return None
 
     def _get_fallback_response(self, error_msg: str = "") -> str:
         """Return a fallback response when generation fails."""

@@ -18,6 +18,9 @@ from .inventory import Inventory
 from .narrator import Narrator
 from .quests import QuestLog
 from .world import World
+from .combat import CombatManager, CombatEncounter
+from .encounters import EncounterGenerator
+from .tts import TTSNarrator
 
 
 console = Console()
@@ -34,6 +37,8 @@ class GameState:
     narrator: Narrator
     world_rag: WorldRAG
     llm: BaseLLMProvider
+    combat_manager: Optional[CombatManager] = None
+    tts_narrator: Optional[TTSNarrator] = None
 
     def to_dict(self) -> dict:
         """Serialize game state."""
@@ -51,12 +56,16 @@ class GameState:
         narrator: Narrator,
         world_rag: WorldRAG,
         llm: BaseLLMProvider,
+        tts_enabled: bool = False,
     ) -> "GameState":
         """Deserialize game state."""
         character = Character.from_dict(data["character"])
         world = World.from_dict(data["world"])
         inventory = Inventory.from_dict(data["inventory"])
         quest_log = QuestLog.from_dict(data["quest_log"])
+        
+        combat_mgr = CombatManager(narrator)
+        tts = TTSNarrator(enabled=tts_enabled) if tts_enabled else None
 
         return cls(
             character=character,
@@ -66,6 +75,8 @@ class GameState:
             narrator=narrator,
             world_rag=world_rag,
             llm=llm,
+            combat_manager=combat_mgr,
+            tts_narrator=tts,
         )
 
 
@@ -193,6 +204,28 @@ def _handle_command(
         else:
             ui.print_warning("No save location specified.")
 
+    elif cmd == "/abilities":
+        abilities_str = "\n".join(game_state.character.get_abilities()) or "No abilities unlocked yet"
+        console.print(Panel(abilities_str, title="Abilities", border_style="yellow"))
+    
+    elif cmd == "/stats":
+        ui.print_character_status(game_state.character)
+    
+    elif cmd == "/equipment":
+        equipment = game_state.character.equipment
+        eq_str = f"Weapon: {equipment.weapon or 'None'}\n"
+        eq_str += f"Armor: {equipment.armor or 'None'}\n"
+        eq_str += f"Accessory: {equipment.accessory or 'None'}"
+        console.print(Panel(eq_str, title="Equipment", border_style="cyan"))
+    
+    elif cmd == "/voice":
+        if game_state.tts_narrator:
+            game_state.tts_narrator.toggle()
+            state = "enabled" if game_state.tts_narrator.is_enabled() else "disabled"
+            ui.print_success(f"Text-to-speech {state}!")
+        else:
+            ui.print_warning("TTS not available in this game.")
+    
     elif cmd == "/help":
         ui.print_help()
 
