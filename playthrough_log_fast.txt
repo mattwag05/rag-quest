@@ -1,0 +1,33 @@
+[2026-04-11 17:15:46,287] INFO: ================================================================================
+[2026-04-11 17:15:46,287] INFO: RAG-QUEST FAST PLAYTHROUGH TEST (30+ turns)
+[2026-04-11 17:15:46,287] INFO: Started: 2026-04-11 17:15:46.287559
+[2026-04-11 17:15:46,287] INFO: ================================================================================
+[2026-04-11 17:15:46,625] INFO: 
+[PHASE 1] Initializing Configuration...
+[2026-04-11 17:15:46,625] INFO: Config loaded successfully
+[2026-04-11 17:15:46,625] INFO: 
+[PHASE 2] Loading LLM Provider...
+[2026-04-11 17:15:46,659] INFO: LLM Provider: ollama
+[2026-04-11 17:15:46,659] INFO: Model: gemma4:latest
+[2026-04-11 17:15:46,659] INFO: 
+[PHASE 3] Creating World and Character...
+[2026-04-11 17:15:46,659] INFO: World: The Blue Rose Realm (Fantasy World of the Blue Rose)
+[2026-04-11 17:15:46,659] INFO: Character: Kael (Human Fighter)
+[2026-04-11 17:15:46,659] INFO: 
+[PHASE 4] Loading Blue Rose Lore Context...
+[2026-04-11 17:15:46,659] INFO: Extracting text from PDF: /Users/matthewwagner/Desktop/The Blue Rose Adventurer's Guide 5E.pdf
+[2026-04-11 17:15:46,835] INFO: Extracted text from 15 pages
+[2026-04-11 17:15:46,835] INFO: Loaded 55347 characters of Blue Rose lore
+[2026-04-11 17:15:46,835] INFO: 
+[PHASE 5] Creating Game Objects...
+[2026-04-11 17:15:46,836] INFO: Game objects created
+[2026-04-11 17:15:46,836] INFO: 
+[PHASE 6] Starting 30+ Turn Playthrough...
+[2026-04-11 17:15:46,836] INFO: ================================================================================
+[2026-04-11 17:15:46,836] INFO: 
+--- TURN 1 ---
+[2026-04-11 17:15:46,836] INFO: Action: Look around and describe what you see
+[2026-04-11 17:17:46,840] ERROR: Error on turn 1: timed out
+[2026-04-11 17:17:46,842] INFO: 
+--- TURN 2 ---
+[2026-04-11 17:17:46,842] INFO: Action: Greet the bartender and ask about local rumors

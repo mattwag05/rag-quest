@@ -107,3 +107,107 @@ INFO: Enqueued document processing pipeline stopped
 --- TURN 1 ---
 [2026-04-11 17:08:48,317] INFO: Action: Look around and get your bearings
 ERROR: Query failed: 'str' object has no attribute 'mode'
+INFO: Reset 1 documents from PROCESSING/FAILED to PENDING status
+INFO: Processing 2 document(s)
+INFO: Extracting stage 1/2: unknown_source
+INFO: Processing d-id: doc-e343a53c6880fca258cd1112564cf87e
+INFO: Extracting stage 2/2: unknown_source
+INFO: Processing d-id: doc-8096263936e797d57974fc5b51a60a1d
+ERROR: Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.14/site-packages/lightrag/lightrag.py", line 2044, in process_document
+    await asyncio.gather(*first_stage_tasks)
+  File "/opt/homebrew/lib/python3.14/site-packages/lightrag/kg/nano_vector_db_impl.py", line 124, in upsert
+    embeddings_list = await asyncio.gather(*embedding_tasks)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.14/site-packages/lightrag/utils.py", line 513, in __call__
+    result = await self.func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.14/site-packages/lightrag/utils.py", line 1008, in wait_func
+    await queue.put(
+        (_priority, current_count, task_id, args, kwargs)
+    )
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/queues.py", line 154, in put
+    return self.put_nowait(item)
+           ~~~~~~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/queues.py", line 170, in put_nowait
+    self._wakeup_next(self._getters)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/queues.py", line 76, in _wakeup_next
+    waiter.set_result(None)
+    ~~~~~~~~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/base_events.py", line 827, in call_soon
+    self._check_closed()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/base_events.py", line 550, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+
+ERROR: Failed to extract document 1/2: unknown_source
+[2026-04-11 17:11:37,212] INFO: ================================================================================
+[2026-04-11 17:11:37,212] INFO: RAG-QUEST COMPREHENSIVE PLAYTHROUGH TEST
+[2026-04-11 17:11:37,212] INFO: Started: 2026-04-11 17:11:37.212630
+[2026-04-11 17:11:37,212] INFO: ================================================================================
+[2026-04-11 17:11:37,541] INFO: 
+[PHASE 1] Initializing Configuration...
+[2026-04-11 17:11:37,541] INFO: Config loaded successfully
+[2026-04-11 17:11:37,541] INFO: 
+[PHASE 2] Loading LLM Provider...
+[2026-04-11 17:11:37,575] INFO: LLM Provider: ollama
+[2026-04-11 17:11:37,575] INFO: Model: gemma4:latest
+[2026-04-11 17:11:37,575] INFO: 
+[PHASE 3] Creating World and Character...
+[2026-04-11 17:11:37,575] INFO: World: The Blue Rose Realm (Fantasy World of the Blue Rose)
+[2026-04-11 17:11:37,575] INFO: Character: Kael (Human Fighter)
+[2026-04-11 17:11:37,575] INFO: 
+[PHASE 4] Initializing RAG System...
+[2026-04-11 17:11:37,775] INFO: Init {'embedding_dim': 768, 'metric': 'cosine', 'storage_file': '/Users/matthewwagner/.local/share/rag-quest/worlds/The Blue Rose Realm/vdb_entities.json'} 0 data
+[2026-04-11 17:11:37,775] INFO: Init {'embedding_dim': 768, 'metric': 'cosine', 'storage_file': '/Users/matthewwagner/.local/share/rag-quest/worlds/The Blue Rose Realm/vdb_relationships.json'} 0 data
+[2026-04-11 17:11:37,775] INFO: Init {'embedding_dim': 768, 'metric': 'cosine', 'storage_file': '/Users/matthewwagner/.local/share/rag-quest/worlds/The Blue Rose Realm/vdb_chunks.json'} 0 data
+[2026-04-11 17:11:37,779] INFO: RAG system initialized
+[2026-04-11 17:11:37,779] INFO: 
+[PHASE 5] Ingesting Blue Rose PDF Lore...
+[2026-04-11 17:11:37,779] INFO: Starting PDF ingestion: /Users/matthewwagner/Desktop/The Blue Rose Adventurer's Guide 5E.pdf
+[2026-04-11 17:12:49,827] INFO: ================================================================================
+[2026-04-11 17:12:49,827] INFO: RAG-QUEST COMPREHENSIVE PLAYTHROUGH TEST
+[2026-04-11 17:12:49,827] INFO: Started: 2026-04-11 17:12:49.827334
+[2026-04-11 17:12:49,827] INFO: ================================================================================
+[2026-04-11 17:12:50,086] INFO: 
+[PHASE 1] Initializing Configuration...
+[2026-04-11 17:12:50,086] INFO: Config loaded successfully
+[2026-04-11 17:12:50,086] INFO: 
+[PHASE 2] Loading LLM Provider...
+[2026-04-11 17:12:50,108] INFO: LLM Provider: ollama
+[2026-04-11 17:12:50,108] INFO: Model: gemma4:latest
+[2026-04-11 17:12:50,108] INFO: 
+[PHASE 3] Creating World and Character...
+[2026-04-11 17:12:50,109] INFO: World: The Blue Rose Realm (Fantasy World of the Blue Rose)
+[2026-04-11 17:12:50,109] INFO: Character: Kael (Human Fighter)
+[2026-04-11 17:12:50,109] INFO: 
+[PHASE 4] Initializing RAG System...
+[2026-04-11 17:12:50,267] INFO: Init {'embedding_dim': 768, 'metric': 'cosine', 'storage_file': '/Users/matthewwagner/.local/share/rag-quest/worlds/The Blue Rose Realm/vdb_entities.json'} 0 data
+[2026-04-11 17:12:50,267] INFO: Init {'embedding_dim': 768, 'metric': 'cosine', 'storage_file': '/Users/matthewwagner/.local/share/rag-quest/worlds/The Blue Rose Realm/vdb_relationships.json'} 0 data
+[2026-04-11 17:12:50,267] INFO: Init {'embedding_dim': 768, 'metric': 'cosine', 'storage_file': '/Users/matthewwagner/.local/share/rag-quest/worlds/The Blue Rose Realm/vdb_chunks.json'} 0 data
+[2026-04-11 17:12:50,270] INFO: RAG system initialized
+[2026-04-11 17:12:50,270] INFO: 
+[PHASE 5] Ingesting Blue Rose PDF Lore...
+[2026-04-11 17:12:50,270] INFO: Starting PDF ingestion: /Users/matthewwagner/Desktop/The Blue Rose Adventurer's Guide 5E.pdf
+[2026-04-11 17:16:56,939] INFO: PDF ingested successfully!
+[2026-04-11 17:16:56,939] INFO: 
+[PHASE 6] Creating Game Objects...
+[2026-04-11 17:16:56,939] INFO: Game objects created
+[2026-04-11 17:16:56,940] INFO: 
+[PHASE 7] Starting 30+ Turn Playthrough...
+[2026-04-11 17:16:56,940] INFO: ================================================================================
+[2026-04-11 17:16:56,940] INFO: 
+--- TURN 1 ---
+[2026-04-11 17:16:56,940] INFO: Action: Look around and get your bearings
+[2026-04-11 17:18:32,858] INFO: PDF ingested successfully!
+[2026-04-11 17:18:32,858] INFO: 
+[PHASE 6] Creating Game Objects...
+[2026-04-11 17:18:32,859] INFO: Game objects created
+[2026-04-11 17:18:32,859] INFO: 
+[PHASE 7] Starting 30+ Turn Playthrough...
+[2026-04-11 17:18:32,859] INFO: ================================================================================
+[2026-04-11 17:18:32,859] INFO: 
+--- TURN 1 ---
+[2026-04-11 17:18:32,859] INFO: Action: Look around and get your bearings

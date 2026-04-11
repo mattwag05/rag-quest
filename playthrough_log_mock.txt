@@ -1,0 +1,179 @@
+[2026-04-11 17:17:28,012] INFO: ================================================================================
+[2026-04-11 17:17:28,012] INFO: RAG-QUEST MOCK PLAYTHROUGH TEST (35+ turns)
+[2026-04-11 17:17:28,012] INFO: Started: 2026-04-11 17:17:28.012199
+[2026-04-11 17:17:28,012] INFO: ================================================================================
+[2026-04-11 17:17:28,326] INFO: 
+[PHASE 1-3] Initializing Configuration, LLM, World & Character...
+[2026-04-11 17:17:28,326] INFO: World: The Blue Rose Realm
+[2026-04-11 17:17:28,326] INFO: Character: Kael (Human Fighter)
+[2026-04-11 17:17:28,326] INFO: LLM Provider: Mock (for fast testing)
+[2026-04-11 17:17:28,326] INFO: 
+[PHASE 4-5] Creating Game Objects...
+[2026-04-11 17:17:28,326] INFO: Game objects created
+[2026-04-11 17:17:28,326] INFO: 
+[PHASE 6] Starting 35+ Turn Playthrough...
+[2026-04-11 17:17:28,326] INFO: ================================================================================
+[2026-04-11 17:17:28,326] INFO: 
+--- TURN 1 ---
+[2026-04-11 17:17:28,326] INFO: Action: Look around and describe what you see
+[2026-04-11 17:17:28,326] INFO: Response: You stand in a weathered tavern, the air thick with pipe smoke and whispered rumors....
+[2026-04-11 17:17:28,326] INFO: 
+--- TURN 2 ---
+[2026-04-11 17:17:28,326] INFO: Action: Greet the bartender and ask about local rumors
+[2026-04-11 17:17:28,326] INFO: Response: The bartender nods knowingly, sliding a drink across the wooden bar. 'What brings you to these parts?'...
+[2026-04-11 17:17:28,326] INFO: 
+--- TURN 3 ---
+[2026-04-11 17:17:28,326] INFO: Action: Check your inventory for starting equipment
+[2026-04-11 17:17:28,326] INFO: Response: You carry your old longsword, a leather armor, and a small coin purse....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 4 ---
+[2026-04-11 17:17:28,327] INFO: Action: Walk to the door and step outside into the city
+[2026-04-11 17:17:28,327] INFO: Response: You push open the heavy door and step into the cobblestone streets of Aldis....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 5 ---
+[2026-04-11 17:17:28,327] INFO: Action: Find the nearest guard and ask about the Sovereign's Finest
+[2026-04-11 17:17:28,327] INFO: Response: A weary guard stands at the corner, his armor bearing the Sovereign's Finest insignia....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 6 ---
+[2026-04-11 17:17:28,327] INFO: Action: Look for the Shadow Barrens on a map
+[2026-04-11 17:17:28,327] INFO: Response: Rumors say the Barrens hide forgotten magic and twisted creatures....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 7 ---
+[2026-04-11 17:17:28,327] INFO: Action: Speak with a hooded figure in the corner
+[2026-04-11 17:17:28,327] INFO: Response: The mysterious figure leans forward, eyes glinting in the shadows. 'You seek the Blue Rose?'...
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 8 ---
+[2026-04-11 17:17:28,327] INFO: Action: Examine your character's background and scars
+[2026-04-11 17:17:28,327] INFO: Response: The darkness seems to respond to your action with cryptic intent......
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 9 ---
+[2026-04-11 17:17:28,327] INFO: Action: Visit the market district
+[2026-04-11 17:17:28,327] INFO: Response: The market bustles with merchants hawking exotic goods and strange artifacts....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 10 ---
+[2026-04-11 17:17:28,327] INFO: Action: Haggle with a merchant for better prices
+[2026-04-11 17:17:28,327] INFO: Response: The shrewd merchant eyes you carefully. 'Quality work doesn't come cheap, friend.'...
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 11 ---
+[2026-04-11 17:17:28,327] INFO: Action: Head toward the capital city of Aldis
+[2026-04-11 17:17:28,327] INFO: Response: The capital city sprawls before you, its white towers gleaming in the sunlight....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 12 ---
+[2026-04-11 17:17:28,327] INFO: Action: Ask a traveler about the Silence faction
+[2026-04-11 17:17:28,327] INFO: Response: The Silence - a mysterious organization that operates from the shadows....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 13 ---
+[2026-04-11 17:17:28,327] INFO: Action: Investigate an abandoned structure
+[2026-04-11 17:17:28,327] INFO: Response: You explore the crumbling ruins, finding ancient carvings on the walls....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 14 ---
+[2026-04-11 17:17:28,327] INFO: Action: Meet someone who claims to have seen the Blue Rose
+[2026-04-11 17:17:28,327] INFO: Response: The stranger's eyes widen. 'The Blue Rose? I've only heard whispers...'...
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 15 ---
+[2026-04-11 17:17:28,327] INFO: Action: Learn about a mysterious prophecy
+[2026-04-11 17:17:28,327] INFO: Response: An old prophecy speaks of one who would seek the Rose and reshape the world....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 16 ---
+[2026-04-11 17:17:28,327] INFO: Action: Ask about the Sovereign's Finest and their goals
+[2026-04-11 17:17:28,327] INFO: Response: The elite guards of Aldis, sworn to protect the realm and its secrets....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 17 ---
+[2026-04-11 17:17:28,327] INFO: Action: Inquire about the Shadow Barrens and dangers there
+[2026-04-11 17:17:28,327] INFO: Response: Rumors say the Barrens hide forgotten magic and twisted creatures....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 18 ---
+[2026-04-11 17:17:28,327] INFO: Action: Learn about the Blue Rose itself - what is it?
+[2026-04-11 17:17:28,327] INFO: Response: The Blue Rose is both a place and a legend - a source of power beyond imagination....
+[2026-04-11 17:17:28,327] INFO: 
+--- TURN 19 ---
+[2026-04-11 17:17:28,327] INFO: Action: Discuss the politics between Aldis and other regions
+[2026-04-11 17:17:28,327] INFO: Response: The capital city sprawls before you, its white towers gleaming in the sunlight....
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 20 ---
+[2026-04-11 17:17:28,328] INFO: Action: Listen to a tale of a previous adventurer
+[2026-04-11 17:17:28,328] INFO: Response: You hear of a brave soul who ventured into the Barrens and never returned....
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 21 ---
+[2026-04-11 17:17:28,328] INFO: Action: Encounter a dangerous creature
+[2026-04-11 17:17:28,328] INFO: Response: A grotesque figure emerges from the shadows, eyes glowing with malice!...
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 22 ---
+[2026-04-11 17:17:28,328] INFO: Action: Prepare for combat and ready your weapon
+[2026-04-11 17:17:28,328] INFO: Response: You draw your sword, ready for battle against the encroaching darkness....
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 23 ---
+[2026-04-11 17:17:28,328] INFO: Action: Attempt something completely absurd
+[2026-04-11 17:17:28,328] INFO: Response: The darkness seems to respond to your action with cryptic intent......
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 24 ---
+[2026-04-11 17:17:28,328] INFO: Action: Ask about something that's probably not in the lore
+[2026-04-11 17:17:28,328] INFO: Response: The darkness seems to respond to your action with cryptic intent......
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 25 ---
+[2026-04-11 17:17:28,328] INFO: Action: Perform a complex multi-step action
+[2026-04-11 17:17:28,328] INFO: Response: The darkness seems to respond to your action with cryptic intent......
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 26 ---
+[2026-04-11 17:17:28,328] INFO: Action: Say something very long and complex
+[2026-04-11 17:17:28,328] INFO: Response: The darkness seems to respond to your action with cryptic intent......
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 27 ---
+[2026-04-11 17:17:28,328] INFO: Action: Attempt to find a hidden path or secret
+[2026-04-11 17:17:28,328] INFO: Response: After searching carefully, you discover a secret passage behind the crumbling wall....
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 28 ---
+[2026-04-11 17:17:28,328] INFO: Action: Interact with multiple NPCs in sequence
+[2026-04-11 17:17:28,328] INFO: Response: You navigate the delicate politics between several powerful factions....
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 29 ---
+[2026-04-11 17:17:28,328] INFO: Action: Make a major decision that affects the world
+[2026-04-11 17:17:28,328] INFO: Response: Your choice ripples through the world, changing the course of events to come....
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 30 ---
+[2026-04-11 17:17:28,328] INFO: Action: Reflect on your adventure so far
+[2026-04-11 17:17:28,328] INFO: Response: The darkness seems to respond to your action with cryptic intent......
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 31 ---
+[2026-04-11 17:17:28,328] INFO: Action: Attempt a daring escape or infiltration
+[2026-04-11 17:17:28,328] INFO: Response: With quick thinking and daring action, you slip through your enemies' grasp!...
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 32 ---
+[2026-04-11 17:17:28,328] INFO: Action: Ask for prophecy or guidance
+[2026-04-11 17:17:28,328] INFO: Response: An old prophecy speaks of one who would seek the Rose and reshape the world....
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 33 ---
+[2026-04-11 17:17:28,328] INFO: Action: Try to find treasure or artifacts
+[2026-04-11 17:17:28,328] INFO: Response: You discover an ancient map leading to untold riches hidden in the Barrens....
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 34 ---
+[2026-04-11 17:17:28,328] INFO: Action: Engage in combat with an enemy
+[2026-04-11 17:17:28,328] INFO: Response: You draw your sword, ready for battle against the encroaching darkness....
+[2026-04-11 17:17:28,328] INFO: 
+--- TURN 35 ---
+[2026-04-11 17:17:28,328] INFO: Action: Use an ability or skill specific to your Fighter class
+[2026-04-11 17:17:28,328] INFO: Response: The darkness seems to respond to your action with cryptic intent......
+[2026-04-11 17:17:28,328] INFO: 
+================================================================================
+[2026-04-11 17:17:28,328] INFO: PLAYTHROUGH COMPLETE
+[2026-04-11 17:17:28,328] INFO: ================================================================================
+[2026-04-11 17:17:28,328] INFO: 
+Summary:
+[2026-04-11 17:17:28,328] INFO: Total Turns: 35
+[2026-04-11 17:17:28,328] INFO: Successful: 35
+[2026-04-11 17:17:28,328] INFO: Failed: 0
+[2026-04-11 17:17:28,328] INFO: Success Rate: 100.0%
+[2026-04-11 17:17:28,328] INFO: LLM Calls: 35
+[2026-04-11 17:17:28,329] INFO: 
+Detailed results saved to: /Users/matthewwagner/Desktop/Projects/rag-quest/playthrough_results_mock.json
+[2026-04-11 17:17:28,329] INFO: 
+Game State at End:
+[2026-04-11 17:17:28,329] INFO: Character: Kael
+[2026-04-11 17:17:28,329] INFO: Location: The Tavern of Whispered Secrets in Aldis
+[2026-04-11 17:17:28,329] INFO: HP: 20/20
+[2026-04-11 17:17:28,329] INFO: Conversation turns: 35
+[2026-04-11 17:17:28,329] INFO: 
+Cleaning up...
+[2026-04-11 17:17:28,329] INFO: 
+Finished: 2026-04-11 17:17:28.329354
+[2026-04-11 17:17:28,329] INFO: ================================================================================

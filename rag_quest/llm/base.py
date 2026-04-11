@@ -37,7 +37,7 @@ class BaseLLMProvider(ABC):
 
     def lightrag_complete_func(self):
         """Return a function compatible with LightRAG's llm_model_func."""
-        def func(
+        async def func(
             prompt: str,
             system_prompt: Optional[str] = None,
             history_messages: Optional[list] = None,
