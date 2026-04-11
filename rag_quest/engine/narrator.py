@@ -150,8 +150,8 @@ class Narrator:
         # Parse the narrator response for mechanical changes
         change = self.state_parser.parse_narrator_response(response, player_input)
         
-        # 1. Apply location change
-        if change.location:
+        # 1. Apply location change (only if it looks like a real location, not an item)
+        if change.location and not any(word in change.location.lower() for word in ['potion', 'scroll', 'amulet', 'key', 'gold', 'gem', 'sword', 'shield', 'armor', 'ring', 'wand', 'staff', 'book', 'map']):
             self.character.location = change.location
             self.world.add_visited_location(change.location)
             self.world.add_event(f"Moved to {change.location}")
@@ -168,6 +168,10 @@ class Narrator:
         
         # 4. Apply inventory changes (items gained)
         for item_name in change.items_gained:
+            # Filter out non-item extractions (fragments, locations, etc.)
+            if not self._is_valid_item(item_name):
+                continue
+            
             # Try to detect item properties from narrator response
             rarity = self._detect_item_rarity(response, item_name)
             description = self._extract_item_description(response, item_name)
@@ -238,6 +242,34 @@ class Narrator:
             if item_name.lower() in sentence.lower():
                 return sentence.strip()[:200]
         return f"A {item_name}."
+
+    def _is_valid_item(self, item_name: str) -> bool:
+        """Check if extracted text is actually a valid item."""
+        # Filter out fragments, non-items, and location descriptors
+        invalid_words = [
+            'yourself', 'you', 'quiet shrine', 'bustling marketplace',
+            'dark forest', 'step back', 'ready', 'the creature',
+            'your', 'their', 'its', 'action', 'deed', 'world',
+            'world around you', 'fabric of reality', 'the world',
+            'something', 'everything', 'nothing'
+        ]
+        
+        item_lower = item_name.lower().strip()
+        
+        # Check against invalid words
+        for invalid in invalid_words:
+            if invalid in item_lower:
+                return False
+        
+        # Must contain at least one noun-like word
+        if len(item_lower.split()) > 6:
+            return False
+        
+        # Should not be too generic or too long
+        if len(item_name) > 50:
+            return False
+        
+        return True
 
     def get_conversation_history(self) -> list[dict]:
         """Get conversation history."""

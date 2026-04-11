@@ -1,0 +1,10 @@
+I look around the tavern
+I talk to the mysterious figure
+I search for hidden treasures
+I attack the lurking shadow
+/status
+/inventory
+/quests
+/map
+/save
+/quit
