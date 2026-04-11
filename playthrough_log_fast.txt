@@ -31,3 +31,19 @@
 [2026-04-11 17:17:46,842] INFO: 
 --- TURN 2 ---
 [2026-04-11 17:17:46,842] INFO: Action: Greet the bartender and ask about local rumors
+[2026-04-11 17:19:46,846] ERROR: Error on turn 2: timed out
+[2026-04-11 17:19:46,847] INFO: 
+--- TURN 3 ---
+[2026-04-11 17:19:46,848] INFO: Action: Check your inventory for starting equipment
+[2026-04-11 17:21:45,287] INFO: Response (first 200 chars): A practiced hand brushes against the worn leather of your gear, the familiar weight of necessity settling around you. You find your reliable longsword, the blade cool and darkly polished, alongside a ...
+[2026-04-11 17:21:45,288] INFO: 
+--- TURN 4 ---
+[2026-04-11 17:21:45,289] INFO: Action: Walk to the door and step outside into the city
+[2026-04-11 17:23:45,291] ERROR: Error on turn 4: timed out
+[2026-04-11 17:23:45,292] INFO: 
+--- TURN 5 ---
+[2026-04-11 17:23:45,292] INFO: Action: Find the nearest guard and ask about the Sovereign's Finest
+[2026-04-11 17:25:45,296] ERROR: Error on turn 5: timed out
+[2026-04-11 17:25:45,297] INFO: 
+--- TURN 6 ---
+[2026-04-11 17:25:45,297] INFO: Action: Look for the Shadow Barrens on a map

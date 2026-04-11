@@ -12,22 +12,20 @@ This philosophy shapes every version and feature below.
 
 ## v0.1 (Current) - Core Foundation
 
-**Status**: Released
+**Status**: Early Alpha - Game loop functional, gameplay mechanics incomplete
 
 ### Completed Features
 - Core game engine with character, world, inventory, and quest systems
 - Multi-provider LLM support (OpenAI, OpenRouter, Ollama) as first-class citizens
 - LightRAG integration for knowledge graph-backed world context
 - Lightweight narrator agent powered by RAG context injection
-- Three start modes:
-  - Fresh prompt setup
-  - Interactive configuration menu
-  - Lore document upload for custom worlds
+- Configuration via .env or interactive setup with environment variable fallback
 - Rich terminal UI with colored output and formatted panels
 - Game state serialization and persistence
 - Lore ingestion from multiple file formats (txt, md, pdf)
 - Natural language action processing
 - Conversation history and context management
+- All 6 critical bugs fixed (async/await, config, PDF ingestion, constructors, packages)
 
 ### Current Capabilities
 - **Scope**: Narrative exploration, dialogue, inventory management
@@ -36,69 +34,104 @@ This philosophy shapes every version and feature below.
 - **World Persistence**: Full game state + RAG database saved per world
 - **Lore Support**: Custom lore documents ingested at world creation
 - **Hardware Support**: Runs on consumer hardware with Ollama + ~7B local models
+- **Test Coverage**: 35-turn playthrough with 100% completion rate
 
-### Known Limitations
-- Single-player only
-- No combat system (purely narrative)
-- NPC interactions are reactive only
-- Manual world generation (no procedural generation yet)
-- Limited procedural content
-- Text-only narration (no TTS)
+### Known Limitations & v0.1.1 Targets (From Playtest)
+
+The following P2 issues must be fixed before gameplay feels complete:
+
+1. **Character Location Not Updating** (rag-quest-jjc)
+   - Character stays at starting location despite actions
+   - Narrator must parse location keywords from responses and update state
+   
+2. **No Combat System Integration** (rag-quest-y1u)
+   - Combat described narratively but no mechanical integration
+   - Narrator must connect to combat system, track HP, parse outcomes
+   
+3. **Inventory Not Used During Gameplay** (rag-quest-m2u)
+   - Items exist but never affect narrative or game mechanics
+   - Narrator must parse item discovery/loss and update inventory
+   
+4. **Quest Log Not Integrated** (rag-quest-0ia)
+   - Quests offered but never tracked or completed
+   - Narrator must generate offers and mark completion
+
+### v0.1.1 Targets (Planned)
+
+**Timeline**: April 2026 (immediate follow-up)
+
+Fix the 4 P2 issues above. Target deliverable:
+- Character location updates during gameplay
+- Combat mechanics actually affect character state
+- Inventory used in action resolution
+- Quest system offers and tracks quests
+- 35-turn playthrough with gameplay mechanics working
+
+**Implementation approach**: Enhance `Narrator._parse_and_apply_changes()` to detect and apply state changes from LLM responses using regex patterns and rule-based parsing.
+
+### P3 Issues (Nice to Have, Lower Priority)
+
+1. **PDF Ingestion Extremely Slow** - Workaround: Use smaller test lore files
+2. **Insufficient Narrator Context Injection** - Enhance system prompts with full game state
+3. **No Error Recovery** - Add retry logic and fallback behavior
 
 ---
 
 ## v0.2 - Combat & Character Depth
 
-**Timeline**: Q2 2026  
+**Timeline**: Q2-Q3 2026  
 **Focus**: Add strategic gameplay mechanics and character progression
 
 ### Features to Implement
 
 #### Combat System
-- [ ] Initiative and turn order
-- [ ] Attack/defense mechanics with dice rolls
-- [ ] Damage calculation (hit points, armor)
+- [ ] Initiative and turn order (dice rolls)
+- [ ] Attack/defense mechanics with hit/miss resolution
+- [ ] Damage calculation and HP management
 - [ ] Special abilities and spells per class
 - [ ] Encounter difficulty scaling
 - [ ] Combat log and action replay
+- [ ] Multiple enemy encounters
 
 #### Character Progression
 - [ ] Experience and leveling system
 - [ ] Skill trees and ability unlocking
 - [ ] Equipment and weapon systems
 - [ ] Stat growth and advancement
-- [ ] Character specialization branches
+- [ ] Character specialization branches (subclasses)
 
 #### Encounter Generation
-- [ ] Dynamic enemy generation based on world context
+- [ ] Dynamic enemy generation based on location and difficulty
 - [ ] Loot tables and treasure distribution
 - [ ] Boss encounters and unique enemies
-- [ ] Difficulty balancing
+- [ ] Difficulty balancing relative to party level
 
 #### Enhanced Combat Narration
 - [ ] Combat-specific narration prompts
 - [ ] Action descriptions with damage feedback
 - [ ] Victory/defeat scenarios
-- [ ] Post-combat scene setting
+- [ ] Post-combat loot descriptions and experience gain
 
 ### Technical Changes
-- Add `Combat` class to engine
-- Extend `Character` with experience and leveling
-- Add `Enemy` and `Encounter` classes
+- Add `Combat` class to engine with turn management
+- Extend `Character` with experience, level, abilities
+- Add `Enemy`, `Loot`, and `Encounter` classes
 - Update narrator with combat flow logic
 - Extend RAG query context for encounter-relevant information
+- Add dice rolling system with configurable mechanics
 
 ### Narrator Philosophy for v0.2
 - Combat description generation uses same RAG-powered lightweight narrator
 - RAG provides encounter context (difficulty, loot, environment)
 - Small LLM model sufficient—RAG handles world knowledge
+- Combat results parsed and applied to game state
 
 ---
 
 ## v0.3 - Social & Narrative Depth
 
-**Timeline**: Q3 2026  
-**Focus**: Deepen NPC interactions and quest systems, add AI narrator TTS
+**Timeline**: Q3-Q4 2026  
+**Focus**: Deepen NPC interactions and quest systems, add immersive narration
 
 ### Features to Implement
 
@@ -133,7 +166,7 @@ This philosophy shapes every version and feature below.
 - [ ] Dynamic location changes
 - [ ] World-state persistence across saves
 
-#### **AI Dungeon Master Text-to-Speech Narration**
+#### **AI Dungeon Master Text-to-Speech Narration** ⭐
 - [ ] **Text-to-speech engine integration (gTTS, pyttsx3, or similar)**
 - [ ] **Narrator voice selection and customization**
 - [ ] **Spatial audio hints for immersion (optional)**
@@ -142,7 +175,7 @@ This philosophy shapes every version and feature below.
 - [ ] **Audio caching for repeated narration**
 - [ ] **Config option to enable/disable TTS**
 
-**Rationale**: Hearing the dungeon master narrate the world deepens immersion. Text-to-speech is lightweight and complements the lightweight LLM approach. Voice narration elevates the player experience without requiring pre-recorded audio.
+**Rationale**: Hearing the dungeon master narrate the world deepens immersion. Text-to-speech is lightweight and complements the lightweight LLM approach. Voice narration elevates the player experience without requiring pre-recorded audio. This is a major quality-of-life improvement that makes the game feel more like a real tabletop experience.
 
 ### Technical Changes
 - Add `Party` class for multi-character management
@@ -152,6 +185,7 @@ This philosophy shapes every version and feature below.
 - Extend RAG to track relationship context
 - **Add TTS module with voice selection and streaming audio**
 - **Integrate TTS output alongside text responses**
+- Add dialogue tree system for branching narratives
 
 ### Narrator Philosophy for v0.3
 - NPC dialogue and narration still powered by lightweight LLM + RAG
@@ -163,7 +197,7 @@ This philosophy shapes every version and feature below.
 
 ## v0.4 - Multiplayer & Persistence
 
-**Timeline**: Q4 2026  
+**Timeline**: Q4 2026 - Q1 2027  
 **Focus**: Enable shared worlds and long-term persistence
 
 ### Features to Implement
@@ -209,7 +243,7 @@ This philosophy shapes every version and feature below.
 ## Future Vision (Post v0.4)
 
 ### Voice & Audio
-- [ ] Voice input for actions
+- [ ] Voice input for actions (speech-to-text)
 - [ ] **AI narrator TTS output (added in v0.3)**
 - [ ] Ambient music and sound effects
 - [ ] Spatial audio for combat encounters
@@ -259,6 +293,16 @@ This philosophy shapes every version and feature below.
 - ✅ Documentation is comprehensive
 - ✅ Users can create custom worlds
 - ✅ Runs on consumer hardware with Ollama
+- ✅ 35-turn playthrough with 100% success rate
+- ⏳ Game mechanics respond to player actions (v0.1.1 target)
+
+### v0.1.1 Success Criteria (Upcoming)
+- [ ] Character location updates correctly
+- [ ] Combat affects character HP
+- [ ] Inventory used in action resolution
+- [ ] Quests offered and tracked
+- [ ] 35+ turn playthrough with full mechanics
+- [ ] All 7 beads issues closed
 
 ### v0.2 Success Criteria
 - [ ] Combat is engaging and balanced
@@ -294,6 +338,15 @@ Have ideas? Want to help? Check [CONTRIBUTING.md](CONTRIBUTING.md) for guideline
 - Contributing code and documentation
 - Sharing custom worlds and lore
 
+Use beads (`bd`) for all issue tracking:
+```bash
+bd list          # See all issues
+bd create -t "title" -d "description" -p P2  # File new issue
+bd show <id>     # View details
+bd update <id> --claim  # Start work
+bd close <id>    # Complete work
+```
+
 ---
 
 ## Technical Debt & Maintenance
@@ -309,7 +362,15 @@ Ongoing throughout all versions:
 
 ---
 
-**Last Updated**: April 2026  
-**Next Review**: June 2026
+## Current Status (2026-04-11)
+
+**v0.1 is functionally complete** but gameplay is incomplete. The game loop works perfectly, narrative generation is solid, and the RAG system is stable. What's missing are game mechanics that respond to player actions.
+
+**Next focus**: v0.1.1 targets (location tracking, combat integration, inventory usage, quest system). These are straightforward enhancements to the Narrator state parsing logic.
+
+---
+
+**Last Updated**: April 11, 2026  
+**Next Review**: May 2026
 
 **Core Principle**: Every feature should work well with a lightweight LLM + strong RAG. If it doesn't, reconsider the architecture.

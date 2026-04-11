@@ -8,6 +8,8 @@ RAG-Quest uses a **provider-agnostic** architecture that treats OpenAI, OpenRout
 
 **The Architectural Philosophy**: The LLM is not expected to be a large or sophisticated model. LightRAG's knowledge graph retrieval injects all necessary context per query. A ~3B parameter model (Ollama neural-chat, Mistral, or even smaller) paired with strong RAG context performs as well as much larger models running blind. This enables consumer-hardware deployment and dramatically reduces costs.
 
+**Architecture Update (2026-04-11)**: All LLM providers have been converted from async to synchronous. This is cleaner for a turn-based text RPG and eliminates callback complexity. The conversion included updating httpx.AsyncClient to httpx.Client throughout.
+
 ## LLM Provider Architecture
 
 ### Provider Abstraction Layer
@@ -29,11 +31,12 @@ class BaseLLMProvider(ABC):
         self.config = config
     
     @abstractmethod
-    async def complete(
+    def complete(
         self,
         messages: list[dict],
         temperature: float = None,
         max_tokens: int = None,
+        **kwargs  # Accepts extra kwargs from LightRAG without error
     ) -> str:
         """Generate a completion.
         
@@ -41,9 +44,10 @@ class BaseLLMProvider(ABC):
             messages: List of {'role': 'system'|'user'|'assistant', 'content': str}
             temperature: Override default temperature (0-2 range)
             max_tokens: Override default max tokens
+            **kwargs: Extra parameters from LightRAG (e.g., hashing_kv)
         
         Returns:
-            Generated text response
+            Generated text response (synchronous)
         
         Raises:
             ValueError: Invalid API key or model
@@ -55,8 +59,8 @@ class BaseLLMProvider(ABC):
     def lightrag_complete_func(self) -> callable:
         """Return a callable that LightRAG can use.
         
-        LightRAG expects: fn(prompt, **kwargs) -> str
-        This method adapts our async interface to that expectation.
+        LightRAG expects: fn(prompt) -> str (synchronous)
+        This method adapts our provider interface to that expectation.
         
         Returns:
             Callable: (prompt: str) -> str
@@ -72,17 +76,17 @@ class BaseLLMProvider(ABC):
 
 ```python
 class OpenAIProvider(BaseLLMProvider):
-    """Direct OpenAI API integration."""
+    """Direct OpenAI API integration (synchronous)."""
     
     # Expected config:
     # {
     #     'model': 'gpt-4-turbo' or 'gpt-3.5-turbo',
     #     'api_key': 'sk-...',
-    #     'temperature': 0.85,  # Narrative tone
-    #     'max_tokens': 1024    # Lightweight context assumption
+    #     'temperature': 0.85,
+    #     'max_tokens': 1024
     # }
     
-    async def complete(self, messages, temperature=None, max_tokens=None):
+    def complete(self, messages, temperature=None, max_tokens=None, **kwargs):
         # 1. Build JSON payload
         # 2. POST to https://api.openai.com/v1/chat/completions
         # 3. Parse response
@@ -92,7 +96,7 @@ class OpenAIProvider(BaseLLMProvider):
 
 **Features**:
 - Latest models: GPT-4 Turbo, GPT-4, GPT-3.5-turbo
-- Token streaming not yet implemented
+- Synchronous HTTP via httpx.Client
 - Supports system prompts, function calling (not used)
 - Requires valid OpenAI API key
 
@@ -112,7 +116,7 @@ class OpenAIProvider(BaseLLMProvider):
 
 ```python
 class OpenRouterProvider(BaseLLMProvider):
-    """OpenRouter.ai multi-model integration."""
+    """OpenRouter.ai multi-model integration (synchronous)."""
     
     # Expected config:
     # {
@@ -122,7 +126,7 @@ class OpenRouterProvider(BaseLLMProvider):
     #     'max_tokens': 1024
     # }
     
-    async def complete(self, messages, temperature=None, max_tokens=None):
+    def complete(self, messages, temperature=None, max_tokens=None, **kwargs):
         # 1. Build JSON payload with model parameter
         # 2. POST to https://openrouter.ai/api/v1/chat/completions
         # 3. Handle response (compatible with OpenAI format)
@@ -160,20 +164,20 @@ class OpenRouterProvider(BaseLLMProvider):
 
 ```python
 class OllamaProvider(BaseLLMProvider):
-    """Local Ollama inference engine."""
+    """Local Ollama inference engine (synchronous)."""
     
     # Expected config:
     # {
-    #     'model': 'neural-chat' | 'mistral' | 'llama2' | 'orca' | 'zephyr',
+    #     'model': 'neural-chat' | 'mistral' | 'llama2' | 'orca' | 'zephyr' | 'gemma4',
     #     'base_url': 'http://localhost:11434',
     #     'temperature': 0.85,
     #     'max_tokens': 1024
     # }
     
-    async def complete(self, messages, temperature=None, max_tokens=None):
+    def complete(self, messages, temperature=None, max_tokens=None, **kwargs):
         # 1. Build JSON payload
         # 2. POST to base_url/api/chat
-        # 3. Handle streaming response
+        # 3. Handle streaming response (accumulate lines)
         # 4. Return accumulated response
         pass
 ```
@@ -181,7 +185,7 @@ class OllamaProvider(BaseLLMProvider):
 **Features**:
 - Runs completely locally (no API keys needed)
 - Requires Ollama daemon running (`ollama serve`)
-- Models: Llama 2, Mistral, Neural Chat, Orca, Zephyr, etc.
+- Models: Llama 2, Mistral, Neural Chat, Orca, Zephyr, Gemma4, etc.
 - No rate limits, no costs (just CPU/GPU)
 - Streaming response support
 - **Perfect for consumer hardware when paired with RAG**
@@ -189,6 +193,7 @@ class OllamaProvider(BaseLLMProvider):
 **Recommended Models**:
 - `neural-chat` - Best narrative for game dialogue
 - `mistral` - Fast and capable, good balance
+- `gemma4` - Good quality, reasonable speed
 - `orca-mini` - Fast, good for testing
 - `llama2` - Good general purpose
 - `zephyr` - Newer, good reasoning
@@ -202,11 +207,12 @@ ollama serve
 # In another terminal, pull a model
 ollama pull neural-chat
 ollama pull mistral
+ollama pull gemma4
 ```
 
-**Performance**:
-- GPU: 2-10 seconds per response
-- CPU: 10-60 seconds per response
+**Performance** (on Mac with Apple Silicon):
+- GPU (Metal): 2-10 seconds per response
+- CPU-only: 10-60 seconds per response
 - Depends heavily on model size and hardware
 
 **Tips**:
@@ -215,6 +221,34 @@ ollama pull mistral
 - Cold start is slower (~30s); subsequent queries faster
 - Great for development/testing without API costs
 - **Philosophy**: A 7B local model with RAG beats a 70B model without RAG
+- **Note**: Ollama response format differs from OpenAI—uses `data["message"]["content"]` not `data["choices"][0]["message"]["content"]`
+
+### Synchronous Architecture (Updated 2026-04-11)
+
+All LLM providers are now **synchronous**. Key changes from async:
+
+```python
+# Before (async):
+async def complete(self, messages, ...):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(...)
+        return response.json()
+
+# After (sync):
+def complete(self, messages, ...):
+    with httpx.Client() as client:
+        response = client.post(...)
+        return response.json()
+```
+
+**Why Sync?**: Turn-based text RPG doesn't need async. Synchronous code is:
+- Cleaner and easier to reason about
+- Eliminates callback complexity
+- No event loop management needed
+- Simpler error handling
+- Same performance for turn-based interaction
+
+**LightRAG Integration**: LightRAG still requires async internally. `WorldRAG` uses a `ThreadPoolExecutor` to run async LightRAG operations from sync code via a `_run_async()` helper method.
 
 ### Adding a New Provider
 
@@ -230,13 +264,15 @@ To add support for a new LLM provider (e.g., Anthropic direct, Hugging Face, etc
    from .base import BaseLLMProvider
    
    class MyProvider(BaseLLMProvider):
-       async def complete(self, messages, temperature=None, max_tokens=None) -> str:
+       def complete(self, messages, temperature=None, max_tokens=None, **kwargs) -> str:
            # Implementation here
            pass
        
        def lightrag_complete_func(self):
-           # Return sync wrapper for LightRAG
-           pass
+           # Return sync callable for LightRAG
+           def sync_complete(prompt: str, **kwargs) -> str:
+               return self.complete([{"role": "user", "content": prompt}])
+           return sync_complete
    ```
 
 3. **Add to config setup** in `config.py`:
@@ -304,8 +340,8 @@ The narrator implements a sophisticated pipeline for generating contextual, cons
    └─────────────────────────────────┘
                  │
         ┌────────▼────────────────┐
-        │  Parse for State Changes│
-        │  - Location changes?    │
+        │  Parse for State Changes│ ← TODO: Needs implementation
+        │  - Location changes?    │ (currently a stub)
         │  - New NPCs?            │
         │  - Items gained?        │
         └────────┬────────────────┘
@@ -334,9 +370,9 @@ The narrator implements a sophisticated pipeline for generating contextual, cons
 Main entry point. Processes player input and returns narrative response.
 
 ```python
-async def process_action(self, action: str) -> tuple[str, GameState]:
+def process_action(self, action: str) -> tuple[str, GameState]:
     # 1. Query RAG for context
-    context = await self.world_rag.query_world(
+    context = self.world_rag.query_world(
         question=action,
         context=self.game_state.world.get_context()
     )
@@ -344,18 +380,18 @@ async def process_action(self, action: str) -> tuple[str, GameState]:
     # 2. Build message list
     messages = self._build_messages(action, context)
     
-    # 3. Call LLM (can be lightweight model)
-    response = await self.llm_provider.complete(
+    # 3. Call LLM (can be lightweight model, now synchronous)
+    response = self.llm_provider.complete(
         messages,
         temperature=0.85,
         max_tokens=1024
     )
     
-    # 4. Parse state changes
+    # 4. Parse state changes (STUB - needs implementation)
     self._parse_and_apply_changes(response)
     
     # 5. Record to RAG
-    await self.world_rag.record_event(f"{self.game_state.character.name} {action}")
+    self.world_rag.record_event(f"{self.game_state.character.name} {action}")
     
     return response, self.game_state
 ```
@@ -381,7 +417,7 @@ def _build_messages(self, action: str, context: str) -> list[dict]:
             "role": "system",
             "content": f"Character: {self.game_state.character.name}, "
                       f"Race: {self.game_state.character.race}, "
-                      f"Class: {self.game_state.character.class_}, "
+                      f"Class: {self.game_state.character.character_class.value}, "
                       f"Location: {self.game_state.character.location}, "
                       f"HP: {self.game_state.character.hp}"
         },
@@ -402,23 +438,13 @@ def _build_messages(self, action: str, context: str) -> list[dict]:
 
 Detects and applies state changes mentioned in the response.
 
-Uses regex patterns to detect:
-- **Location changes**: `move to|go to|enter|arrive|travel|journey`
-- **NPC meetings**: `meet|encounter|find|see|talk to`
-- **Item discovery**: `find|discover|gain|pick up|receive|obtain`
+**Current Status**: Stub implementation. Needs work to:
+- Detect location changes: `move to|go to|enter|arrive|travel|journey`
+- Detect NPC meetings: `meet|encounter|find|see|talk to`
+- Detect item discovery: `find|discover|gain|pick up|receive|obtain`
+- Update game state accordingly
 
-Example:
-
-```python
-# If response contains "You enter the tavern"
-# - Detect location change
-# - Update character.location = "tavern"
-# - Add to world.visited_locations
-
-# If response contains "You meet the innkeeper"
-# - Detect NPC
-# - Add to world.npcs_met
-```
+This is one of the P2 priority issues.
 
 ### System Prompts
 
@@ -455,6 +481,8 @@ Different models and temperatures serve different purposes:
 | Provider | Model | Params | Temp | Use Case | Cost | Speed |
 |----------|-------|--------|------|----------|------|-------|
 | Ollama | neural-chat | 7B | 0.85 | Excellent local | Free | 5-15s |
+| Ollama | mistral | 7B | 0.85 | Great + fast | Free | 3-8s |
+| Ollama | gemma4 | 9B | 0.85 | Good quality | Free | 8-15s |
 | OpenRouter | Llama-2 | 70B | 0.85 | Great + cheap | $0.01 | Fast |
 | OpenRouter | Mistral | 7B | 0.85 | Great + very cheap | $0.005 | Fast |
 | OpenRouter | Claude-Sonnet-4 | N/A | 0.85 | Excellent | $0.15 | Med |
@@ -502,30 +530,35 @@ Different models and temperatures serve different purposes:
 - Try more specific action description
 - Check lore file quality
 
+**Problem**: "Got an unexpected keyword argument 'hashing_kv'"
+
+**Solution**:
+- This error occurs when LightRAG passes extra kwargs
+- Ensure all LLM providers have `**kwargs` in their `complete()` signature
+- All providers should accept and ignore unknown parameters
+
 ## Integration with LightRAG
 
 ### LightRAG Completion Function
 
 LightRAG needs a callable with signature: `fn(prompt: str, **kwargs) -> str`
 
-RAG-Quest adapts the async provider interface via:
+RAG-Quest adapts the provider interface via:
 
 ```python
 def lightrag_complete_func(self):
     """Create a sync wrapper for LightRAG.
     
-    LightRAG expects synchronous function, but our providers
-    are async. This wrapper handles the adaptation.
+    LightRAG requires a synchronous function that accepts
+    arbitrary kwargs. Our providers are already sync, so
+    we just wrap them minimally.
     """
     def sync_complete(prompt: str, **kwargs) -> str:
-        # Run async function in event loop
-        import asyncio
-        response = asyncio.run(
-            self.complete(
-                messages=[{"role": "user", "content": prompt}],
-                temperature=kwargs.get('temperature', 0.7),
-                max_tokens=kwargs.get('max_tokens', 1024)
-            )
+        response = self.complete(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=kwargs.get('temperature', 0.7),
+            max_tokens=kwargs.get('max_tokens', 1024),
+            **kwargs  # Pass through any other kwargs
         )
         return response
     
@@ -568,7 +601,7 @@ When narrator calls `world_rag.query_world(question, context)`:
 
 ### Hobby Play (Local)
 - **Provider**: Ollama
-- **Model**: neural-chat, mistral, or zephyr
+- **Model**: neural-chat, mistral, or gemma4
 - **Cost**: Free
 - **Speed**: 5-30 seconds (depends on hardware)
 - **Quality**: Excellent (with RAG)
@@ -583,60 +616,14 @@ When narrator calls `world_rag.query_world(question, context)`:
 | Speed | 1-10s | 1-15s | 5-60s |
 | Quality | Excellent | Excellent | Good-Excellent |
 | Offline Support | No | No | Yes |
-| API Key Req'd | Yes | Yes | No |
+| API Key Required | Yes | Yes | No |
 | Rate Limits | Yes | Generous | No |
 | Streaming | Yes | Yes | Yes |
 | **RAG Friendly** | Yes | Yes | **Ideal** |
+| **Sync/Async** | Sync | Sync | Sync |
 
 ---
 
-**Last Updated**: April 2026
+**Last Updated**: April 11, 2026
 
 **Core Philosophy**: LightRAG does the knowledge work. The LLM is just the narrator. Keep it lightweight.
-
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-## Beads Issue Tracker
-
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
-
-### Quick Reference
-
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
-
-### Rules
-
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
-
-## Session Completion
-
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd dolt push
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->

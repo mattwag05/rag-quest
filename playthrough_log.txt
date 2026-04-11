@@ -211,3 +211,39 @@ ERROR: Failed to extract document 1/2: unknown_source
 [2026-04-11 17:18:32,859] INFO: 
 --- TURN 1 ---
 [2026-04-11 17:18:32,859] INFO: Action: Look around and get your bearings
+[2026-04-11 17:18:52,432] ERROR: Error on turn 1: [Errno 32] Broken pipe
+[2026-04-11 17:18:52,432] INFO: 
+--- TURN 2 ---
+[2026-04-11 17:18:52,432] INFO: Action: Ask the tavern keeper about what's happening in this realm
+[2026-04-11 17:20:04,765] ERROR: Error on turn 1: [Errno 32] Broken pipe
+[2026-04-11 17:20:04,765] INFO: 
+--- TURN 2 ---
+[2026-04-11 17:20:04,765] INFO: Action: Ask the tavern keeper about what's happening in this realm
+[2026-04-11 17:20:28,998] ERROR: Error on turn 2: [Errno 32] Broken pipe
+[2026-04-11 17:20:28,998] INFO: 
+--- TURN 3 ---
+[2026-04-11 17:20:28,998] INFO: Action: Check what supplies you're carrying
+[2026-04-11 17:22:04,768] ERROR: Error on turn 2: timed out
+[2026-04-11 17:22:04,768] INFO: 
+--- TURN 3 ---
+[2026-04-11 17:22:04,768] INFO: Action: Check what supplies you're carrying
+[2026-04-11 17:22:17,771] ERROR: Error on turn 3: [Errno 32] Broken pipe
+[2026-04-11 17:22:17,771] INFO: 
+--- TURN 4 ---
+[2026-04-11 17:22:17,771] INFO: Action: Leave the tavern and explore the nearby streets
+[2026-04-11 17:24:04,773] ERROR: Error on turn 3: timed out
+[2026-04-11 17:24:04,774] INFO: 
+--- TURN 4 ---
+[2026-04-11 17:24:04,774] INFO: Action: Leave the tavern and explore the nearby streets
+[2026-04-11 17:24:17,775] ERROR: Error on turn 4: timed out
+[2026-04-11 17:24:17,775] INFO: 
+--- TURN 5 ---
+[2026-04-11 17:24:17,775] INFO: Action: Try to find someone who might know about the Blue Rose
+[2026-04-11 17:26:04,779] ERROR: Error on turn 4: timed out
+[2026-04-11 17:26:04,779] INFO: 
+--- TURN 5 ---
+[2026-04-11 17:26:04,780] INFO: Action: Try to find someone who might know about the Blue Rose
+[2026-04-11 17:26:17,781] ERROR: Error on turn 5: timed out
+[2026-04-11 17:26:17,781] INFO: 
+--- TURN 6 ---
+[2026-04-11 17:26:17,782] INFO: Action: Listen to rumors and gossip from locals

@@ -10,15 +10,36 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 
 **Why this matters**: A 7B model with excellent RAG context beats a 70B model without RAG. The knowledge graph is the "long-term memory"; the LLM is just the "narrator."
 
-**Current Version**: v0.1 (narrative + dialogue + inventory, single-player)
+**Current Version**: v0.1 (functional game loop, narrative + dialogue + inventory, single-player)
+
+**Status**: Early alpha. Game loop works, but game state doesn't fully respond to player actions yet. 7 beads issues filed for P2 and P3 priorities.
 
 **Technology Stack**:
 - **Python 3.11+** - Core language
 - **LightRAG** - Knowledge graph backend (the architectural cornerstone)
-- **httpx** - Async HTTP for LLM APIs
+- **httpx** - Async HTTP for LLM APIs (synchronous wrapper for turn-based game)
 - **Rich** - Terminal UI and formatting
 - **PyMuPDF** - PDF text extraction
 - **pytest** - Testing framework
+
+## Critical Fixes Applied (2026-04-11)
+
+The following 6 critical bugs were fixed to make the game functional:
+
+1. **Package Installation (setuptools error)** - Fixed by adding explicit package configuration to `pyproject.toml`
+2. **Interactive Config Blocks Non-Interactive Environments** - Added environment variable support and TTY detection in `config.py`
+3. **Async/Await Mismatch** - Converted entire codebase from async to synchronous (cleaner for turn-based game)
+4. **PDF Ingestion Function Signature** - Fixed `ingest_file()` to use LightRAG's async insertion API
+5. **Narrator Constructor Mismatch** - Fixed undefined variable `character_class` to use `character.character_class.value`
+6. **Missing World Description** - Not actually needed in current implementation
+
+Additionally:
+- Created synchronous wrapper for LightRAG async operations using ThreadPoolExecutor
+- Fixed Ollama API response format parsing
+- Fixed LLM provider parameter handling with `**kwargs`
+- Implemented proper embedding function setup with Ollama nomic-embed-text model
+
+**Result**: Game loop is now functional. 35-turn playthrough completed successfully with 100% success rate.
 
 ## Directory Structure
 
@@ -54,10 +75,11 @@ rag-quest/
 │   └── EXAMPLE_WORLD.md         # Example world definition
 ├── saves/                       # Player save games (git-ignored)
 │   └── .gitkeep
-├── tests/                       # Unit & integration tests
+├── tests/                       # Unit & integration tests (to be added)
 ├── pyproject.toml               # Project metadata & dependencies
 ├── README.md                    # User-facing documentation
 ├── ARCHITECTURE.md              # Technical architecture
+├── AGENTS.md                    # LLM provider guide
 ├── CONTRIBUTING.md              # Contribution guidelines
 ├── ROADMAP.md                   # Development roadmap
 ├── CLAUDE.md                    # This file
@@ -76,28 +98,30 @@ All providers inherit from this abstract class:
 ```python
 class BaseLLMProvider(ABC):
     def __init__(self, config: dict)
-    async def complete(self, messages: list[dict], 
-                      temperature: float = None,
-                      max_tokens: int = None) -> str
+    def complete(self, messages: list[dict], 
+                 temperature: float = None,
+                 max_tokens: int = None,
+                 **kwargs) -> str  # Note: synchronous (was async before fix)
     def lightrag_complete_func(self) -> callable
 ```
 
 **Key Implementations**:
-- `OpenAIProvider` - Direct OpenAI API calls
-- `OpenRouterProvider` - OpenRouter.ai (multi-model access)
-- `OllamaProvider` - Local Ollama inference (~3B-70B models)
+- `OpenAIProvider` - Direct OpenAI API calls (sync)
+- `OpenRouterProvider` - OpenRouter.ai (sync)
+- `OllamaProvider` - Local Ollama inference (sync)
 
 **Design Patterns**:
-- All providers are fully async
-- Uses `httpx.AsyncClient` for HTTP
-- `lightrag_complete_func()` adapts interface for LightRAG compatibility
+- All providers are now **synchronous** (converted from async in fix #3)
+- Uses `httpx.Client` for HTTP (was AsyncClient)
+- `lightrag_complete_func()` returns a function for LightRAG compatibility
 - Temperature and max_tokens are call-time configurable
+- Accept `**kwargs` from LightRAG without error
 - **Narrator uses lightweight providers**: Ollama 7B or Llama-2 deliver excellent results
 
 **Adding a New Provider**:
 1. Create `rag_quest/llm/my_provider.py`
 2. Inherit from `BaseLLMProvider`
-3. Implement `async def complete()` method
+3. Implement `def complete()` method (synchronous)
 4. Add to `config.py` setup wizard
 5. Document in README.md
 
@@ -113,8 +137,7 @@ class BaseLLMProvider(ABC):
 - Immutable fields on creation (name, race, class)
 
 **World** - World state container
-- Attributes: time_of_day, weather, visited_locations, npcs_met, recent_events
-- Enums: `TimeOfDay`, `Weather`
+- Attributes: name, setting, tone, time_of_day, weather, visited_locations, npcs_met, recent_events
 - Methods: `advance_time()`, `add_visited_location()`, `get_context()`
 - Recent events (last 5) kept for narrative context
 
@@ -128,22 +151,22 @@ class BaseLLMProvider(ABC):
 - Methods: `add_quest()`, `get_active_quests()`, `complete_quest()`
 
 **Narrator** - Lightweight AI narrator
-- Core method: `async process_action(player_input: str) -> tuple[str, GameState]`
+- Core method: `process_action(player_input: str) -> tuple[str, GameState]` (synchronous)
 - Orchestrates: RAG query → message building → LLM call → state parsing
 - Maintains conversation history (last 6 messages)
 - Returns: (response text, updated game state)
-- **Design note**: Narrator is intentionally simple; RAG complexity does the world knowledge work
+- **Known Issue**: Currently doesn't update character location or apply game state changes from narration
 
 ### Knowledge Layer (knowledge/)
 
 **WorldRAG** - LightRAG wrapper (the heavyweight)
 ```python
 class WorldRAG:
-    async def initialize()
-    async def ingest_text(text: str, source: str)
-    async def ingest_file(path: str)
-    async def query_world(question: str, context: str) -> str
-    async def record_event(event: str)
+    def initialize()  # Synchronous
+    def ingest_text(text: str, source: str)
+    def ingest_file(path: str)
+    def query_world(question: str, context: str) -> str
+    def record_event(event: str)
 ```
 
 **Design Decisions**:
@@ -151,6 +174,7 @@ class WorldRAG:
 - Storage: `~/.local/share/rag-quest/worlds/{world_name}/`
 - Uses "hybrid" mode for queries (entity + theme matching)
 - Events recorded with metadata for tracking
+- **Uses ThreadPoolExecutor to run async LightRAG operations from sync code**
 - **RAG is the "long-term memory"**: all world facts live here, not in the LLM context
 
 **Ingest Module** (ingest.py):
@@ -160,18 +184,20 @@ class WorldRAG:
 
 ## Key Patterns & Conventions
 
-### Async/Await Pattern
+### Synchronous Architecture
 
-All I/O operations are async (LLM calls, file I/O):
+After fix #3, all I/O operations are now **synchronous**:
 
 ```python
-async def process_action(action: str) -> str:
-    context = await world_rag.query_world(action)
-    response = await llm_provider.complete(messages)
+def process_action(action: str) -> str:
+    context = world_rag.query_world(action)  # Synchronous
+    response = llm_provider.complete(messages)  # Synchronous
     return response
 ```
 
-**Important**: Always use `async def` and `await` for LLM/RAG calls. Use `asyncio.run()` in sync contexts (like `__main__.py`).
+**Why**: Turn-based text RPG doesn't need async. Synchronous is cleaner, simpler, and avoids callback hell.
+
+**Important**: LightRAG still requires async internally. `WorldRAG` uses a ThreadPoolExecutor to run LightRAG's async operations from synchronous code via `_run_async()` helper.
 
 ### State Serialization
 
@@ -247,17 +273,64 @@ pip install -e ".[dev]"
 python -m rag_quest --help
 ```
 
+### Configuration via Environment Variables
+
+For non-interactive environments, set these env vars:
+
+```bash
+export LLM_PROVIDER=ollama
+export OLLAMA_MODEL=gemma4:latest
+export OLLAMA_BASE_URL=http://localhost:11434
+export WORLD_NAME="The Blue Rose Realm"
+export WORLD_SETTING="Fantasy World"
+export WORLD_TONE="Dark"
+export CHARACTER_NAME="Kael"
+export CHARACTER_RACE=HUMAN
+export CHARACTER_CLASS=FIGHTER
+
+python -m rag_quest
+```
+
 ### Running the Game
 
 ```bash
 # Normal play
 python -m rag_quest
 
-# With debug output
-python -m rag_quest --debug
+# With environment config (non-interactive)
+LLM_PROVIDER=ollama OLLAMA_MODEL=gemma4:latest python -m rag_quest
 
-# Testing a specific provider
-OPENAI_API_KEY=sk-... python -m rag_quest
+# Testing with mock LLM
+python test_playthrough_mock.py
+
+# Testing with real Ollama (slow for PDF ingestion)
+python test_playthrough.py
+
+# Fast test with small lore
+python test_playthrough_fast.py
+```
+
+### Testing
+
+Three test scripts available:
+
+**test_playthrough_mock.py** - Uses mock LLM (fastest, ~200ms for 35 turns)
+```bash
+python test_playthrough_mock.py
+# Outputs: playthrough_log_mock.txt, playthrough_results_mock.json
+```
+
+**test_playthrough_fast.py** - Uses real Ollama but small lore file (minutes)
+```bash
+python test_playthrough_fast.py
+# Outputs: playthrough_log_fast.txt
+```
+
+**test_playthrough.py** - Full integration with PDF lore ingestion (very slow, 30+ min)
+```bash
+# Only run if you have time
+python test_playthrough.py
+# Outputs: playthrough_log.txt, playthrough_results.json
 ```
 
 ### Development Workflow
@@ -279,55 +352,82 @@ pytest -v
 pytest --cov=rag_quest --cov-report=html
 ```
 
-### Testing Guidelines
+## Known Issues & Current Limitations
 
-**Unit Tests**:
-- Mock LLM calls and RAG queries
-- Test state transitions
-- Test serialization round-trips
-- Test config loading
+### P2 Issues (Major - Block Full Gameplay)
 
-**Integration Tests**:
-- Full game loop with mock provider
-- Save/load cycles
-- Multi-turn conversations
-- Lore ingestion
+1. **Character Location Not Updating** (rag-quest-jjc)
+   - Character stays at starting location despite actions
+   - Narrator doesn't parse location changes from responses
+   - Needs: Regex pattern matching in `narrator.py` to detect "move to", "go to", etc.
 
-**Test Location**: `tests/` directory, mirror `rag_quest/` structure
+2. **No Combat System Integration** (rag-quest-y1u)
+   - Game has no actual combat mechanics
+   - Combat turns just return narrative text
+   - No HP updates, damage calculation, or encounter tracking
+   - Needs: Connect Narrator to `Game.combat()` system
+
+3. **Inventory Not Used During Gameplay** (rag-quest-m2u)
+   - Items exist but don't affect narrative or gameplay
+   - Narrator never references or modifies inventory
+   - Needs: Narrator to parse item gain/loss from responses, update game state
+
+4. **Quest Log Not Integrated** (rag-quest-0ia)
+   - QuestLog exists but is never populated
+   - No quest offers or completion tracking
+   - Needs: Narrator to generate quest offers and track completion
+
+### P3 Issues (Medium - Nice to Have)
+
+1. **PDF Ingestion Extremely Slow** (rag-quest-xvf)
+   - LightRAG takes 30+ minutes for 178-page PDF
+   - Entity extraction on every chunk is expensive
+   - Workaround: Use smaller lore files for testing (5-10 pages)
+
+2. **Insufficient Narrator Context Injection** (rag-quest-aej)
+   - Narrator doesn't inject current game state into prompts
+   - LLM doesn't see character HP, inventory, location, active quests
+   - Needs: Add state to every LLM system prompt
+
+3. **No Error Recovery** (rag-quest-mml)
+   - Failed LLM calls crash the game
+   - No retry logic or fallback behavior
+   - Needs: Try/catch with sensible fallbacks
 
 ## Important Implementation Details
 
-### Action Processing (Core Loop)
+### Action Processing (Current Pipeline)
 
 The narrator's `process_action()` method implements this pipeline:
 
 1. **RAG Query**: Ask knowledge graph for relevant context
 2. **Message Building**: Compose system prompt + context + history + action
 3. **LLM Generation**: Call provider with built messages (can be small model)
-4. **State Parsing**: Extract location changes, NPC meetings, item discoveries from response
-5. **State Update**: Modify GameState based on parsed changes
+4. **State Parsing**: (CURRENTLY MISSING) Extract location changes, NPC meetings, item discoveries
+5. **State Update**: (CURRENTLY MISSING) Modify GameState based on parsed changes
 6. **RAG Record**: Insert event back into knowledge graph
 7. **History Save**: Add to conversation history
 
-See `narrator.py` for implementation details.
+**Current Status**: Steps 1-3, 6-7 work. Steps 4-5 are TODO (these are the P2 issues).
 
 **Design insight**: RAG does the heavy lifting in step 1. LLM in step 3 can be lightweight.
 
 ### Configuration Flow
 
-1. `config.py:get_config()` checks for existing config
-2. If not found, calls `setup_first_run()` (interactive wizard)
-3. User selects: provider → model → world setup → character
-4. Config saved to `~/.config/rag-quest/config.json`
-5. `load_llm_provider()` hydrates the provider from config
-6. `create_character_from_config()` and `create_world_from_config()` create game objects
+1. `config.py:get_config()` checks for existing config file
+2. If not found, checks environment variables
+3. If neither found and running interactively, calls `setup_first_run()`
+4. If neither found and non-interactive, raises ConfigError with helpful message
+5. Config saved to `~/.config/rag-quest/config.json`
+6. `load_llm_provider()` hydrates the provider from config
+7. `create_character_from_config()` and `create_world_from_config()` create game objects
 
 ### Lore Ingestion
 
 When user uploads lore during setup:
 
 1. `config.py` gets lore directory path
-2. `game.py` or `__main__.py` calls `WorldRAG.ingest_file()` for each file
+2. `game.py` calls `WorldRAG.ingest_file()` for each file
 3. `ingest.py` reads file (handles .txt, .md, .pdf)
 4. `WorldRAG.ingest_text()` chunks and sends to LightRAG
 5. User sees progress bar (via Rich)
@@ -339,6 +439,7 @@ When user uploads lore during setup:
 - **First query**: 30-60 seconds (LightRAG initialization)
 - **Typical query**: 1-3 seconds (cached)
 - **Large lore files**: Slower initialization (>100MB)
+- **PDF ingestion**: 1-2 minutes per 10 pages (entity extraction is expensive)
 
 **Optimization**: Lazy initialization, hybrid query mode, history pruning
 
@@ -349,10 +450,10 @@ When user uploads lore during setup:
 
 **Optimization**: Limit conversation history to last 6 messages, chunk large lore files
 
-### Async Considerations
-- All LLM calls are concurrent (no blocking)
-- RAG queries block narrator (sequential)
-- Consider queue-based RAG for future scaling
+### LLM Response Times (Ollama on Mac)
+- **Ollama 7B (GPU)**: 2-10 seconds per response
+- **Ollama 7B (CPU)**: 10-60 seconds per response
+- **Ollama 13B (GPU)**: 5-20 seconds per response
 
 ## Common Debugging Scenarios
 
@@ -361,20 +462,24 @@ When user uploads lore during setup:
 **Debug**: Check `debug=True` output, print RAG query, inspect ingested lore
 
 ### "Character state not updating"
-**Cause**: Regex patterns in `_parse_and_apply_changes()` don't match response  
-**Debug**: Print full response, check regex patterns, verify state change detection
+**Cause**: Regex patterns in `_parse_and_apply_changes()` don't match response (or method not called)
+**Debug**: Print full response, check regex patterns, verify state change detection is implemented
 
 ### "LLM API errors (connection, rate limit)"
 **Cause**: API key invalid, rate limit hit, or service down  
 **Debug**: Test with curl, verify API key, check provider status
 
 ### "Game freezes during LLM call"
-**Cause**: Async not properly awaited or blocking I/O  
-**Debug**: Check all LLM calls are awaited, look for blocking operations
+**Cause**: Likely timeout or blocking operation  
+**Debug**: Check LLM provider logs, verify network connection, try smaller model
 
 ### "LLM response quality is poor"
 **Cause**: Lightweight model struggling without RAG context  
 **Debug**: Check RAG query is specific, verify lore is ingested, ensure context is in messages
+
+### "PDF ingestion takes forever"
+**Cause**: LightRAG entity extraction on large PDFs is slow  
+**Workaround**: Use smaller lore files (5-10 pages) for testing, full files for production
 
 ## Documentation Standards
 
@@ -409,7 +514,7 @@ Raises:
 Always use type hints:
 
 ```python
-async def process_action(
+def process_action(
     action: str,
     game_state: GameState,
 ) -> tuple[str, GameState]:
@@ -418,14 +523,17 @@ async def process_action(
 
 ## Contributing Workflow
 
-1. **Fork & Branch**: `git checkout -b feature/my-feature`
-2. **Develop**: Make changes, write tests, format code
-3. **Test**: Run `pytest`, check coverage
-4. **Format**: Run `black`, `isort`, `mypy`
-5. **Commit**: Atomic commits with clear messages
-6. **PR**: Push and create pull request with description
-7. **Review**: Address feedback, re-test
-8. **Merge**: Squash-merge to main
+1. **Check beads issues**: `bd list` to see available work
+2. **Claim issue**: `bd update <id> --claim` to start work
+3. **Branch & develop**: `git checkout -b feature/my-feature`
+4. **Make changes**: Write code, write tests, format
+5. **Test**: Run `pytest`, check coverage
+6. **Format**: Run `black`, `isort`, `mypy`
+7. **Commit**: Atomic commits with clear messages
+8. **File issues**: For remaining work use `bd create`
+9. **Push to remote**: `git push origin feature/my-feature`
+10. **PR & review**: Create pull request, address feedback
+11. **Merge**: Squash-merge to main when ready
 
 ## Resources & References
 
@@ -441,67 +549,20 @@ async def process_action(
 - **Saves**: `~/.local/share/rag-quest/saves/{world_name}.json`
 - **RAG Data**: `~/.local/share/rag-quest/worlds/{world_name}/`
 - **Prompts**: `rag_quest/prompts/templates.py`
-- **Tests**: `tests/`
+- **Tests**: `test_playthrough*.py`
 
 ## Getting Help
 
 - Check [ARCHITECTURE.md](ARCHITECTURE.md) for system design
+- Check [AGENTS.md](AGENTS.md) for LLM provider details
 - Check [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
-- Review [ROADMAP.md](ROADMAP.md) for planned features
-- Check GitHub issues for known problems
+- Check [ROADMAP.md](ROADMAP.md) for planned features
+- Review beads issues: `bd show <id>`
 - Read docstrings in source code for implementation details
 
 ---
 
-**Last Updated**: April 2026  
+**Last Updated**: April 11, 2026  
 **For**: Claude and other AI assistants contributing to RAG-Quest
 
 **Key Principle**: LightRAG does the heavy lifting. Keep the LLM lightweight and focused on narrative.
-
-
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-## Beads Issue Tracker
-
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
-
-### Quick Reference
-
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
-
-### Rules
-
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
-
-## Session Completion
-
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd dolt push
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->
