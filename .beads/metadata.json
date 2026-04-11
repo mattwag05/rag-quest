@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "rag_quest",
+  "project_id": "56c2b12e-2a43-423c-9f18-18b6ea53ee7d"
+}
