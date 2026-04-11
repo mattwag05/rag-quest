@@ -2,6 +2,14 @@
 
 A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG knowledge graph backend.
 
+## Design Philosophy
+
+**Core Principle**: LightRAG does the heavy lifting. The LLM acting as dungeon master is kept lightweight (~3B parameters, ≤8K context window) because it doesn't need to memorize the world. LightRAG's dual-level retrieval (entity + vector matching) injects precisely the relevant knowledge per query. This enables RAG-Quest to run entirely on consumer hardware with local models via Ollama.
+
+This philosophy shapes every version and feature below.
+
+---
+
 ## v0.1 (Current) - Core Foundation
 
 **Status**: Released
@@ -10,7 +18,7 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 - Core game engine with character, world, inventory, and quest systems
 - Multi-provider LLM support (OpenAI, OpenRouter, Ollama) as first-class citizens
 - LightRAG integration for knowledge graph-backed world context
-- Narrative-driven gameplay with AI narrator
+- Lightweight narrator agent powered by RAG context injection
 - Three start modes:
   - Fresh prompt setup
   - Interactive configuration menu
@@ -27,6 +35,7 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 - **Built-in Commands**: `/inventory`, `/quests`, `/look`, `/map`, `/status`, `/save`, `/help`
 - **World Persistence**: Full game state + RAG database saved per world
 - **Lore Support**: Custom lore documents ingested at world creation
+- **Hardware Support**: Runs on consumer hardware with Ollama + ~7B local models
 
 ### Known Limitations
 - Single-player only
@@ -34,6 +43,7 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 - NPC interactions are reactive only
 - Manual world generation (no procedural generation yet)
 - Limited procedural content
+- Text-only narration (no TTS)
 
 ---
 
@@ -65,7 +75,7 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 - [ ] Boss encounters and unique enemies
 - [ ] Difficulty balancing
 
-#### Enhanced Narration
+#### Enhanced Combat Narration
 - [ ] Combat-specific narration prompts
 - [ ] Action descriptions with damage feedback
 - [ ] Victory/defeat scenarios
@@ -78,12 +88,17 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 - Update narrator with combat flow logic
 - Extend RAG query context for encounter-relevant information
 
+### Narrator Philosophy for v0.2
+- Combat description generation uses same RAG-powered lightweight narrator
+- RAG provides encounter context (difficulty, loot, environment)
+- Small LLM model sufficient—RAG handles world knowledge
+
 ---
 
 ## v0.3 - Social & Narrative Depth
 
 **Timeline**: Q3 2026  
-**Focus**: Deepen NPC interactions and quest systems
+**Focus**: Deepen NPC interactions and quest systems, add AI narrator TTS
 
 ### Features to Implement
 
@@ -118,12 +133,31 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 - [ ] Dynamic location changes
 - [ ] World-state persistence across saves
 
+#### **AI Dungeon Master Text-to-Speech Narration**
+- [ ] **Text-to-speech engine integration (gTTS, pyttsx3, or similar)**
+- [ ] **Narrator voice selection and customization**
+- [ ] **Spatial audio hints for immersion (optional)**
+- [ ] **TTS for quest descriptions and dialogue**
+- [ ] **Optional: user audio playback control (play/pause/skip)**
+- [ ] **Audio caching for repeated narration**
+- [ ] **Config option to enable/disable TTS**
+
+**Rationale**: Hearing the dungeon master narrate the world deepens immersion. Text-to-speech is lightweight and complements the lightweight LLM approach. Voice narration elevates the player experience without requiring pre-recorded audio.
+
 ### Technical Changes
 - Add `Party` class for multi-character management
 - Extend `NPC` with relationship and personality data
 - Create `QuestChain` for quest dependencies
 - Add event scheduling system
 - Extend RAG to track relationship context
+- **Add TTS module with voice selection and streaming audio**
+- **Integrate TTS output alongside text responses**
+
+### Narrator Philosophy for v0.3
+- NPC dialogue and narration still powered by lightweight LLM + RAG
+- RAG provides NPC context, relationship history, lore references
+- TTS reads narrator output aloud—no additional LLM calls needed
+- Small model still sufficient; RAG handles all knowledge
 
 ---
 
@@ -176,9 +210,9 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 
 ### Voice & Audio
 - [ ] Voice input for actions
-- [ ] Text-to-speech narration
+- [ ] **AI narrator TTS output (added in v0.3)**
 - [ ] Ambient music and sound effects
-- [ ] Spatial audio for combat
+- [ ] Spatial audio for combat encounters
 
 ### Visual Enhancements
 - [ ] ASCII art maps and scene rendering
@@ -224,6 +258,7 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 - ✅ LightRAG improves narrative consistency
 - ✅ Documentation is comprehensive
 - ✅ Users can create custom worlds
+- ✅ Runs on consumer hardware with Ollama
 
 ### v0.2 Success Criteria
 - [ ] Combat is engaging and balanced
@@ -231,6 +266,7 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 - [ ] Average encounter duration: 5-15 minutes
 - [ ] Combat win/loss rates balanced
 - [ ] No major performance regressions
+- [ ] Narrator still works with lightweight models
 
 ### v0.3 Success Criteria
 - [ ] NPC relationships deepen engagement
@@ -238,6 +274,8 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 - [ ] Party mechanics feel natural
 - [ ] Average session length: 30-60 minutes
 - [ ] Narrative choices matter to players
+- [ ] **TTS narration enhances immersion**
+- [ ] **TTS doesn't significantly impact performance**
 
 ### v0.4 Success Criteria
 - [ ] Multiplayer sessions are stable
@@ -267,9 +305,11 @@ Ongoing throughout all versions:
 - Improve error messages and debugging
 - Performance profiling and optimization
 - Security audits and updates
+- **Maintain LightRAG-first architecture in all changes**
 
 ---
 
 **Last Updated**: April 2026  
 **Next Review**: June 2026
 
+**Core Principle**: Every feature should work well with a lightweight LLM + strong RAG. If it doesn't, reconsider the architecture.

@@ -1,4 +1,3 @@
-"""
 # RAG-Quest Architecture Documentation
 
 This document describes the internal architecture of RAG-Quest, including design decisions, data flows, and extension points.
@@ -12,29 +11,33 @@ RAG-Quest is a modular text RPG engine with three main layers:
 3. **Knowledge Layer** (LightRAG)
 
 ```
-┌─────────────────────────────────────────────┐
-│         Terminal UI (Rich)                  │
-│  - Game loop & command handling             │
-│  - Player input & response display          │
-└────────────────┬────────────────────────────┘
+┌─────────────────────────────────────────┐
+│         Terminal UI (Rich)              │
+│  - Game loop & command handling         │
+│  - Player input & response display      │
+└────────────────┬────────────────────────┘
                  │
-┌────────────────▼────────────────────────────┐
-│      Game Engine (engine/)                  │
-│  - Character, World, Inventory              │
-│  - Narrator (AI response generation)        │
-│  - State management & serialization         │
-└────────────────┬────────────────────────────┘
+┌────────────────▼────────────────────────┐
+│      Game Engine (engine/)              │
+│  - Character, World, Inventory          │
+│  - Lightweight Narrator (LLM agent)     │
+│  - State management & serialization     │
+└────────────────┬────────────────────────┘
                  │
         ┌────────┴────────┐
         │                 │
 ┌───────▼─────────┐  ┌───▼──────────────────┐
-│  LLM Providers  │  │  LightRAG (Knowledge)│
-│  (llm/)         │  │  (knowledge/)        │
-│  - OpenAI       │  │  - Query & insert    │
-│  - OpenRouter   │  │  - Lore ingestion    │
-│  - Ollama       │  │  - RAG storage       │
-└─────────────────┘  └──────────────────────┘
+│  LLM Providers  │  │  LightRAG (Heavy     │
+│  (llm/)         │  │   Lifting)           │
+│  - OpenAI       │  │  (knowledge/)        │
+│  - OpenRouter   │  │  - Dual-level query  │
+│  - Ollama       │  │  - Knowledge graph   │
+│    (~3B-7B      │  │  - Lore storage      │
+│     lightweight)│  └──────────────────────┘
+└─────────────────┘
 ```
+
+**Design Principle**: LightRAG's knowledge graph stores all world facts. The Narrator (LLM) is lightweight (~3B-7B parameters) because it retrieves only what's needed per query. This allows consumer-hardware deployment while maintaining narrative quality.
 
 ## Module Breakdown
 
@@ -62,6 +65,7 @@ class BaseLLMProvider(ABC):
 - All providers implement same interface
 - `lightrag_complete_func()` adapts our interface to LightRAG's expectations
 - Temperature & max_tokens are configurable per call
+- **Narrator expects lightweight models**: Ollama 7B or Llama deliver excellent results with RAG context
 
 **Extension Point:**
 To add a new provider, inherit from `BaseLLMProvider`:
@@ -75,7 +79,7 @@ class MyProvider(BaseLLMProvider):
 
 ### 2. Knowledge Management (`rag_quest/knowledge/`)
 
-Wraps LightRAG and handles lore ingestion.
+Wraps LightRAG and handles lore ingestion. This is the "heavy lifter."
 
 **File Structure:**
 - `world_rag.py` - `WorldRAG` wrapper class
@@ -98,6 +102,7 @@ class WorldRAG:
 - Stored in `~/.local/share/rag-quest/worlds/{world_name}/`
 - Uses "hybrid" mode for queries (entity + theme matching)
 - Events are inserted with metadata for tracking
+- **RAG is the "long-term memory"**: all world facts live here, not in the LLM context window
 
 **Data Flow: Query**
 
@@ -111,9 +116,9 @@ WorldRAG.query_world(context_query)
        ↓
 LightRAG returns relevant facts about forests, journeys, etc.
        ↓
-Narrator includes this in system prompt
+Narrator includes this in system prompt (with RAG context, LLM can be lightweight)
        ↓
-LLM generates response
+Lightweight LLM generates response based on injected context
 ```
 
 **Data Flow: Ingestion**
@@ -138,7 +143,7 @@ Contains game logic and state management.
 - `world.py` - World state (time, weather, locations)
 - `inventory.py` - Item management
 - `quests.py` - Quest tracking
-- `narrator.py` - AI narrator & response generation
+- `narrator.py` - Lightweight AI narrator & response generation
 - `game.py` - Main game loop
 
 **Key Classes:**
@@ -168,6 +173,7 @@ Contains game logic and state management.
 - Methods: `process_action()` - main entry point
 - Performs: RAG query, message building, LLM call, state parsing
 - Maintains conversation history
+- **Design note**: Narrator is intentionally simple; RAG complexity does the work
 
 **GameState**
 - Bundles all state together
@@ -256,13 +262,14 @@ Narrator.process_action(input)
        ↓
 2. Build Messages:
    - System prompt (NARRATOR_SYSTEM)
-   - RAG context
+   - RAG context (injected knowledge)
    - World state (time, location, character)
    - Conversation history (last 3 exchanges)
    - Current input
        ↓
 3. Generate Response:
    llm.complete(messages, temperature=0.85, max_tokens=1024)
+   ↓ (Lightweight model sufficient with RAG context)
    ↓
    Response: "You pull open the drawer carefully..."
        ↓
@@ -388,12 +395,22 @@ elif cmd == "/mynewcommand":
 - Conversation history: ~100 KB per 100 exchanges
 - LightRAG storage: ~50-200 MB per world (grows with lore)
 
+### LLM Model Size Impact
+
+- **3B model + RAG**: Fast, excellent quality
+- **7B model + RAG**: Very good quality, good speed
+- **70B model + RAG**: Excellent quality, slower
+- **Large model without RAG**: Slower, hallucination risk
+
+**Key insight**: A 7B model with RAG often outperforms a 70B model without RAG.
+
 ### Optimization Tips
 
 1. **Lore chunking** - Break large lore files into smaller pieces
 2. **History pruning** - Conversation history is limited to last 6 messages
 3. **Lazy initialization** - RAG doesn't start until first query
 4. **Hybrid queries** - Balances speed vs. relevance
+5. **Lightweight models** - Use 7B or smaller with strong RAG
 
 ## Testing Strategy
 
@@ -461,3 +478,5 @@ This shows:
 ---
 
 *Last Updated: v0.1.0*
+
+**Core Principle**: LightRAG does the heavy lifting. Keep the LLM lightweight and focused on narrative synthesis.

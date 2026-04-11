@@ -6,6 +6,8 @@ This document describes how RAG-Quest integrates different LLM providers and how
 
 RAG-Quest uses a **provider-agnostic** architecture that treats OpenAI, OpenRouter, and Ollama as first-class citizens. The system abstracts provider-specific APIs behind a common interface, allowing seamless switching between models and providers.
 
+**The Architectural Philosophy**: The LLM is not expected to be a large or sophisticated model. LightRAG's knowledge graph retrieval injects all necessary context per query. A ~3B parameter model (Ollama neural-chat, Mistral, or even smaller) paired with strong RAG context performs as well as much larger models running blind. This enables consumer-hardware deployment and dramatically reduces costs.
+
 ## LLM Provider Architecture
 
 ### Provider Abstraction Layer
@@ -77,7 +79,7 @@ class OpenAIProvider(BaseLLMProvider):
     #     'model': 'gpt-4-turbo' or 'gpt-3.5-turbo',
     #     'api_key': 'sk-...',
     #     'temperature': 0.85,  # Narrative tone
-    #     'max_tokens': 2048
+    #     'max_tokens': 1024    # Lightweight context assumption
     # }
     
     async def complete(self, messages, temperature=None, max_tokens=None):
@@ -102,6 +104,7 @@ class OpenAIProvider(BaseLLMProvider):
 - GPT-4 is most consistent for narrative (higher cost)
 - GPT-3.5-turbo is cheaper but less coherent
 - Set temperature 0.8-0.9 for creative narration
+- **Note**: Even GPT-3.5 works well with good RAG context
 
 #### 2. OpenRouter Provider
 
@@ -116,7 +119,7 @@ class OpenRouterProvider(BaseLLMProvider):
     #     'model': 'anthropic/claude-sonnet-4' | 'openai/gpt-4' | 'meta-llama/llama-2-70b',
     #     'api_key': 'sk-or-...',
     #     'temperature': 0.85,
-    #     'max_tokens': 2048
+    #     'max_tokens': 1024
     # }
     
     async def complete(self, messages, temperature=None, max_tokens=None):
@@ -138,16 +141,18 @@ class OpenRouterProvider(BaseLLMProvider):
 - `anthropic/claude-sonnet-4` - Excellent narrative coherence
 - `openai/gpt-4-turbo` - Strong performance
 - `meta-llama/llama-2-70b` - Good open-source alternative
+- `mistralai/mistral-7b` - Fast, lighter, excellent with RAG
 
-**Cost**: Varies; Claude ~$0.15 per turn, Llama ~$0.01 per turn
+**Cost**: Varies; Claude ~$0.15 per turn, Llama ~$0.01 per turn, Mistral ~$0.005 per turn
 
 **Latency**: 1-15 seconds depending on provider load
 
 **Tips**:
 - Different models have different personalities
 - Sonnet is best for consistent narration
-- Llama is fast and cheap for testing
+- Llama and Mistral are fast and cheap—excellent for testing
 - Check OpenRouter.ai/status for provider uptime
+- **Key insight**: Llama-7B with RAG often rivals Claude quality
 
 #### 3. Ollama Provider
 
@@ -159,10 +164,10 @@ class OllamaProvider(BaseLLMProvider):
     
     # Expected config:
     # {
-    #     'model': 'llama2' | 'neural-chat' | 'orca' | 'mistral',
+    #     'model': 'neural-chat' | 'mistral' | 'llama2' | 'orca' | 'zephyr',
     #     'base_url': 'http://localhost:11434',
     #     'temperature': 0.85,
-    #     'max_tokens': 2048
+    #     'max_tokens': 1024
     # }
     
     async def complete(self, messages, temperature=None, max_tokens=None):
@@ -179,12 +184,14 @@ class OllamaProvider(BaseLLMProvider):
 - Models: Llama 2, Mistral, Neural Chat, Orca, Zephyr, etc.
 - No rate limits, no costs (just CPU/GPU)
 - Streaming response support
+- **Perfect for consumer hardware when paired with RAG**
 
 **Recommended Models**:
 - `neural-chat` - Best narrative for game dialogue
-- `mistral` - Fast and capable
+- `mistral` - Fast and capable, good balance
 - `orca-mini` - Fast, good for testing
 - `llama2` - Good general purpose
+- `zephyr` - Newer, good reasoning
 
 **Setup**:
 ```bash
@@ -194,6 +201,7 @@ ollama serve
 
 # In another terminal, pull a model
 ollama pull neural-chat
+ollama pull mistral
 ```
 
 **Performance**:
@@ -202,10 +210,11 @@ ollama pull neural-chat
 - Depends heavily on model size and hardware
 
 **Tips**:
-- Use smaller models (7B) for faster responses
+- Use smaller models (7B is often sufficient with RAG)
 - GPU recommended for playable experience
 - Cold start is slower (~30s); subsequent queries faster
 - Great for development/testing without API costs
+- **Philosophy**: A 7B local model with RAG beats a 70B model without RAG
 
 ### Adding a New Provider
 
@@ -252,6 +261,8 @@ The Narrator is the AI "Dungeon Master" that generates story responses. It's not
 
 **Key Class**: `Narrator` in `engine/narrator.py`
 
+**Design Philosophy**: The Narrator is intentionally simple. LightRAG does the complexity work (knowledge graph retrieval, entity matching, context relevance). The Narrator just orchestrates: query RAG, build messages, call LLM, parse response.
+
 ### Narrator Flow
 
 The narrator implements a sophisticated pipeline for generating contextual, consistent responses:
@@ -263,14 +274,13 @@ The narrator implements a sophisticated pipeline for generating contextual, cons
                  │
         ┌────────▼─────────┐
         │  RAG Query        │
-        │ (knowledge graph) │
+        │ (knowledge graph) │ ← This does the heavy lifting
         └────────┬──────────┘
                  │
    ┌─────────────────────────────────────┐
    │ "I found these relevant facts:       │
-   │  - Desk contains old books, jewels   │
-   │  - Secret compartments in antique    │
-   │    desks are common in this region"  │
+   │  - Desk in study contains books      │
+   │  - Secret compartments common here"  │
    └─────────────────────────────────────┘
                  │
         ┌────────▼──────────────┐
@@ -284,15 +294,13 @@ The narrator implements a sophisticated pipeline for generating contextual, cons
                  │
         ┌────────▼──────────┐
         │  LLM Complete     │
-        │  (call provider)  │
+        │  (call provider)  │ ← Small model is fine here
         └────────┬──────────┘
                  │
    ┌─────────────────────────────────┐
    │ Generated Response:               │
-   │ "You carefully pull open the      │
-   │  drawer. Inside, you find old     │
-   │  leather journals and a small     │
-   │  jewelry box..."                  │
+   │ "You find old journals and       │
+   │  a small jewelry box..."         │
    └─────────────────────────────────┘
                  │
         ┌────────▼────────────────┐
@@ -336,7 +344,7 @@ async def process_action(self, action: str) -> tuple[str, GameState]:
     # 2. Build message list
     messages = self._build_messages(action, context)
     
-    # 3. Call LLM
+    # 3. Call LLM (can be lightweight model)
     response = await self.llm_provider.complete(
         messages,
         temperature=0.85,
@@ -348,10 +356,6 @@ async def process_action(self, action: str) -> tuple[str, GameState]:
     
     # 5. Record to RAG
     await self.world_rag.record_event(f"{self.game_state.character.name} {action}")
-    
-    # 6. Save history
-    self.conversation_history.append({"role": "user", "content": action})
-    self.conversation_history.append({"role": "assistant", "content": response})
     
     return response, self.game_state
 ```
@@ -448,18 +452,21 @@ Instructions:
 
 Different models and temperatures serve different purposes:
 
-| Provider | Model | Temp | Use Case | Cost | Speed |
-|----------|-------|------|----------|------|-------|
-| OpenAI | GPT-4 | 0.85 | Best consistency | High | Slow |
-| OpenAI | GPT-3.5 | 0.85 | Good balance | Low | Fast |
-| OpenRouter | Claude-Sonnet-4 | 0.85 | Excellent narrative | Med | Med |
-| OpenRouter | Llama-2-70b | 0.85 | Good, fast | Low | Fast |
-| Ollama | neural-chat | 0.85 | Free, local | None | Varies |
+| Provider | Model | Params | Temp | Use Case | Cost | Speed |
+|----------|-------|--------|------|----------|------|-------|
+| Ollama | neural-chat | 7B | 0.85 | Excellent local | Free | 5-15s |
+| OpenRouter | Llama-2 | 70B | 0.85 | Great + cheap | $0.01 | Fast |
+| OpenRouter | Mistral | 7B | 0.85 | Great + very cheap | $0.005 | Fast |
+| OpenRouter | Claude-Sonnet-4 | N/A | 0.85 | Excellent | $0.15 | Med |
+| OpenAI | GPT-3.5 | N/A | 0.85 | Good balance | $0.05 | Fast |
+| OpenAI | GPT-4 | N/A | 0.85 | Best quality | $0.30 | Slow |
 
 **Temperature Notes**:
 - 0.85 is ideal for balancing creativity and consistency
 - Lower (0.5-0.7) = more predictable, less creative
 - Higher (0.9-1.0) = more creative, less consistent
+
+**Key Insight**: With RAG context, a 7B model often rivals a 70B model. A 3-7B local model with good RAG frequently outperforms a 100B model without RAG.
 
 ### Troubleshooting Narrator Issues
 
@@ -482,9 +489,9 @@ Different models and temperatures serve different purposes:
 **Problem**: LLM takes too long to respond
 
 **Solution**:
-- For Ollama: Use smaller model or GPU
+- For Ollama: Use smaller model (7B) or GPU
 - For OpenAI: Use GPT-3.5 instead of GPT-4
-- For OpenRouter: Try Llama instead of Claude
+- For OpenRouter: Try Llama 7B instead of 70B
 - Reduce max_tokens parameter
 
 **Problem**: Response isn't grounding in RAG context
@@ -540,15 +547,15 @@ When narrator calls `world_rag.query_world(question, context)`:
 
 ### Development (Low Cost)
 - **Provider**: OpenRouter or Ollama
-- **Model**: Llama-2-70b or neural-chat
-- **Cost**: Free (Ollama) or $0.01-0.05 per turn
+- **Model**: Llama-2-7B or Mistral-7B or neural-chat
+- **Cost**: Free (Ollama) or $0.005-0.01 per turn
 - **Speed**: Fast
-- **Quality**: Good
+- **Quality**: Excellent (with RAG)
 
 ### Testing (Balanced)
 - **Provider**: OpenRouter
-- **Model**: Claude-Sonnet-4
-- **Cost**: $0.15 per turn
+- **Model**: Claude-Sonnet-4 or Llama-70b
+- **Cost**: $0.15 or $0.01 per turn
 - **Speed**: 2-5 seconds
 - **Quality**: Excellent
 
@@ -561,10 +568,10 @@ When narrator calls `world_rag.query_world(question, context)`:
 
 ### Hobby Play (Local)
 - **Provider**: Ollama
-- **Model**: neural-chat or mistral
+- **Model**: neural-chat, mistral, or zephyr
 - **Cost**: Free
 - **Speed**: 5-30 seconds (depends on hardware)
-- **Quality**: Good
+- **Quality**: Excellent (with RAG)
 
 ## Provider Comparison Matrix
 
@@ -574,13 +581,15 @@ When narrator calls `world_rag.query_world(question, context)`:
 | Models Available | 5 | 100+ | 30+ |
 | Cost | Higher | Varies | Free |
 | Speed | 1-10s | 1-15s | 5-60s |
-| Quality | Best | Excellent | Good |
+| Quality | Excellent | Excellent | Good-Excellent |
 | Offline Support | No | No | Yes |
 | API Key Req'd | Yes | Yes | No |
 | Rate Limits | Yes | Generous | No |
 | Streaming | Yes | Yes | Yes |
+| **RAG Friendly** | Yes | Yes | **Ideal** |
 
 ---
 
 **Last Updated**: April 2026
 
+**Core Philosophy**: LightRAG does the knowledge work. The LLM is just the narrator. Keep it lightweight.

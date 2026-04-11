@@ -4,15 +4,17 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 
 ## Project Overview
 
-**RAG-Quest** is an AI-powered D&D-style text RPG that uses LightRAG (a knowledge graph system) to eliminate hallucinations in narrative generation. The game maintains consistency through a RAG backend that stores and retrieves world knowledge, allowing the AI narrator to generate coherent, context-aware storytelling.
+**RAG-Quest** is an AI-powered D&D-style text RPG that uses LightRAG (a knowledge graph system) to eliminate hallucinations in narrative generation. The game maintains consistency through a RAG backend that stores and retrieves world knowledge, allowing a lightweight AI narrator to generate coherent, context-aware storytelling.
 
-**Core Value Proposition**: LLM-powered narrative games with guaranteed lore consistency through knowledge graph backing.
+**Core Design Philosophy**: LightRAG does the heavy lifting. The LLM acting as dungeon master is intentionally kept small—~3B parameters, ≤8K token context—because it doesn't memorize the world. Instead, LightRAG's dual-level retrieval (entity matching + vector similarity) injects precisely the relevant knowledge per query. This architecture enables RAG-Quest to run entirely on consumer hardware with local models via Ollama, while producing narrative quality comparable to much larger models running blind.
+
+**Why this matters**: A 7B model with excellent RAG context beats a 70B model without RAG. The knowledge graph is the "long-term memory"; the LLM is just the "narrator."
 
 **Current Version**: v0.1 (narrative + dialogue + inventory, single-player)
 
 **Technology Stack**:
 - **Python 3.11+** - Core language
-- **LightRAG** - Knowledge graph backend
+- **LightRAG** - Knowledge graph backend (the architectural cornerstone)
 - **httpx** - Async HTTP for LLM APIs
 - **Rich** - Terminal UI and formatting
 - **PyMuPDF** - PDF text extraction
@@ -32,7 +34,7 @@ rag-quest/
 │   │   ├── openai_provider.py   # OpenAI implementation
 │   │   ├── openrouter_provider.py
 │   │   └── ollama_provider.py   # Local Ollama support
-│   ├── knowledge/               # LightRAG integration
+│   ├── knowledge/               # LightRAG integration (the heavy lifter)
 │   │   ├── __init__.py
 │   │   ├── world_rag.py         # WorldRAG wrapper class
 │   │   └── ingest.py            # Lore ingestion (txt/md/pdf)
@@ -42,7 +44,7 @@ rag-quest/
 │   │   ├── world.py             # World state
 │   │   ├── inventory.py         # Item management
 │   │   ├── quests.py            # Quest tracking
-│   │   ├── narrator.py          # AI narrator & response generation
+│   │   ├── narrator.py          # Lightweight AI narrator & response generation
 │   │   └── game.py              # Main game loop
 │   └── prompts/                 # System prompts
 │       ├── __init__.py
@@ -83,13 +85,14 @@ class BaseLLMProvider(ABC):
 **Key Implementations**:
 - `OpenAIProvider` - Direct OpenAI API calls
 - `OpenRouterProvider` - OpenRouter.ai (multi-model access)
-- `OllamaProvider` - Local Ollama inference
+- `OllamaProvider` - Local Ollama inference (~3B-70B models)
 
 **Design Patterns**:
 - All providers are fully async
 - Uses `httpx.AsyncClient` for HTTP
 - `lightrag_complete_func()` adapts interface for LightRAG compatibility
 - Temperature and max_tokens are call-time configurable
+- **Narrator uses lightweight providers**: Ollama 7B or Llama-2 deliver excellent results
 
 **Adding a New Provider**:
 1. Create `rag_quest/llm/my_provider.py`
@@ -124,15 +127,16 @@ class BaseLLMProvider(ABC):
 - Quests have objectives and status
 - Methods: `add_quest()`, `get_active_quests()`, `complete_quest()`
 
-**Narrator** - AI narrator
+**Narrator** - Lightweight AI narrator
 - Core method: `async process_action(player_input: str) -> tuple[str, GameState]`
 - Orchestrates: RAG query → message building → LLM call → state parsing
 - Maintains conversation history (last 6 messages)
 - Returns: (response text, updated game state)
+- **Design note**: Narrator is intentionally simple; RAG complexity does the world knowledge work
 
 ### Knowledge Layer (knowledge/)
 
-**WorldRAG** - LightRAG wrapper
+**WorldRAG** - LightRAG wrapper (the heavyweight)
 ```python
 class WorldRAG:
     async def initialize()
@@ -147,6 +151,7 @@ class WorldRAG:
 - Storage: `~/.local/share/rag-quest/worlds/{world_name}/`
 - Uses "hybrid" mode for queries (entity + theme matching)
 - Events recorded with metadata for tracking
+- **RAG is the "long-term memory"**: all world facts live here, not in the LLM context
 
 **Ingest Module** (ingest.py):
 - Handles: .txt, .md, .pdf files
@@ -298,13 +303,15 @@ The narrator's `process_action()` method implements this pipeline:
 
 1. **RAG Query**: Ask knowledge graph for relevant context
 2. **Message Building**: Compose system prompt + context + history + action
-3. **LLM Generation**: Call provider with built messages
+3. **LLM Generation**: Call provider with built messages (can be small model)
 4. **State Parsing**: Extract location changes, NPC meetings, item discoveries from response
 5. **State Update**: Modify GameState based on parsed changes
 6. **RAG Record**: Insert event back into knowledge graph
 7. **History Save**: Add to conversation history
 
 See `narrator.py` for implementation details.
+
+**Design insight**: RAG does the heavy lifting in step 1. LLM in step 3 can be lightweight.
 
 ### Configuration Flow
 
@@ -364,6 +371,10 @@ When user uploads lore during setup:
 ### "Game freezes during LLM call"
 **Cause**: Async not properly awaited or blocking I/O  
 **Debug**: Check all LLM calls are awaited, look for blocking operations
+
+### "LLM response quality is poor"
+**Cause**: Lightweight model struggling without RAG context  
+**Debug**: Check RAG query is specific, verify lore is ingested, ensure context is in messages
 
 ## Documentation Standards
 
@@ -444,3 +455,5 @@ async def process_action(
 
 **Last Updated**: April 2026  
 **For**: Claude and other AI assistants contributing to RAG-Quest
+
+**Key Principle**: LightRAG does the heavy lifting. Keep the LLM lightweight and focused on narrative.

@@ -8,20 +8,23 @@ An AI-powered D&D-style text RPG that uses LightRAG knowledge graph backend to e
 
 ## Overview
 
-RAG-Quest combines the power of large language models with knowledge graph-backed context retrieval to create engaging, coherent text-based RPG experiences. Unlike traditional AI storytellers that can contradict themselves, RAG-Quest grounds its narrative in a persistent knowledge graph, ensuring your world remains consistent throughout your adventure.
+RAG-Quest combines the power of knowledge graph retrieval with language models to create engaging, coherent text-based RPG experiences. Unlike traditional AI storytellers that struggle with consistency, RAG-Quest grounds its narrative in a persistent knowledge graph, ensuring your world remains consistent throughout your adventure.
 
-**Key Innovation**: Every game state change and narrative detail is recorded in LightRAG, making the AI narrator aware of everything that's happened, eliminating contradictions and hallucinations.
+**Key Design Philosophy**: LightRAG does the heavy lifting. The AI dungeon master (LLM) is kept lightweight (~3B parameters, ≤8K context window) because it doesn't need to memorize the world. Instead, LightRAG's dual-level retrieval system (knowledge graph + vector embedding matching) injects precisely the relevant context for each narrative decision. This means RAG-Quest can run entirely on consumer hardware with local models via Ollama.
+
+**Key Innovation**: Every game state change and narrative detail is recorded in LightRAG's knowledge graph. When the player acts, LightRAG returns the exact facts the narrator needs—no hallucinations, no contradictions, no redundant world state in the LLM's context window.
 
 ## Features
 
-- **LightRAG Integration**: Knowledge graph backend ensures the AI narrator never forgets world details or contradicts established lore
+- **LightRAG-Powered World Context**: Dual-level knowledge graph retrieval (entity + theme matching) delivers only the relevant facts per query—enables tiny LLM models to narrate coherently
+- **Lightweight LLM Design**: Run with ~3B parameter models (Ollama locally, or OpenRouter's Llama/Mistral) thanks to RAG context injection; no need for GPT-4 or Claude
 - **Multiple LLM Providers**: Works with OpenAI, OpenRouter, or local Ollama models as first-class citizens
-- **Dynamic Narration**: Every action generates vivid, contextual responses from an AI Dungeon Master
-- **World Persistence**: Your game saves include the full knowledge graph, so picking up where you left off is seamless
-- **Lore Ingestion**: Load your own lore documents (txt, md, pdf) to build custom worlds
+- **Dynamic Narration**: Every action generates vivid, contextual responses from an AI Dungeon Master powered by relevant retrieved knowledge
+- **World Persistence**: Your game saves include the full knowledge graph, ensuring consistency when you pick up where you left off
+- **Lore Ingestion**: Load your own lore documents (txt, md, pdf) into the knowledge graph to build custom worlds with guaranteed lore adherence
 - **Rich Terminal UI**: Beautiful colored text, formatted panels, and intuitive commands
 - **Natural Language Actions**: Type what you want to do; the AI understands context and intent
-- **Multi-Provider Support**: Switch between providers without changing your game save
+- **Consumer-Hardware Friendly**: The architecture favors local inference; even modest machines can run engaging narratives
 
 ## Quick Start
 
@@ -49,9 +52,9 @@ python -m rag_quest
 
 This will prompt you to:
 1. **Choose an LLM provider**:
-   - OpenAI (GPT-4, GPT-3.5-turbo) - Best quality
-   - OpenRouter (100+ models) - Best flexibility
-   - Ollama (local, free) - Best for development
+   - OpenAI (GPT-4, GPT-3.5-turbo) - Best quality, cloud-hosted
+   - OpenRouter (100+ models) - Best flexibility, cloud-hosted
+   - Ollama (local, free) - Best for consumer hardware, local inference
 2. **Configure the world**: Name, setting, tone
 3. **Create your character**: Name, race, class
 
@@ -153,43 +156,48 @@ To create a world with custom lore:
 ┌─────────────────▼───────────────────────┐
 │    Game Engine (rag_quest/engine/)      │
 │  - Character, World, Inventory, Quests  │
-│  - Narrator (AI agent)                  │
+│  - Lightweight Narrator (LLM agent)     │
 │  - State management & serialization     │
 └─────────────────┬───────────────────────┘
                   │
         ┌─────────┴─────────┐
         │                   │
 ┌───────▼─────────┐  ┌─────▼────────────────┐
-│  LLM Providers  │  │  LightRAG            │
-│  (rag_quest/    │  │  (rag_quest/         │
-│   llm/)         │  │   knowledge/)        │
-│                 │  │                      │
-│  - OpenAI       │  │  - Query & insert    │
-│  - OpenRouter   │  │  - Lore ingestion    │
-│  - Ollama       │  │  - Knowledge graph   │
+│  LLM Providers  │  │  LightRAG (Heavy     │
+│  (rag_quest/    │  │   Lifting)           │
+│   llm/)         │  │  (rag_quest/         │
+│                 │  │   knowledge/)        │
+│  - OpenAI       │  │                      │
+│  - OpenRouter   │  │  - Dual-level query  │
+│  - Ollama       │  │  - Lore ingestion    │
+│    (~3B models) │  │  - Knowledge graph   │
 └─────────────────┘  └──────────────────────┘
 ```
+
+**The Design Principle**: LightRAG's knowledge graph stores all world facts. The Narrator LLM retrieves only what's needed per query—no bloated context window, no hallucinations. A ~3B parameter model (or even smaller) paired with strong RAG performs as well as massive models running blind.
 
 ### Core Components
 
 #### LLM Providers (`rag_quest/llm/`)
 - **BaseLLMProvider**: Abstract interface for all providers
 - **OpenAIProvider**: Direct OpenAI API integration
-- **OpenRouterProvider**: OpenRouter.ai multi-model support
-- **OllamaProvider**: Local Ollama support
+- **OpenRouterProvider**: OpenRouter.ai multi-model support (recommended for testing with lighter models)
+- **OllamaProvider**: Local Ollama support (recommended for consumer hardware)
 
-See [AGENTS.md](AGENTS.md) for detailed provider documentation.
+See [AGENTS.md](AGENTS.md) for detailed provider documentation and model recommendations.
 
 #### Knowledge Management (`rag_quest/knowledge/`)
 - **WorldRAG**: Wraps LightRAG for game-specific queries and updates
 - **Ingest**: File handling for lore documents (txt, md, pdf)
+
+The RAG system is the "brain" of the world. Narrator queries it before every response.
 
 #### Game Engine (`rag_quest/engine/`)
 - **Character**: Player character with stats, inventory, location
 - **World**: World state (time, weather, visited locations, NPCs met)
 - **Inventory**: Item management with weight and rarity
 - **QuestLog**: Quest tracking and objectives
-- **Narrator**: AI narrator that queries RAG and generates responses
+- **Narrator**: Lightweight AI narrator that queries RAG and generates responses based on injected context
 - **GameState**: Complete serializable game state
 - **Game**: Main game loop
 
@@ -202,14 +210,15 @@ See [AGENTS.md](AGENTS.md) for detailed provider documentation.
 Player Input: "I search the desk for clues"
         ↓
 Narrator queries RAG:
-"What relevant facts about desks, searching, clues exist?"
+"What relevant facts about desks, searching, clues exist in this location?"
         ↓
-RAG returns context about desks in this location
+RAG returns context (entity + theme matching):
+"Desk in study contains: old books, jewels, secret compartment..."
         ↓
 Narrator builds message:
-[system prompt] + [world context] + [character status] + [history] + [action]
+[system prompt] + [RAG context] + [character status] + [recent history] + [action]
         ↓
-LLM Provider generates response (OpenAI/OpenRouter/Ollama)
+LLM (small model, ~3B params) generates response based on injected context
         ↓
 Response: "You find an old key and a mysterious letter..."
         ↓
@@ -218,12 +227,14 @@ Narrator parses for state changes:
 - Location changes? Update character position
 - NPCs met? Add to world state
         ↓
-Record event to RAG knowledge graph
+Record event to RAG knowledge graph for future queries
         ↓
 Save game state & auto-save
         ↓
 Display response to player
 ```
+
+**Why this matters**: The LLM never sees the full world. It gets exactly what it needs. This is why a lightweight model works—RAG does the world knowledge retrieval, the LLM does narrative synthesis.
 
 ## Configuration
 
@@ -237,10 +248,10 @@ Display response to player
 {
   "llm": {
     "provider": "openrouter|openai|ollama",
-    "model": "anthropic/claude-sonnet-4",
+    "model": "meta-llama/llama-2-7b|anthropic/claude-sonnet-4",
     "api_key": "sk-or-...",
     "temperature": 0.85,
-    "max_tokens": 2048
+    "max_tokens": 1024
   },
   "world": {
     "name": "Aethoria",
@@ -256,6 +267,12 @@ Display response to player
   }
 }
 ```
+
+**Model Selection Tips**:
+- For local play: Use Ollama with 7B-13B models (neural-chat, mistral, llama2)
+- For testing: Use OpenRouter with Llama-2-70b or Mistral
+- For best quality: Use OpenAI GPT-4 or OpenRouter Claude Sonnet
+- **Key insight**: A 7B local model with good RAG context beats a 70B model without RAG
 
 ### Changing Providers Mid-Game
 
@@ -296,6 +313,7 @@ Both game state and RAG database are preserved when you load a save, ensuring wo
 - Check available disk space for RAG storage
 - Consider archiving old save games
 - For Ollama, larger models need more VRAM
+- Remember: RAG does the heavy lifting, so the LLM can be smaller
 
 ## Development
 
@@ -389,8 +407,8 @@ black rag_quest/ && isort rag_quest/ && mypy rag_quest/ && pytest
 - **OpenAI GPT-4**: 3-10 seconds
 - **OpenRouter Claude**: 2-5 seconds
 - **OpenRouter Llama**: 1-3 seconds
-- **Ollama (GPU)**: 2-10 seconds
-- **Ollama (CPU)**: 10-60 seconds
+- **Ollama with GPU**: 2-10 seconds
+- **Ollama with CPU**: 10-60 seconds
 
 ### Memory Usage
 - **Character & world state**: <1 MB
@@ -399,9 +417,10 @@ black rag_quest/ && isort rag_quest/ && mypy rag_quest/ && pytest
 
 ### Optimization Tips
 1. Break large lore files into smaller pieces
-2. Use smaller LLM models for faster responses
+2. Use smaller LLM models (7B is often sufficient with RAG)
 3. For local Ollama, use GPU and smaller models (7B)
 4. Limit conversation history to last 6 messages
+5. The bottleneck is usually RAG initialization, not the LLM
 
 ## Future Roadmap
 
@@ -414,6 +433,7 @@ black rag_quest/ && isort rag_quest/ && mypy rag_quest/ && pytest
 - Multi-character parties
 - NPC relationship system
 - Quest chains with branching narratives
+- **AI dungeon master text-to-speech narration**
 
 ### v0.4 (Multiplayer & Persistence)
 - Shared multiplayer worlds
@@ -434,7 +454,7 @@ MIT License - See [LICENSE](LICENSE) file for details
 
 ## Credits
 
-- **LightRAG**: HKU's knowledge graph system for contextual retrieval
+- **LightRAG**: HKU's knowledge graph system for contextual retrieval—the architectural cornerstone of RAG-Quest
 - **Rich**: Gorgeous terminal UI library
 - **httpx**: Modern, async-first HTTP client
 - **PyMuPDF**: PDF text extraction
@@ -455,7 +475,7 @@ Ready to adventure?
 python -m rag_quest
 ```
 
-Then type your first action and watch the AI weave your story!
+Then type your first action and watch the AI weave your story—powered by a knowledge graph that never forgets!
 
 ---
 
