@@ -3,502 +3,341 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Version 0.2.0](https://img.shields.io/badge/version-0.2.0%20MVP-brightgreen.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.2.0)
 
-An AI-powered D&D-style text RPG that uses LightRAG knowledge graph backend to eliminate hallucinations. Play in immersive fantasy worlds crafted by AI, where consistency and lore accuracy are guaranteed.
+> **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone.**
 
-## Overview
+RAG-Quest is the first playable release of an AI-powered text adventure game that eliminates hallucinations through retrieval-augmented generation. Your dungeon master is a small language model (Gemma 4 E2B/E4B, 2-4B parameters) that doesn't need to memorize the world—instead, LightRAG's dual-level retrieval system injects precise context for every narrative decision. This architecture means you get GPT-4-quality narration from a model that runs on a Mac or modest GPU.
 
-RAG-Quest combines the power of knowledge graph retrieval with language models to create engaging, coherent text-based RPG experiences. Unlike traditional AI storytellers that struggle with consistency, RAG-Quest grounds its narrative in a persistent knowledge graph, ensuring your world remains consistent throughout your adventure.
+## What Makes RAG-Quest Different
 
-**Key Design Philosophy**: LightRAG does the heavy lifting. The AI dungeon master (LLM) is kept lightweight (~3B parameters, ≤8K context window) because it doesn't need to memorize the world. Instead, LightRAG's dual-level retrieval system (knowledge graph + vector embedding matching) injects precisely the relevant context for each narrative decision. This means RAG-Quest can run entirely on consumer hardware with local models via Ollama.
+**LightRAG Does the Heavy Lifting**: Unlike traditional AI storytellers that hallucinate contradictions and forget plot points, RAG-Quest grounds every response in a persistent knowledge graph. Your world state is facts, not tokens. The LLM is just the narrator.
 
-**Key Innovation**: Every game state change and narrative detail is recorded in LightRAG's knowledge graph. When the player acts, LightRAG returns the exact facts the narrator needs—no hallucinations, no contradictions, no redundant world state in the LLM's context window.
+**Consumer Hardware Friendly**: Runs entirely on Ollama with Gemma 4 E2B (2B, CPU-friendly) or E4B (4B, GPU-optimized). No API calls needed. No waiting for cloud services. Your game world is yours alone.
 
-## Features
+**Flexible LLM Providers**: Works seamlessly with:
+- **Ollama** (recommended for local play) — free, fast, private
+- **OpenRouter** — 100+ models, pay-per-use, cloud-hosted
+- **OpenAI** — GPT-4, GPT-3.5-turbo, highest quality
 
-- **LightRAG-Powered World Context**: Dual-level knowledge graph retrieval (entity + theme matching) delivers only the relevant facts per query—enables tiny LLM models to narrate coherently
-- **Lightweight LLM Design**: Run with Gemma 4 E2B (2B) or E4B (4B) models thanks to RAG context injection; no need for expensive large models on consumer hardware
-- **Multiple LLM Providers**: Works with OpenAI, OpenRouter, or local Ollama models as first-class citizens
-- **Dynamic Narration**: Every action generates vivid, contextual responses from an AI Dungeon Master powered by relevant retrieved knowledge
-- **World Persistence**: Your game saves include the full knowledge graph, ensuring consistency when you pick up where you left off
-- **Lore Ingestion**: Load your own lore documents (txt, md, pdf) into the knowledge graph to build custom worlds with guaranteed lore adherence
-- **Rich Terminal UI**: Beautiful colored text, formatted panels, and intuitive commands
-- **Natural Language Actions**: Type what you want to do; the AI understands context and intent
-- **Consumer-Hardware Friendly**: The architecture favors local inference; even modest machines can run engaging narratives
-
-## Quick Start
-
-### Installation
+## Quick Install
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/rag-quest.git
-cd rag-quest
+# Option 1: Homebrew (recommended)
+brew install mattwag05/tap/rag-quest
 
-# Install with pip
+# Option 2: From source
+git clone https://github.com/mattwag05/rag-quest.git
+cd rag-quest
 pip install -e .
 
-# Or install dependencies directly
-pip install lightrag-hku httpx rich pymupdf
+# Option 3: From PyPI
+pip install rag-quest
 ```
 
-### Configuration
+## Quick Start (5 Minutes)
 
-Run the game once to start the interactive setup:
+### 1. Install Ollama (if playing locally)
 
 ```bash
-python -m rag_quest
+# Download from ollama.ai
+# Then pull a recommended model:
+ollama pull gemma4:e4b  # 4B, best quality (GPU)
+ollama pull gemma4:e2b  # 2B, CPU-friendly
 ```
 
-This will prompt you to:
-1. **Choose an LLM provider**:
-   - OpenAI (GPT-4, GPT-3.5-turbo) - Best quality, cloud-hosted
-   - OpenRouter (100+ models) - Best flexibility, cloud-hosted
-   - Ollama (local, free) - Best for consumer hardware, local inference
-2. **Select RAG Profile** (speed vs fidelity tradeoff):
-   - **fast** - Large chunks, naive queries, minimal context (best for weak hardware)
-   - **balanced** - Moderate chunks, entity-focused retrieval (recommended)
-   - **deep** - Small chunks, hybrid queries, maximum context (best for immersion on capable hardware)
-3. **Configure the world**: Name, setting, tone
-4. **Create your character**: Name, race, class
-
-Configuration is saved to `~/.config/rag-quest/config.json`.
-
-### RAG Profiles Explained
-
-The RAG profile controls how the system balances speed vs narrative quality:
-
-| Profile | Chunk Size | Query Mode | Speed | Quality | Best For |
-|---------|-----------|------------|-------|---------|----------|
-| **fast** | 4000 chars | Naive | Fastest | Lower | CPU-only, testing |
-| **balanced** | 2000 chars | Local (entity) | Good | Good | Typical gameplay |
-| **deep** | 1000 chars | Hybrid | Slower | Excellent | Maximum immersion |
-
-Set via environment variable:
-```bash
-RAG_PROFILE=balanced python -m rag_quest
-```
-
-Or during interactive setup when creating a new game.
-
-### First Game
+### 2. Start a Game
 
 ```bash
-python -m rag_quest
+rag-quest
 ```
 
-Then simply type actions in natural language:
+You'll see an interactive setup menu:
+- Choose your LLM provider (OpenAI, OpenRouter, or Ollama)
+- Select a RAG profile (fast/balanced/deep)
+- Name your world and character
+- Optionally upload custom lore (PDF, markdown, text)
+
+### 3. Play
 
 ```
+Welcome to Ebonvale Forest...
+
 > I carefully approach the tavern and push open the wooden door
-> I sit at the bar and order a drink
-> I ask the bartender about the rumors of a dragon
+
+The tavern is dimly lit by candlelight. A hearth crackles in the corner.
+Behind the bar stands a grizzled dwarf with a wry smile...
+
+> I sit down and order a drink
+
+The dwarf pours you a frothy ale. "Visitor, are ye? Dangerous times
+in these woods. There's been talk of a dragon in the mountains..."
+
 > /inventory
 > /quests
 > /map
-> /help
+> I ask the bartender about the dragon
+
+...
 ```
 
-## Game Guide
+## Features
 
-### Commands
+### Game Mechanics
+- **Location Tracking** — Your character's position matters; locations persist and evolve
+- **Combat System** — Turn-based battles with HP, damage calculation, and encounter difficulty
+- **Inventory Management** — Find, carry, use, and lose items during gameplay
+- **Quest System** — Receive quests from NPCs, track objectives, earn rewards
+- **Character Progression** — Experience, leveling, attributes, class abilities
+- **Save System** — Auto-save every turn; load and resume any time
 
-| Command | Purpose |
-|---------|---------|
-| `/inventory` | View your items and equipment |
-| `/quests` | Check active quests and objectives |
-| `/look` | Examine current location in detail |
-| `/map` | See visited locations |
-| `/status` | Check character HP and stats |
-| `/save` | Manually save game |
-| `/help` | Show command help |
-| `/quit` | Exit game (prompts to save) |
+### LightRAG Knowledge Graph
+- **Dual-Level Retrieval** — Entity matching + vector similarity for precise context injection
+- **World Persistence** — Every event, NPC, location, and discovery lives in the knowledge graph
+- **PDF Lore Ingestion** — Upload your custom world lore; RAG extracts and grounds all narration in it
+- **Intelligent Chunking** — Three RAG profiles optimize chunk size and query depth for your hardware
+- **Smart Caching** — File hash caching skips re-ingestion of unchanged documents
 
-### Gameplay Tips
+### Terminal UI
+- **Rich Panels** — Colored output with formatted panels for narrative, status, and commands
+- **ASCII Art** — Visual scene descriptions and maps (in development)
+- **Status Bar** — HP, location, inventory summary always visible
+- **Natural Actions** — Type what you want to do; the AI understands intent and context
 
-- **Use natural language**: The AI understands context and nuance - be descriptive
-- **Be creative**: The world responds to unexpected actions and creative solutions
-- **Explore thoroughly**: Find hidden details with `/look` and by asking about things
-- **Track quests**: Check `/quests` to see active objectives and rewards
-- **Manage inventory**: Items have weight limits; drop what you don't need
-- **Learn world knowledge**: The more you explore, the better RAG context becomes
+### LLM Providers (All First-Class Citizens)
+| Provider | Best For | Cost | Speed | Setup |
+|----------|----------|------|-------|-------|
+| **Ollama** (Gemma 4 E2B/E4B) | Local play, privacy, cost | Free | 2-20s | Medium |
+| **OpenRouter** | Flexibility, 100+ models | $0.005-0.15/turn | 1-5s | Easy |
+| **OpenAI** | Highest quality | $0.05-0.30/turn | 3-10s | Easy |
 
-### Creating Custom Worlds
+### RAG Profiles (Speed vs Quality Tradeoff)
+| Profile | Chunk Size | Query Type | Speed | Quality | Best For |
+|---------|------------|-----------|-------|---------|----------|
+| **fast** | 4000 chars | Naive vector | ⚡ Fastest | Lower | CPU-only, testing |
+| **balanced** | 2000 chars | Entity-focused | Good | Good | Most users (recommended) |
+| **deep** | 1000 chars | Hybrid (entity + graph) | Slower | ⭐ Excellent | Maximum immersion |
 
-To create a world with custom lore:
-
-1. Write or gather lore documents (txt, md, or pdf)
-2. During setup, choose "Upload lore" and point to the directory
-3. RAG will ingest all files and make the lore queryable
-4. The narrator will consistently reference your world
-
-**Example lore format**:
-
-```markdown
-# The Kingdom of Aethoria
-
-## Geography
-- Aethoria is a crescent-shaped kingdom nestled between mountains and sea
-- The capital, Silvermere, lies on the coast
-- Three main regions: The Highlands, The Forest of Whispers, The Dead Marshes
-
-## History
-- Founded 500 years ago by the First King
-- Recently invaded by the Shadow Court
-- The old magic still lingers in forgotten places
-
-## NPCs
-- Queen Lydia: Wise ruler, skilled diplomat
-- The Raven: Mysterious spymaster with unknown loyalties
-- Brother Aldric: Monks' leader, keeper of ancient knowledge
-
-## Factions
-- The Royal Guard: Crown loyalists
-- The Shadow Court: Invaders from beyond
-- The Grey Circle: Neutral mages
-
-## Locations
-- The Tavern at World's End: Neutral ground
-- Silvermere Palace: Seat of power
-- The Sunken Temple: Ancient ruin
+Configure via environment variable:
+```bash
+RAG_PROFILE=deep rag-quest
 ```
 
-## Architecture
+## Example Gameplay
 
-### High-Level Overview
-
-```
-┌─────────────────────────────────────────┐
-│      Terminal UI (Rich Library)         │
-│   - Game loop & input handling          │
-│   - Response display & formatting       │
-└─────────────────┬───────────────────────┘
-                  │
-┌─────────────────▼───────────────────────┐
-│    Game Engine (rag_quest/engine/)      │
-│  - Character, World, Inventory, Quests  │
-│  - Lightweight Narrator (LLM agent)     │
-│  - State management & serialization     │
-└─────────────────┬───────────────────────┘
-                  │
-        ┌─────────┴─────────┐
-        │                   │
-┌───────▼─────────┐  ┌─────▼────────────────┐
-│  LLM Providers  │  │  LightRAG (Heavy     │
-│  (rag_quest/    │  │   Lifting)           │
-│   llm/)         │  │  (rag_quest/         │
-│                 │  │   knowledge/)        │
-│  - OpenAI       │  │                      │
-│  - OpenRouter   │  │  - Dual-level query  │
-│  - Ollama       │  │  - Lore ingestion    │
-│    (~3B models) │  │  - Knowledge graph   │
-└─────────────────┘  └──────────────────────┘
-```
-
-**The Design Principle**: LightRAG's knowledge graph stores all world facts. The Narrator LLM retrieves only what's needed per query—no bloated context window, no hallucinations. A ~3B parameter model (or even smaller) paired with strong RAG performs as well as massive models running blind.
-
-### Core Components
-
-#### LLM Providers (`rag_quest/llm/`)
-- **BaseLLMProvider**: Abstract interface for all providers
-- **OpenAIProvider**: Direct OpenAI API integration
-- **OpenRouterProvider**: OpenRouter.ai multi-model support (recommended for testing with lighter models)
-- **OllamaProvider**: Local Ollama support (recommended for consumer hardware)
-
-See [AGENTS.md](AGENTS.md) for detailed provider documentation and model recommendations.
-
-#### Knowledge Management (`rag_quest/knowledge/`)
-- **WorldRAG**: Wraps LightRAG for game-specific queries and updates
-- **Ingest**: File handling for lore documents (txt, md, pdf)
-
-The RAG system is the "brain" of the world. Narrator queries it before every response.
-
-#### Game Engine (`rag_quest/engine/`)
-- **Character**: Player character with stats, inventory, location
-- **World**: World state (time, weather, visited locations, NPCs met)
-- **Inventory**: Item management with weight and rarity
-- **QuestLog**: Quest tracking and objectives
-- **Narrator**: Lightweight AI narrator that queries RAG and generates responses based on injected context
-- **GameState**: Complete serializable game state
-- **Game**: Main game loop
-
-#### Configuration
-- **config.py**: Interactive setup wizard and configuration management
-
-### Data Flow Example
+### Creating a World
 
 ```
-Player Input: "I search the desk for clues"
-        ↓
-Narrator queries RAG:
-"What relevant facts about desks, searching, clues exist in this location?"
-        ↓
-RAG returns context (entity + theme matching):
-"Desk in study contains: old books, jewels, secret compartment..."
-        ↓
-Narrator builds message:
-[system prompt] + [RAG context] + [character status] + [recent history] + [action]
-        ↓
-LLM (small model, ~3B params) generates response based on injected context
-        ↓
-Response: "You find an old key and a mysterious letter..."
-        ↓
-Narrator parses for state changes:
-- New items? Add to inventory
-- Location changes? Update character position
-- NPCs met? Add to world state
-        ↓
-Record event to RAG knowledge graph for future queries
-        ↓
-Save game state & auto-save
-        ↓
-Display response to player
+RAG-Quest: New Game Setup
+
+LLM Provider? [openai/openrouter/ollama] > ollama
+Ollama Model? [gemma4:e4b] > gemma4:e4b
+RAG Profile (speed vs fidelity)? [fast/balanced/deep] > balanced
+
+World Name? > The Shattered Citadel
+World Setting? > Post-apocalyptic ruins
+World Tone? > Dark and mysterious
+
+Character Name? > Kael
+Character Race? > Human
+Character Class? > Ranger
+
+Upload lore? (txt/md/pdf paths, space-separated) > lore/shattered_citadel.pdf
+Ingesting lore... ████████████████████ 100%
+
+Creating game... Done!
 ```
 
-**Why this matters**: The LLM never sees the full world. It gets exactly what it needs. This is why a lightweight model works—RAG does the world knowledge retrieval, the LLM does narrative synthesis.
+### Playing the Game
 
-## Configuration
+```
+═══════════════════════════════════════════════════════════════════════════════
+  THE SHATTERED CITADEL — Post-Apocalyptic Ruins  |  Time: Dawn  |  Weather: Overcast
+═══════════════════════════════════════════════════════════════════════════════
+
+📍 LOCATION: Rusted Plaza
+Broken towers loom overhead, their facades crumbling. Vines creep across ancient
+stone. The smell of rust and decay fills the air. You notice a path leading east
+to the collapsed library, and north toward a makeshift shelter...
+
+💚 KAEL | HP: 30/30 | Level 1 | Ranger
+📦 Inventory: Worn Backpack (5/20), Water Canteen, Rope, Knife
+⚔️  Active Quests: Find the Safehouse (Main)
+
+> I carefully move north toward the shelter, staying alert
+
+You cautiously approach the makeshift shelter, hand on your knife. As you draw
+near, you see it's built from salvaged metal and wood. Smoke curls from a small
+opening. A figure emerges—a grizzled woman with a rifle. She eyes you warily...
+
+> I raise my hands peacefully and approach
+
+"Easy, friend," she says, lowering her weapon slightly. "Name's Vera. Been
+guarding this place for months. Most folks 'round here ain't friendly. You look
+like you got a story..." She gestures to the shelter. "Care for some tea?"
+
+> /quests
+Active Quests:
+  - Find the Safehouse [IN PROGRESS] — Vera has clues about it
+
+> I ask Vera about the safehouse
+
+"The safehouse? That's a legend..." she says, settling into a rusted chair.
+"But three weeks back, I found a map. A real one, not some tale. It's marked
+on old paper, showing a route to the old military bunker below the citadel..."
+
+✨ NEW QUEST: Vera's Map — Find the Military Bunker
+
+> I take the map and thank her
+
+You carefully take the worn map from Vera's hands. It's old—maybe from before
+the collapse. An X marks a location at what looks like the eastern ruins. Vera
+hands you supplies: food rations and a rusted key.
+
+You gain: Food Rations (x3), Old Bunker Key
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+
+## Installation & Configuration
+
+### Requirements
+- **Python 3.11+**
+- **Ollama** (for local play) — or API credentials for OpenAI/OpenRouter
+
+### Environment Variables (Optional, for Non-Interactive Setup)
+
+```bash
+export LLM_PROVIDER=ollama
+export OLLAMA_MODEL=gemma4:e4b
+export OLLAMA_BASE_URL=http://localhost:11434
+export RAG_PROFILE=balanced
+
+export WORLD_NAME="The Shattered Citadel"
+export WORLD_SETTING="Post-apocalyptic"
+export WORLD_TONE="Dark"
+
+export CHARACTER_NAME="Kael"
+export CHARACTER_RACE=HUMAN
+export CHARACTER_CLASS=RANGER
+
+rag-quest
+```
 
 ### Config File Location
 
-`~/.config/rag-quest/config.json`
+Configuration is saved to: `~/.config/rag-quest/config.json`
 
-### Config Structure
+Game saves are stored at: `~/.local/share/rag-quest/saves/{world_name}.json`
 
-```json
-{
-  "llm": {
-    "provider": "openrouter|openai|ollama",
-    "model": "meta-llama/llama-2-7b|anthropic/claude-sonnet-4",
-    "api_key": "sk-or-...",
-    "temperature": 0.85,
-    "max_tokens": 1024
-  },
-  "world": {
-    "name": "Aethoria",
-    "setting": "Medieval Fantasy",
-    "tone": "Dark",
-    "starting_location": "The Tavern"
-  },
-  "character": {
-    "name": "Aragorn",
-    "race": "Human",
-    "class": "Ranger",
-    "background": "Raised by wolves"
-  }
-}
-```
+RAG databases live at: `~/.local/share/rag-quest/worlds/{world_name}/`
 
-**Model Selection Tips**:
-- For local play: Use Ollama with Gemma 4 E2B (2B—fast, perfect for consumer hardware) or E4B (4B—better quality)
-- For testing or cloud: Use OpenRouter with lightweight models
-- For best quality: Use OpenAI GPT-4 or OpenRouter Claude Sonnet (though Gemma 4 E4B + RAG often rivals them)
-- **Key insight**: A 2-4B Gemma 4 model with excellent RAG context beats much larger models without RAG
+## v0.2.0 Changelog
 
-### Changing Providers Mid-Game
+### New in v0.2.0 MVP
 
-You can switch LLM providers without losing your game save:
+**Game Loop & Mechanics** ✅
+- Core game engine with character, world, inventory, quests fully working
+- 50-turn playtest completed successfully with all systems functional
+- Location tracking and movement
+- Combat system with HP and damage calculation
+- Inventory system with item discovery and usage
+- Quest system with NPC offers and completion tracking
 
-1. Edit `~/.config/rag-quest/config.json`
-2. Change the `llm.provider` and `llm.model` values
-3. Start the game and continue playing
-4. The RAG database stays the same; only the narrator provider changes
+**LightRAG Knowledge Graph** ✅
+- Multi-level knowledge retrieval (entity + vector matching)
+- World persistence across saves
+- Lore ingestion from PDF, markdown, and text files
+- Intelligent chunking with section boundary detection
+- File hash caching for smart re-ingestion
 
-## Game State & Saves
+**LLM Providers** ✅
+- OpenAI (GPT-4, GPT-3.5-turbo)
+- OpenRouter (100+ models)
+- Ollama (local, free, private)
+- Synchronous architecture for turn-based gameplay
 
-- **Game saves**: `~/.local/share/rag-quest/saves/{world_name}.json`
-- **RAG database**: `~/.local/share/rag-quest/worlds/{world_name}/`
-- **Config**: `~/.config/rag-quest/config.json`
+**RAG Profiles** ✅
+- Three configurable profiles: fast, balanced, deep
+- Profile-aware chunk sizes and query depths
+- Speed vs quality tradeoff configurable per user
 
-Both game state and RAG database are preserved when you load a save, ensuring world consistency.
+**Terminal UI** ✅
+- Rich colored output with formatted panels
+- Status bar with character HP, location, inventory
+- Natural language action processing
+- Graceful error recovery and fallbacks
 
-## Troubleshooting
+**Documentation** ✅
+- Comprehensive README with quick-start guide
+- CLAUDE.md — Developer reference for AI assistants
+- AGENTS.md — LLM provider integration guide
+- ROADMAP.md — Vision for v0.3+ features
 
-### "Connection refused" errors
-- **For OpenAI**: Check your API key in `~/.config/rag-quest/config.json`
-- **For OpenRouter**: Verify API key and internet connection
-- **For Ollama**: Make sure Ollama is running (`ollama serve` in another terminal)
+### Verified Functionality
+- ✅ 50-turn playtest with all game mechanics
+- ✅ Three LLM providers working reliably
+- ✅ PDF lore ingestion and knowledge graph queries
+- ✅ Auto-save and recovery
+- ✅ Configuration via env vars or interactive setup
+- ✅ Runs on Ollama with Gemma 4 E2B/E4B models
 
-### RAG queries returning irrelevant results
-- The hybrid mode balances entity and theme matching
-- More detailed lore ingestion helps significantly
-- Try restarting the game to reset RAG context
-- Consider adding more specific details to your lore
+## Roadmap
 
-### Game not responding / hanging
-- Check your LLM provider's API status
-- For Ollama, ensure it's not overloaded (try a smaller model)
-- Try a simpler action to test (e.g., `/status`)
-
-### Memory or performance issues
-- Check available disk space for RAG storage
-- Consider archiving old save games
-- For Ollama, larger models need more VRAM
-- Remember: RAG does the heavy lifting, so the LLM can be smaller
-
-## Development
-
-### Project Structure
-
-```
-rag-quest/
-├── rag_quest/
-│   ├── __init__.py
-│   ├── __main__.py              # Entry point
-│   ├── config.py                # Configuration
-│   ├── llm/                     # LLM providers
-│   │   ├── base.py
-│   │   ├── openai_provider.py
-│   │   ├── openrouter_provider.py
-│   │   └── ollama_provider.py
-│   ├── knowledge/               # RAG integration
-│   │   ├── world_rag.py
-│   │   └── ingest.py
-│   ├── engine/                  # Game logic
-│   │   ├── character.py
-│   │   ├── world.py
-│   │   ├── inventory.py
-│   │   ├── quests.py
-│   │   ├── narrator.py
-│   │   └── game.py
-│   └── prompts/                 # System prompts
-│       └── templates.py
-├── lore/                        # Example lore
-├── saves/                       # Game saves
-├── tests/                       # Test suite
-├── pyproject.toml               # Project config
-├── README.md                    # This file
-├── ARCHITECTURE.md              # Architecture details
-├── AGENTS.md                    # LLM provider guide
-├── CLAUDE.md                    # AI assistant guide
-├── CONTRIBUTING.md              # Contribution guidelines
-├── ROADMAP.md                   # Development roadmap
-└── LICENSE                      # MIT License
-```
-
-### Running in Development Mode
-
-```bash
-# Install with development dependencies
-pip install -e ".[dev]"
-
-# Run with debug output
-python -m rag_quest --debug
-
-# Run tests
-pytest -v
-
-# Run with coverage
-pytest --cov=rag_quest
-```
-
-### Code Quality
-
-```bash
-# Format code
-black rag_quest/
-
-# Sort imports
-isort rag_quest/
-
-# Type checking
-mypy rag_quest/
-
-# All checks
-black rag_quest/ && isort rag_quest/ && mypy rag_quest/ && pytest
-```
-
-## Documentation
-
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Technical architecture and design patterns
-- **[AGENTS.md](AGENTS.md)** - LLM provider integration and narrator agent details
-- **[CLAUDE.md](CLAUDE.md)** - Guide for AI assistants contributing to the project
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
-- **[ROADMAP.md](ROADMAP.md)** - Development roadmap and planned features
-
-## Performance Notes
-
-### RAG Performance
-- **First startup**: 30-60 seconds (LightRAG initialization)
-- **Typical query**: 1-3 seconds (cached)
-- **Larger lore files**: Slower initialization
-- **RAG storage**: 50-200 MB per world (grows with lore)
-
-### LLM Response Times
-- **OpenAI GPT-4**: 3-10 seconds
-- **OpenRouter Claude**: 2-5 seconds
-- **OpenRouter Llama**: 1-3 seconds
-- **Ollama with GPU**: 2-10 seconds
-- **Ollama with CPU**: 10-60 seconds
-
-### Memory Usage
-- **Character & world state**: <1 MB
-- **Conversation history**: ~100 KB per 100 exchanges
-- **RAG database**: 50-200 MB per world
-
-### Optimization Tips
-1. Break large lore files into smaller pieces
-2. Use Gemma 4 E2B or E4B models (2-4B is often sufficient with RAG)
-3. For local Ollama, use GPU and smaller Gemma 4 models
-4. Limit conversation history to last 6 messages
-5. The bottleneck is usually RAG initialization, not the LLM
-
-## Future Roadmap
-
-### v0.2 (Combat & Character Depth)
-- Combat system with dice rolls
-- Character progression and leveling
-- Dynamic encounter generation
-
-### v0.3 (Social & Narrative)
+### v0.3 (Coming Q2 2026)
 - Multi-character parties
-- NPC relationship system
-- Quest chains with branching narratives
-- **AI dungeon master text-to-speech narration**
+- NPC relationship system and companion recruitment
+- Quest chains and branching narratives
+- **Text-to-speech narrator** (voice narration for immersion)
+- World events and faction dynamics
 
-### v0.4 (Multiplayer & Persistence)
-- Shared multiplayer worlds
+### v0.4 (Coming Q3 2026)
+- Multiplayer support
 - Cloud save synchronization
-- World export/import for community sharing
+- Community world sharing
+- Persistent cross-session economies
 
-### Long-Term Vision
-- Voice input/output
-- AI-generated scene images
-- Web UI and mobile client
-- Crafting, spell research, and deep magic systems
+### Future
+- Native iOS app with SwiftUI (on-device Apple Intelligence inference)
+- Web client
+- Procedural dungeon generation
+- Advanced spell and crafting systems
 
-See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
+## Contributing
+
+RAG-Quest is open source and welcomes contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+All issues tracked via beads (`bd`):
+```bash
+bd list        # See open issues
+bd create ...  # File a new issue
+bd show <id>   # View issue details
+```
+
+## Architecture Philosophy
+
+**LightRAG Does the Heavy Lifting**: Every design decision prioritizes keeping the LLM lightweight while making the knowledge graph do the actual work.
+
+- **Small Models Work**: 2-4B parameter models (Gemma 4 E2B/E4B) with RAG often outperform much larger models without RAG
+- **Consumer Hardware**: Entire game runs on a Mac or modest GPU; no expensive cloud inference required
+- **Privacy First**: With Ollama, everything stays local—no data leaves your machine
+- **Extensible Providers**: Add new LLM providers easily via the `BaseLLMProvider` interface
+
+See [CLAUDE.md](CLAUDE.md) for technical architecture and [AGENTS.md](AGENTS.md) for LLM provider details.
+
+## Getting Help
+
+- **Start Playing**: `rag-quest` and follow the interactive setup
+- **Read Docs**: Check [CLAUDE.md](CLAUDE.md), [AGENTS.md](AGENTS.md), [ROADMAP.md](ROADMAP.md)
+- **Report Issues**: Use `bd create` or open a GitHub issue
+- **Share Worlds**: Upload custom lore documents during game setup
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) file for details
-
-## Credits
-
-- **LightRAG**: HKU's knowledge graph system for contextual retrieval—the architectural cornerstone of RAG-Quest
-- **Rich**: Gorgeous terminal UI library
-- **httpx**: Modern, async-first HTTP client
-- **PyMuPDF**: PDF text extraction
-- **OpenAI, OpenRouter, Ollama**: LLM providers
-
-## Support & Community
-
-- **Issues**: Use GitHub Issues for bugs and feature requests
-- **Discussions**: Share ideas and get help in Discussions
-- **Documentation**: Check [README.md](README.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [AGENTS.md](AGENTS.md)
-- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md)
-
-## Getting Started
-
-Ready to adventure?
-
-```bash
-python -m rag_quest
-```
-
-Then type your first action and watch the AI weave your story—powered by a knowledge graph that never forgets!
+MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-**May your tales be legendary and your worlds eternally consistent.**
+**v0.2.0 MVP Release — Ready for Game Night!**
 
+Built with ❤️ for solo and group play. Designed to run on your hardware. Powered by LightRAG and lightweight LLMs.

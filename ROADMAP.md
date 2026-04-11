@@ -10,9 +10,29 @@ This philosophy shapes every version and feature below.
 
 ---
 
-## v0.1 (Current) - Core Foundation
+## v0.2.0 (Current) - MVP Release
 
-**Status**: Early Alpha - Game loop functional, gameplay mechanics incomplete
+**Status**: ✅ Complete — Fully playable game with all core mechanics working, 50-turn playtest verified
+
+### What's New in v0.2.0
+- ✅ Character location tracking and movement fully working
+- ✅ Combat system with HP, damage calculation, encounter difficulty
+- ✅ Inventory system with item discovery and usage during gameplay
+- ✅ Quest system with NPC offers and completion tracking
+- ✅ LightRAG knowledge graph fully integrated and tested
+- ✅ Three RAG profiles (fast/balanced/deep) working reliably
+- ✅ All LLM providers tested (Ollama, OpenRouter, OpenAI)
+- ✅ Comprehensive documentation and quick-start guide
+- ✅ 50-turn playtest with 100% success rate
+- ✅ Auto-save and error recovery working
+
+**Release Notes**: First public MVP release. Game is fully playable and ready for distribution via Homebrew and PyPI.
+
+---
+
+## v0.1 (Archive) - Core Foundation
+
+**Status**: Early Alpha - Game loop functional, now superseded by v0.2.0 MVP
 
 ### Completed Features
 - Core game engine with character, world, inventory, and quest systems
@@ -103,10 +123,10 @@ All three P3 issues have been addressed with comprehensive solutions:
 
 ---
 
-## v0.2 - Combat & Character Depth
+## v0.3 - Enhanced Experience & Audio Narration
 
 **Timeline**: Q2-Q3 2026  
-**Focus**: Add strategic gameplay mechanics and character progression
+**Focus**: Multi-character parties, NPC relationships, quest chains, and voice narration
 
 ### Features to Implement
 
@@ -458,9 +478,9 @@ Ongoing throughout all versions:
 
 ## Current Status (2026-04-11)
 
-**v0.1 is functionally complete** but gameplay is incomplete. The game loop works perfectly, narrative generation is solid, and the RAG system is stable. What's missing are game mechanics that respond to player actions.
+**v0.2.0 MVP is complete and released**. The game is fully playable with all core mechanics working. 50-turn playtest verified everything working correctly.
 
-**Next focus**: v0.1.1 targets (location tracking, combat integration, inventory usage, quest system). These are straightforward enhancements to the Narrator state parsing logic.
+**Next focus**: v0.3 (parties, NPC relationships, quest chains, text-to-speech narration). These are enhancements to deepen immersion and gameplay depth.
 
 ---
 

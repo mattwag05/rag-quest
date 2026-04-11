@@ -132,6 +132,10 @@ lore/
 # Test artifacts and temporary files
 playthrough_*.txt
 playthrough_*.json
+playtest_*.py
+playtest_*.txt
+GAME_TEST_RESULTS.md
+final_test.txt
 simple_test.py
 test_playthrough*.py
 

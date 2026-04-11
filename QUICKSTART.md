@@ -1,215 +1,299 @@
 # RAG-Quest Quick Start Guide
 
-## Installation
+Get from zero to playing in 5 minutes.
 
-### From Source
+## 1. Install
+
+### Option A: Homebrew (Recommended)
 ```bash
-cd /Users/matthewwagner/Desktop/Projects/rag-quest
+brew install mattwag05/tap/rag-quest
+rag-quest
+```
+
+### Option B: pip
+```bash
+pip install rag-quest
+rag-quest
+```
+
+### Option C: From Source
+```bash
+git clone https://github.com/mattwag05/rag-quest.git
+cd rag-quest
 pip install -e .
+rag-quest
 ```
 
-### Command-Line Usage
-Once installed, run:
+## 2. Set Up Ollama (For Local Play)
+
+If you want to play for free, locally, and privately:
+
+```bash
+# Download Ollama from ollama.ai, then:
+ollama pull gemma4:e4b   # 4B, best quality (needs GPU)
+# OR
+ollama pull gemma4:e2b   # 2B, fast on CPU
+```
+
+Keep the Ollama server running in a terminal:
+```bash
+ollama serve
+```
+
+## 3. Start a Game
+
 ```bash
 rag-quest
 ```
 
-Or from source directory:
-```bash
-python3 -m rag_quest
+You'll see an interactive setup menu:
+
+```
+RAG-Quest: New Game Setup
+
+LLM Provider? [openai/openrouter/ollama]
+  > ollama
+
+Ollama Model? [gemma4:e4b]
+  > gemma4:e4b
+
+RAG Profile (speed vs fidelity)? [fast/balanced/deep]
+  > balanced
+
+World Name?
+  > The Shattered Citadel
+
+World Setting?
+  > Post-apocalyptic ruins
+
+World Tone?
+  > Dark and mysterious
+
+Character Name?
+  > Kael
+
+Character Race? [HUMAN/ELF/DWARF/HALFLING/ORC]
+  > HUMAN
+
+Character Class? [FIGHTER/MAGE/ROGUE/RANGER/CLERIC]
+  > RANGER
+
+Upload custom lore? (txt/md/pdf, space-separated)
+  > lore/shattered_citadel.pdf
+  
+Ingesting lore...
+████████████████████ 100%
+
+Creating game...
+Done! Ready to play.
 ```
 
-## Configuration
+## 4. Play
 
-The game requires LLM configuration. You can set it via:
-
-### Option 1: Environment Variables (Quick)
-```bash
-export LLM_PROVIDER=ollama
-export OLLAMA_MODEL=qwen3.5:latest
-export OLLAMA_BASE_URL=http://localhost:11434
-export CHARACTER_NAME="Hero Name"
-export CHARACTER_RACE=HUMAN
-export CHARACTER_CLASS=FIGHTER
-export WORLD_NAME="World Name"
-export WORLD_SETTING="Fantasy"
-export WORLD_TONE="Heroic"
-
-rag-quest
 ```
+═══════════════════════════════════════════════════════════════════════════════
+  THE SHATTERED CITADEL — Post-Apocalyptic Ruins
+═══════════════════════════════════════════════════════════════════════════════
 
-### Option 2: Config File
-Create `~/.config/rag-quest/config.json`:
-```json
-{
-  "llm": {
-    "provider": "ollama",
-    "model": "qwen3.5:latest",
-    "base_url": "http://localhost:11434"
-  },
-  "world": {
-    "name": "The Blue Rose Realm",
-    "setting": "Fantasy World",
-    "tone": "Dark and Mysterious",
-    "starting_location": "A quaint tavern"
-  },
-  "character": {
-    "name": "Adventurer",
-    "race": "HUMAN",
-    "class": "FIGHTER",
-    "background": null
-  },
-  "rag": {
-    "profile": "balanced"
-  }
-}
+📍 LOCATION: Rusted Plaza
+Broken towers loom overhead, their facades crumbling. The smell of rust and
+decay fills the air. You notice a path leading east to the collapsed library...
+
+💚 KAEL | HP: 30/30 | Level 1 | Ranger
+📦 Inventory: Worn Backpack (5/20)
+⚔️  Active Quests: None
+
+> I cautiously move north toward the makeshift shelter
+
+You carefully approach the shelter, hand on your knife. As you draw near,
+smoke curls from an opening. A figure emerges—a grizzled woman with a rifle...
+
+> I raise my hands peacefully
+
+"Easy, friend," she says, lowering her weapon. "Name's Vera. Most folks
+'round here ain't friendly. You look like you got a story..."
+
+> Ask about the safehouse
+
+"The safehouse? That's a legend..." she says. "But three weeks back, I found
+a map showing a route to the old military bunker below the citadel..."
+
+✨ NEW QUEST: Vera's Map — Find the Military Bunker
+
+> /quests
+
+Active Quests:
+  • Vera's Map (ACTIVE) — Find the Military Bunker
+
+> /inventory
+
+Inventory (5/20 lbs):
+  • Worn Backpack
+  • Water Canteen
+  • Rope
+  • Knife
+  
+> /status
+
+═══════════════════════════════════════════════════════════════════════════════
+  KAEL — Ranger (Level 1)
+═══════════════════════════════════════════════════════════════════════════════
+  HP: 30/30 ████████████████████████████████ 100%
+  Location: Rusted Plaza
+  Experience: 0/100
+  
+Inventory: 5/20 lbs
+Quests Active: 1
+
+> I take Vera's map and thank her
+
+You carefully take the worn map from Vera's hands...
+
+> /save
+
+Game saved.
 ```
-
-### Option 3: Interactive Setup
-If no config exists and stdin is a TTY, the game will prompt you to set up configuration.
 
 ## In-Game Commands
 
-### Navigation & Interaction
-Simply type actions in natural language:
-- `go to the tavern`
-- `examine the chest`
-- `talk to the merchant`
-- `attack the goblin`
-- `rest and heal`
+Type naturally or use commands:
 
-### Commands (type with `/` prefix)
-- `/help` - Show help and command reference
-- `/inventory` or `/i` - View your items
-- `/quests` or `/q` - View active quests
-- `/status` or `/s` - View character stats with HP bar
-- `/look` - Examine your current location
-- `/map` - View discovered locations
-- `/save` - Save your game progress
-- `/quit` - Exit the game (prompts to save)
+| Action | Example |
+|--------|---------|
+| **Natural Language** | `I search the desk for clues` |
+| **Movement** | `I go north to the library` |
+| **Combat** | `I attack the goblin with my sword` |
+| **Dialogue** | `Ask Vera about the bunker` |
+| **Inventory** | `/i` or `/inventory` |
+| **Quests** | `/q` or `/quests` |
+| **Status** | `/s` or `/status` |
+| **Look** | `/look` or `/examine` |
+| **Map** | `/map` to see discovered locations |
+| **Save** | `/save` to save progress |
+| **Help** | `/help` for full command reference |
+| **Quit** | `/quit` to exit (prompts to save) |
 
-## Game Features
+## Configuration (Advanced)
 
-### Character System
-- Name, race (Human, Elf, Dwarf, Halfling, Orc), and class (Fighter, Mage, Rogue, Ranger, Cleric)
-- Hit points (HP) that track health
-- Equipment and inventory with item rarity
-- Experience and leveling (framework in place)
+Skip interactive setup with environment variables:
 
-### World System
-- Persistent world state with time of day and weather
-- Location discovery and tracking
-- NPC encounters
-- Recent event history
-
-### Combat
-- Describe your attacks in natural language
-- Damage calculation based on action descriptions
-- Health management
-
-### Inventory
-- Collect items during gameplay
-- Track item rarities (common, uncommon, rare, legendary)
-- Weight management (max 100 lbs)
-
-### Quests
-- Receive quests from NPCs
-- Track quest objectives
-- Complete quests to advance
-
-## LLM Providers
-
-### Ollama (Recommended - Local)
-Fastest and most private. Run Ollama locally:
 ```bash
-ollama serve
-ollama pull qwen3.5:latest  # Or gemma4:latest, mistral, etc.
-```
-
-Then set:
-```bash
+# LLM Setup
 export LLM_PROVIDER=ollama
-export OLLAMA_MODEL=qwen3.5:latest
+export OLLAMA_MODEL=gemma4:e4b
 export OLLAMA_BASE_URL=http://localhost:11434
+
+# World Setup
+export WORLD_NAME="The Shattered Citadel"
+export WORLD_SETTING="Post-apocalyptic"
+export WORLD_TONE="Dark"
+
+# Character Setup
+export CHARACTER_NAME="Kael"
+export CHARACTER_RACE=HUMAN
+export CHARACTER_CLASS=RANGER
+
+# RAG Profile (optional)
+export RAG_PROFILE=balanced  # fast, balanced, or deep
+
+# Then start
+rag-quest
 ```
 
-### OpenAI
-```bash
-export LLM_PROVIDER=openai
-export OPENAI_API_KEY=sk-...
-export OPENAI_MODEL=gpt-4o
-```
+## LLM Provider Comparison
 
-### OpenRouter
-```bash
-export LLM_PROVIDER=openrouter
-export OPENROUTER_API_KEY=sk-or-...
-export OPENROUTER_MODEL=anthropic/claude-sonnet-4
-```
+### Ollama (Recommended for First Play)
+- **Cost**: Free
+- **Speed**: 2-20 seconds per response
+- **Quality**: Excellent with RAG
+- **Setup**: Download ollama.ai, run `ollama serve`
+- **Models**: `gemma4:e4b` (GPU) or `gemma4:e2b` (CPU)
+- **Privacy**: Everything local, no data sent anywhere
+
+### OpenAI (Highest Quality)
+- **Cost**: ~$0.05-0.30 per turn
+- **Speed**: 3-10 seconds
+- **Quality**: Excellent
+- **Setup**: Get API key from openai.com
+- **Models**: GPT-4, GPT-4 Turbo, GPT-3.5-turbo
+
+### OpenRouter (Flexibility, Great Value)
+- **Cost**: ~$0.005-0.15 per turn
+- **Speed**: 1-5 seconds
+- **Quality**: Good to excellent (depends on model)
+- **Setup**: Get API key from openrouter.ai
+- **Models**: 100+ options (Claude, Llama, Mistral, etc.)
 
 ## Gameplay Tips
 
-1. **Be Creative** - Describe what you want to do in detail. The AI responds to creative and specific actions.
-2. **Combat** - Describe tactical movements: "dodge and counterattack", "perform a shield bash", etc.
-3. **Dialogue** - Talk to NPCs to learn about quests and the world.
-4. **Exploration** - Visit new locations to discover items and meet NPCs.
-5. **Resource Management** - Watch your HP and manage your inventory carefully.
-6. **Save Often** - Use `/save` to save progress before dangerous actions.
+### Combat
+- Describe your action vividly: "I dodge left and counterattack with a thrust"
+- Combat is turn-based; the narrator responds to each action
+- Monitor your HP with `/status`
+
+### Dialogue
+- Talk to NPCs to discover quests and lore
+- Try asking about things: "Ask the innkeeper about rumors"
+- NPCs remember previous conversations
+
+### Exploration
+- Visit new locations to find items and meet NPCs
+- Use `/map` to see where you've been
+- Every location has secrets to discover
+
+### Inventory Management
+- Keep an eye on weight (`/inventory`)
+- Find useful items during exploration
+- Use items in actions: "Use the rope to climb down"
+
+### Saving
+- Auto-save happens every 3 turns
+- Use `/save` before dangerous actions
+- Saves are stored in `~/.local/share/rag-quest/saves/`
 
 ## Troubleshooting
 
-### "Configuration not found" Error
-Set environment variables or create a config file (see Configuration section above).
+### "No response from LLM"
+1. **Ollama**: Make sure `ollama serve` is running in another terminal
+2. **Check connectivity**: `curl http://localhost:11434/api/tags`
+3. **OpenAI/OpenRouter**: Verify API key is set and valid
 
-### Slow Responses
-The game uses fast fallback responses by default. If you want AI narration:
-1. Make sure Ollama is running: `ollama serve`
-2. Verify the model is pulled: `ollama pull qwen3.5:latest`
-3. Check connectivity: `curl http://localhost:11434/api/tags`
+### Game runs slow
+1. **Ollama on CPU**: Try `gemma4:e2b` instead of E4B
+2. **GPU users**: Increase VRAM allocated to Ollama
+3. **OpenAI/OpenRouter**: These are cloud-hosted and should be fast
 
-### Character Class Not Found
-Valid classes are: FIGHTER, MAGE, ROGUE, RANGER, CLERIC (case-sensitive)
+### Config errors
+1. Set environment variables: `echo $LLM_PROVIDER`
+2. Check `~/.config/rag-quest/config.json` exists
+3. Try interactive setup again (delete config and re-run `rag-quest`)
 
-### World Not Found
-World name is used to store game state. Custom world names work fine.
+### Class not recognized
+Valid classes: FIGHTER, MAGE, ROGUE, RANGER, CLERIC (case-sensitive)
 
-## Game Flow
+## What's New in v0.2.0
 
-1. Start the game with `rag-quest`
-2. See welcome screen and game initialization messages
-3. Game prints your status bar (character, location, HP, world context)
-4. Type actions or commands to interact with the world
-5. Narrator responds to your actions
-6. Use `/status`, `/inventory`, `/quests` to check progress
-7. Use `/save` to save important progress
-8. Use `/quit` to exit (with save prompt)
+- ✅ Full game loop with character location, combat, inventory, quests
+- ✅ 50-turn playtest verified all systems working
+- ✅ Three RAG profiles (fast/balanced/deep) for speed vs quality
+- ✅ PDF lore ingestion with intelligent chunking
+- ✅ Auto-save every turn with error recovery
+- ✅ Works with Ollama, OpenAI, and OpenRouter
 
-## Save Files
+## What's Coming in v0.3
 
-Game progress is saved to:
-```
-~/.local/share/rag-quest/saves/{WorldName}.json
-```
-
-Games are saved automatically every 3 actions. Manual save with `/save` command.
-
-## Next Steps
-
-After the MVP, we're planning:
-- Dynamic AI narration with LLM integration
-- Knowledge graph queries for world context
-- PDF/text lore file ingestion
-- Character progression and leveling
-- More complex combat mechanics
-- Multi-player support
-- Distribution via pip/brew
+- Multi-character parties
+- NPC relationship system
+- Quest chains and branching narratives
+- **Text-to-speech narrator** (voice narration for immersion)
+- World events and faction dynamics
 
 ## Have Fun!
 
-RAG-Quest is designed for creative, emergent storytelling. The narrator responds to your actions and helps create a unique adventure each playthrough. Enjoy your adventure in the world of RAG-Quest!
+RAG-Quest is designed for creative, emergent storytelling. Your choices matter. Every playthrough is unique. Enjoy your adventure!
 
 ---
 
-**Version:** 0.1.0 (MVP)  
-**Status:** Ready for Game Night!  
-**License:** MIT
+**Version**: v0.2.0 MVP  
+**Status**: Ready for Game Night!  
+**License**: MIT
