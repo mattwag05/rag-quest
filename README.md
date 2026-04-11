@@ -17,7 +17,7 @@ RAG-Quest combines the power of knowledge graph retrieval with language models t
 ## Features
 
 - **LightRAG-Powered World Context**: Dual-level knowledge graph retrieval (entity + theme matching) delivers only the relevant facts per query—enables tiny LLM models to narrate coherently
-- **Lightweight LLM Design**: Run with ~3B parameter models (Ollama locally, or OpenRouter's Llama/Mistral) thanks to RAG context injection; no need for GPT-4 or Claude
+- **Lightweight LLM Design**: Run with Gemma 4 E2B (2B) or E4B (4B) models thanks to RAG context injection; no need for expensive large models on consumer hardware
 - **Multiple LLM Providers**: Works with OpenAI, OpenRouter, or local Ollama models as first-class citizens
 - **Dynamic Narration**: Every action generates vivid, contextual responses from an AI Dungeon Master powered by relevant retrieved knowledge
 - **World Persistence**: Your game saves include the full knowledge graph, ensuring consistency when you pick up where you left off
@@ -269,10 +269,10 @@ Display response to player
 ```
 
 **Model Selection Tips**:
-- For local play: Use Ollama with 7B-13B models (neural-chat, mistral, llama2)
-- For testing: Use OpenRouter with Llama-2-70b or Mistral
-- For best quality: Use OpenAI GPT-4 or OpenRouter Claude Sonnet
-- **Key insight**: A 7B local model with good RAG context beats a 70B model without RAG
+- For local play: Use Ollama with Gemma 4 E2B (2B—fast, perfect for consumer hardware) or E4B (4B—better quality)
+- For testing or cloud: Use OpenRouter with lightweight models
+- For best quality: Use OpenAI GPT-4 or OpenRouter Claude Sonnet (though Gemma 4 E4B + RAG often rivals them)
+- **Key insight**: A 2-4B Gemma 4 model with excellent RAG context beats much larger models without RAG
 
 ### Changing Providers Mid-Game
 
@@ -417,8 +417,8 @@ black rag_quest/ && isort rag_quest/ && mypy rag_quest/ && pytest
 
 ### Optimization Tips
 1. Break large lore files into smaller pieces
-2. Use smaller LLM models (7B is often sufficient with RAG)
-3. For local Ollama, use GPU and smaller models (7B)
+2. Use Gemma 4 E2B or E4B models (2-4B is often sufficient with RAG)
+3. For local Ollama, use GPU and smaller Gemma 4 models
 4. Limit conversation history to last 6 messages
 5. The bottleneck is usually RAG initialization, not the LLM
 

@@ -4,7 +4,7 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 
 ## Design Philosophy
 
-**Core Principle**: LightRAG does the heavy lifting. The LLM acting as dungeon master is kept lightweight (~3B parameters, ≤8K context window) because it doesn't need to memorize the world. LightRAG's dual-level retrieval (entity + vector matching) injects precisely the relevant knowledge per query. This enables RAG-Quest to run entirely on consumer hardware with local models via Ollama.
+**Core Principle**: LightRAG does the heavy lifting. The LLM acting as dungeon master is kept lightweight (Gemma 4 E2B/E4B—2-4B parameters, ≤8K context window) because it doesn't need to memorize the world. LightRAG's dual-level retrieval (entity + vector matching) injects precisely the relevant knowledge per query. This enables RAG-Quest to run entirely on consumer hardware with local models via Ollama.
 
 This philosophy shapes every version and feature below.
 
@@ -33,7 +33,7 @@ This philosophy shapes every version and feature below.
 - **Built-in Commands**: `/inventory`, `/quests`, `/look`, `/map`, `/status`, `/save`, `/help`
 - **World Persistence**: Full game state + RAG database saved per world
 - **Lore Support**: Custom lore documents ingested at world creation
-- **Hardware Support**: Runs on consumer hardware with Ollama + ~7B local models
+- **Hardware Support**: Runs on consumer hardware with Ollama + Gemma 4 E2B/E4B models
 - **Test Coverage**: 35-turn playthrough with 100% completion rate
 
 ### Known Limitations & v0.1.1 Targets (From Playtest)
@@ -267,6 +267,20 @@ Fix the 4 P2 issues above. Target deliverable:
 - [ ] Political intrigue and alliances
 - [ ] Pet/animal companion systems
 - [ ] Magic system with learning
+
+### Apple Intelligence Foundation Models
+
+**Timeline**: Post v0.4 / Future Vision
+
+Native integration with Apple's on-device foundation models as an LLM provider. On Apple Silicon Macs and iPhones/iPads, RAG-Quest can run entirely offline without needing Ollama, using Apple's private on-device inference:
+
+- [ ] Apple Intelligence provider implementation
+- [ ] On-device inference for Mac (Apple Silicon)
+- [ ] Privacy-first—no data sent to cloud
+- [ ] Seamless integration with existing provider architecture
+- [ ] Offline-first gameplay on Apple devices
+
+**Why this matters**: Users with Apple Silicon hardware (M-series Macs, iPhone 16 Pro+) can play RAG-Quest with zero external dependencies—just the game, LightRAG, and Apple's foundation models. Gameplay stays private and fast on their device.
 
 ### Ecosystem
 - [ ] Official world templates

@@ -6,9 +6,9 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 
 **RAG-Quest** is an AI-powered D&D-style text RPG that uses LightRAG (a knowledge graph system) to eliminate hallucinations in narrative generation. The game maintains consistency through a RAG backend that stores and retrieves world knowledge, allowing a lightweight AI narrator to generate coherent, context-aware storytelling.
 
-**Core Design Philosophy**: LightRAG does the heavy lifting. The LLM acting as dungeon master is intentionally kept small—~3B parameters, ≤8K token context—because it doesn't memorize the world. Instead, LightRAG's dual-level retrieval (entity matching + vector similarity) injects precisely the relevant knowledge per query. This architecture enables RAG-Quest to run entirely on consumer hardware with local models via Ollama, while producing narrative quality comparable to much larger models running blind.
+**Core Design Philosophy**: LightRAG does the heavy lifting. The LLM acting as dungeon master is intentionally kept small—Gemma 4 E2B (2B) or E4B (4B) parameters, ≤8K token context—because it doesn't memorize the world. Instead, LightRAG's dual-level retrieval (entity matching + vector similarity) injects precisely the relevant knowledge per query. This architecture enables RAG-Quest to run entirely on consumer hardware with local models via Ollama, while producing narrative quality comparable to much larger models running blind.
 
-**Why this matters**: A 7B model with excellent RAG context beats a 70B model without RAG. The knowledge graph is the "long-term memory"; the LLM is just the "narrator."
+**Why this matters**: A Gemma 4 model with excellent RAG context beats much larger models without RAG. The knowledge graph is the "long-term memory"; the LLM is just the "narrator."
 
 **Current Version**: v0.1 (functional game loop, narrative + dialogue + inventory, single-player)
 
@@ -116,7 +116,7 @@ class BaseLLMProvider(ABC):
 - `lightrag_complete_func()` returns a function for LightRAG compatibility
 - Temperature and max_tokens are call-time configurable
 - Accept `**kwargs` from LightRAG without error
-- **Narrator uses lightweight providers**: Ollama 7B or Llama-2 deliver excellent results
+- **Narrator uses lightweight providers**: Ollama Gemma 4 E2B/E4B deliver excellent results on consumer hardware
 
 **Adding a New Provider**:
 1. Create `rag_quest/llm/my_provider.py`
@@ -451,9 +451,9 @@ When user uploads lore during setup:
 **Optimization**: Limit conversation history to last 6 messages, chunk large lore files
 
 ### LLM Response Times (Ollama on Mac)
-- **Ollama 7B (GPU)**: 2-10 seconds per response
-- **Ollama 7B (CPU)**: 10-60 seconds per response
-- **Ollama 13B (GPU)**: 5-20 seconds per response
+- **Ollama Gemma 4 E4B (GPU)**: 2-10 seconds per response
+- **Ollama Gemma 4 E2B (CPU)**: 10-60 seconds per response
+- **Ollama Gemma 4 E4B (larger GPU)**: 1-5 seconds per response
 
 ## Common Debugging Scenarios
 

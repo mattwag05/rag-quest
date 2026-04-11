@@ -6,7 +6,7 @@ This document describes how RAG-Quest integrates different LLM providers and how
 
 RAG-Quest uses a **provider-agnostic** architecture that treats OpenAI, OpenRouter, and Ollama as first-class citizens. The system abstracts provider-specific APIs behind a common interface, allowing seamless switching between models and providers.
 
-**The Architectural Philosophy**: The LLM is not expected to be a large or sophisticated model. LightRAG's knowledge graph retrieval injects all necessary context per query. A ~3B parameter model (Ollama neural-chat, Mistral, or even smaller) paired with strong RAG context performs as well as much larger models running blind. This enables consumer-hardware deployment and dramatically reduces costs.
+**The Architectural Philosophy**: The LLM is not expected to be a large or sophisticated model. LightRAG's knowledge graph retrieval injects all necessary context per query. A 2-4B parameter model (Ollama Gemma 4 E2B or E4B) paired with strong RAG context performs as well as much larger models running blind. This enables consumer-hardware deployment and dramatically reduces costs.
 
 **Architecture Update (2026-04-11)**: All LLM providers have been converted from async to synchronous. This is cleaner for a turn-based text RPG and eliminates callback complexity. The conversion included updating httpx.AsyncClient to httpx.Client throughout.
 
@@ -168,7 +168,7 @@ class OllamaProvider(BaseLLMProvider):
     
     # Expected config:
     # {
-    #     'model': 'neural-chat' | 'mistral' | 'llama2' | 'orca' | 'zephyr' | 'gemma4',
+    #     'model': 'gemma4-e2b' | 'gemma4-e4b' | 'mistral' | 'llama2' | 'neural-chat',
     #     'base_url': 'http://localhost:11434',
     #     'temperature': 0.85,
     #     'max_tokens': 1024
@@ -191,10 +191,10 @@ class OllamaProvider(BaseLLMProvider):
 - **Perfect for consumer hardware when paired with RAG**
 
 **Recommended Models**:
-- `neural-chat` - Best narrative for game dialogue
-- `mistral` - Fast and capable, good balance
-- `gemma4` - Good quality, reasonable speed
-- `orca-mini` - Fast, good for testing
+- `gemma4-e2b` - **Recommended for CPU (2B, fast, excellent quality)**
+- `gemma4-e4b` - **Recommended for GPU (4B, best quality, still fast)**
+- `mistral` - Good alternative, fast and capable
+- `neural-chat` - Good for narrative/dialogue
 - `llama2` - Good general purpose
 - `zephyr` - Newer, good reasoning
 
@@ -204,10 +204,10 @@ class OllamaProvider(BaseLLMProvider):
 # Start the server
 ollama serve
 
-# In another terminal, pull a model
-ollama pull neural-chat
-ollama pull mistral
-ollama pull gemma4
+# In another terminal, pull recommended models
+ollama pull gemma4-e2b    # 2B, perfect for CPU
+ollama pull gemma4-e4b    # 4B, best quality
+ollama pull mistral       # Alternative
 ```
 
 **Performance** (on Mac with Apple Silicon):
@@ -216,11 +216,11 @@ ollama pull gemma4
 - Depends heavily on model size and hardware
 
 **Tips**:
-- Use smaller models (7B is often sufficient with RAG)
-- GPU recommended for playable experience
+- Use Gemma 4 E2B (2B for CPU) or E4B (4B for GPU)—often sufficient with RAG
+- GPU recommended for playable experience (E4B is perfect for GPU)
 - Cold start is slower (~30s); subsequent queries faster
 - Great for development/testing without API costs
-- **Philosophy**: A 7B local model with RAG beats a 70B model without RAG
+- **Philosophy**: A 2-4B Gemma 4 model with RAG beats much larger models without RAG
 - **Note**: Ollama response format differs from OpenAI—uses `data["message"]["content"]` not `data["choices"][0]["message"]["content"]`
 
 ### Synchronous Architecture (Updated 2026-04-11)
@@ -599,11 +599,11 @@ When narrator calls `world_rag.query_world(question, context)`:
 - **Speed**: 3-10 seconds
 - **Quality**: Excellent
 
-### Hobby Play (Local)
+### Hobby Play (Local) - Recommended
 - **Provider**: Ollama
-- **Model**: neural-chat, mistral, or gemma4
+- **Model**: Gemma 4 E2B (CPU) or E4B (GPU)
 - **Cost**: Free
-- **Speed**: 5-30 seconds (depends on hardware)
+- **Speed**: 2-20 seconds (depends on hardware and model)
 - **Quality**: Excellent (with RAG)
 
 ## Provider Comparison Matrix
