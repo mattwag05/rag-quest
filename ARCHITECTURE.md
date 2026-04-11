@@ -56,16 +56,16 @@ Abstracts LLM APIs behind a consistent interface.
 ```python
 class BaseLLMProvider(ABC):
     def __init__(self, config: LLMConfig)
-    async def complete(messages: list[dict]) -> str
+    def complete(messages: list[dict], temperature=None, max_tokens=None, **kwargs) -> str  # Synchronous
     def lightrag_complete_func() -> callable
 ```
 
 **Design Decisions:**
-- Uses httpx for async HTTP (lightweight, no SDK)
+- Uses httpx for synchronous HTTP (lightweight, no SDK) — converted from async in v0.1.1
 - All providers implement same interface
 - `lightrag_complete_func()` adapts our interface to LightRAG's expectations
 - Temperature & max_tokens are configurable per call
-- **Narrator expects lightweight models**: Ollama 7B or Llama deliver excellent results with RAG context
+- **Narrator expects lightweight models**: Ollama Gemma 4 E2B/E4B or Llama deliver excellent results with RAG context
 
 **Extension Point:**
 To add a new provider, inherit from `BaseLLMProvider`:
@@ -90,11 +90,11 @@ Wraps LightRAG and handles lore ingestion. This is the "heavy lifter."
 ```python
 class WorldRAG:
     def __init__(world_name, llm_config, llm_provider)
-    async def initialize()
-    async def ingest_text(text, source)
-    async def ingest_file(path)
-    async def query_world(question, context, param) -> str
-    async def record_event(event)
+    def initialize()  # Synchronous (uses ThreadPoolExecutor for async LightRAG)
+    def ingest_text(text, source)  # Synchronous
+    def ingest_file(path)  # Synchronous
+    def query_world(question, context, profile) -> str  # Synchronous
+    def record_event(event)  # Synchronous
 ```
 
 **Design Decisions:**
@@ -183,12 +183,12 @@ Contains game logic and state management.
 **Game Loop**
 
 ```python
-async def run_game(game_state):
+def run_game(game_state):
     while character.is_alive():
         1. Display status (HP, location, time)
         2. Get player input
         3. If command: handle_command()
-        4. Else: narrator.process_action()
+        4. Else: narrator.process_action()  # Synchronous
         5. Display response
         6. Auto-save (periodic)
 ```

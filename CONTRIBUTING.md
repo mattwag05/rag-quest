@@ -44,7 +44,7 @@ mypy rag_quest/
 
 - Keep modules focused and single-purpose
 - Add docstrings to all functions and classes
-- Use async/await consistently
+- Use synchronous code for turn-based game logic
 - Prefer composition over inheritance
 
 ### Adding New Features
@@ -68,7 +68,7 @@ mypy rag_quest/
 
 - Write tests for new features
 - Use pytest fixtures for setup
-- Test async code with pytest-asyncio
+- Test synchronous game logic directly
 - Aim for >80% coverage
 
 ```bash

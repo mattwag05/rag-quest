@@ -129,6 +129,12 @@ lore/
 .config/
 .local/
 
+# Test artifacts and temporary files
+playthrough_*.txt
+playthrough_*.json
+simple_test.py
+test_playthrough*.py
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 .beads-credential-key

@@ -147,10 +147,13 @@ You're now in the game. Try these commands:
 
 1. Install Ollama: https://ollama.ai
 2. Start Ollama server: `ollama serve`
-3. Pull a model: `ollama pull llama3.1`
+3. Pull a recommended model:
+   - `ollama pull gemma4:latest` (2B-4B, fastest)
+   - `ollama pull mistral` (7B, excellent quality)
+   - `ollama pull llama2` (7B, good alternative)
 4. During setup, select "ollama"
-5. Use default URL: `http://localhost:11434/v1`
-6. Use model name: `llama3.1`
+5. Use default URL: `http://localhost:11434`
+6. Use model name: `gemma4:latest` (or your chosen model)
 
 ## Example First Actions
 
