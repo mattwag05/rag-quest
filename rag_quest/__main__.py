@@ -68,7 +68,7 @@ def _main() -> None:
 
     inventory = Inventory()
     quest_log = QuestLog()
-    narrator = Narrator(llm_provider, world_rag, character, world)
+    narrator = Narrator(llm_provider, world_rag, character, world, inventory, quest_log)
 
     # Create game state
     game_state = GameState(

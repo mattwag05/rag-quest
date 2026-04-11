@@ -247,3 +247,27 @@ ERROR: Failed to extract document 1/2: unknown_source
 [2026-04-11 17:26:17,781] INFO: 
 --- TURN 6 ---
 [2026-04-11 17:26:17,782] INFO: Action: Listen to rumors and gossip from locals
+[2026-04-11 17:28:04,785] ERROR: Error on turn 5: timed out
+[2026-04-11 17:28:04,785] INFO: 
+--- TURN 6 ---
+[2026-04-11 17:28:04,785] INFO: Action: Listen to rumors and gossip from locals
+[2026-04-11 17:28:17,787] ERROR: Error on turn 6: timed out
+[2026-04-11 17:28:17,787] INFO: 
+--- TURN 7 ---
+[2026-04-11 17:28:17,787] INFO: Action: Ask about any recent strange occurrences or mysteries
+[2026-04-11 17:30:04,789] ERROR: Error on turn 6: timed out
+[2026-04-11 17:30:04,789] INFO: 
+--- TURN 7 ---
+[2026-04-11 17:30:04,790] INFO: Action: Ask about any recent strange occurrences or mysteries
+[2026-04-11 17:30:17,792] ERROR: Error on turn 7: timed out
+[2026-04-11 17:30:17,792] INFO: 
+--- TURN 8 ---
+[2026-04-11 17:30:17,792] INFO: Action: Find a map or information about nearby locations
+[2026-04-11 17:32:04,794] ERROR: Error on turn 7: timed out
+[2026-04-11 17:32:04,795] INFO: 
+--- TURN 8 ---
+[2026-04-11 17:32:04,795] INFO: Action: Find a map or information about nearby locations
+[2026-04-11 17:32:17,797] ERROR: Error on turn 8: timed out
+[2026-04-11 17:32:17,797] INFO: 
+--- TURN 9 ---
+[2026-04-11 17:32:17,797] INFO: Action: Talk to an old sage about ancient lore

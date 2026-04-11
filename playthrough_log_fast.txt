@@ -47,3 +47,15 @@
 [2026-04-11 17:25:45,297] INFO: 
 --- TURN 6 ---
 [2026-04-11 17:25:45,297] INFO: Action: Look for the Shadow Barrens on a map
+[2026-04-11 17:27:45,301] ERROR: Error on turn 6: timed out
+[2026-04-11 17:27:45,302] INFO: 
+--- TURN 7 ---
+[2026-04-11 17:27:45,302] INFO: Action: Speak with a hooded figure in the corner
+[2026-04-11 17:29:45,306] ERROR: Error on turn 7: timed out
+[2026-04-11 17:29:45,308] INFO: 
+--- TURN 8 ---
+[2026-04-11 17:29:45,308] INFO: Action: Examine your character's background and scars
+[2026-04-11 17:31:45,312] ERROR: Error on turn 8: timed out
+[2026-04-11 17:31:45,312] INFO: 
+--- TURN 9 ---
+[2026-04-11 17:31:45,312] INFO: Action: Visit the market district

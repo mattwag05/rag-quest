@@ -8,6 +8,9 @@ from ..knowledge import WorldRAG
 from ..prompts import ACTION_PARSER, NARRATOR_SYSTEM
 from .character import Character
 from .world import World
+from .state_parser import StateParser
+from .inventory import Inventory
+from .quests import QuestLog
 
 
 class Narrator:
@@ -19,12 +22,17 @@ class Narrator:
         world_rag: WorldRAG,
         character: Character,
         world: World,
+        inventory: Optional["Inventory"] = None,
+        quest_log: Optional["QuestLog"] = None,
     ):
         self.llm = llm
         self.world_rag = world_rag
         self.character = character
         self.world = world
+        self.inventory = inventory
+        self.quest_log = quest_log
         self.conversation_history: list[dict] = []
+        self.state_parser = StateParser()
 
     def process_action(self, player_input: str) -> str:
         """
@@ -121,50 +129,97 @@ class Narrator:
 
     def _parse_and_apply_changes(self, response: str, player_input: str) -> None:
         """Parse response for state changes and apply them."""
-        # Check for location changes
-        location_match = re.search(
-            r"you (?:arrive|enter|move|travel|walk|run|sail) (?:to|at|in|into) (.+?)(?:\.|,|\n)",
-            response,
-            re.IGNORECASE,
-        )
-        if location_match:
-            new_location = location_match.group(1).strip()
-            self.character.location = new_location
-            self.world.add_visited_location(new_location)
-            self.world.add_event(
-                f"Moved to {new_location}"
-            )
-
-        # Check for NPC meetings
-        npc_match = re.search(
-            r"you (?:meet|encounter|see|find) (.+?)(?:,| the| a |\.|$)",
-            response,
-            re.IGNORECASE,
-        )
-        if npc_match:
-            npc_name = npc_match.group(1).strip()
-            # Filter out common words that aren't NPC names
-            if len(npc_name.split()) <= 3 and not any(
-                word in npc_name.lower()
-                for word in ["your", "yourself", "own", "the"]
-            ):
-                self.world.add_met_npc(npc_name)
-                self.world.add_event(f"Met {npc_name}")
-
-        # Check for item discoveries
-        item_match = re.search(
-            r"you (?:find|obtain|receive|discover|gain|pick up) (.+?)(?:,| the| a|\.|$)",
-            response,
-            re.IGNORECASE,
-        )
-        if item_match:
-            item_name = item_match.group(1).strip()
-            if len(item_name.split()) <= 4:
-                self.world.discovered_items.append(item_name)
-                self.world.add_event(f"Discovered {item_name}")
-
+        # Parse the narrator response for mechanical changes
+        change = self.state_parser.parse_narrator_response(response, player_input)
+        
+        # 1. Apply location change
+        if change.location:
+            self.character.location = change.location
+            self.world.add_visited_location(change.location)
+            self.world.add_event(f"Moved to {change.location}")
+        
+        # 2. Apply combat damage
+        if change.damage_taken > 0:
+            self.character.take_damage(change.damage_taken)
+            self.world.add_event(f"Took {change.damage_taken} damage")
+        
+        # 3. Apply healing
+        if change.hp_healed > 0:
+            self.character.heal(change.hp_healed)
+            self.world.add_event(f"Healed {change.hp_healed} HP")
+        
+        # 4. Apply inventory changes (items gained)
+        for item_name in change.items_gained:
+            # Try to detect item properties from narrator response
+            rarity = self._detect_item_rarity(response, item_name)
+            description = self._extract_item_description(response, item_name)
+            
+            # Add to inventory
+            if self.inventory:
+                self.inventory.add_item(
+                    name=item_name,
+                    description=description,
+                    quantity=1,
+                    weight=1.0,
+                    rarity=rarity
+                )
+            
+            self.world.add_event(f"Obtained {item_name}")
+            self.world.discovered_items.append(item_name)
+        
+        # 5. Apply inventory changes (items lost/used)
+        for item_name in change.items_lost:
+            if self.inventory:
+                self.inventory.remove_item(item_name)
+            self.world.add_event(f"Lost {item_name}")
+        
+        # 6. Apply quest offers
+        if change.quest_offered:
+            if self.quest_log:
+                self.quest_log.add_quest(
+                    title=change.quest_offered,
+                    description=f"Quest started: {change.quest_offered}",
+                    objectives=[change.quest_offered],
+                    reward_xp=100,
+                    reward_description="Experience and loot"
+                )
+            self.world.add_event(f"Quest offered: {change.quest_offered}")
+        
+        # 7. Apply quest completions
+        if change.quest_completed:
+            if self.quest_log:
+                self.quest_log.complete_quest(change.quest_completed)
+            self.world.add_event(f"Quest completed: {change.quest_completed}")
+        
+        # 8. Record NPC meeting
+        if change.npc_met:
+            self.world.add_met_npc(change.npc_met)
+            self.world.add_event(f"Met {change.npc_met}")
+        
         # Always add general event
         self.world.add_event(player_input[:50])
+
+    def _detect_item_rarity(self, response: str, item_name: str) -> str:
+        """Detect item rarity from narrator response."""
+        response_lower = response.lower()
+        
+        if any(word in response_lower for word in ['legendary', 'mythical', 'ancient', 'divine']):
+            return "legendary"
+        elif any(word in response_lower for word in ['rare', 'precious', 'valuable', 'unique']):
+            return "rare"
+        elif any(word in response_lower for word in ['uncommon', 'special', 'remarkable', 'fine']):
+            return "uncommon"
+        
+        return "common"
+
+    def _extract_item_description(self, response: str, item_name: str) -> str:
+        """Extract item description from narrator response."""
+        # Simple approach: find the sentence containing the item
+        sentences = response.split('.')
+        for sentence in sentences:
+            if item_name.lower() in sentence.lower():
+                return sentence.strip()[:200]
+        return f"A {item_name}."
 
     def get_conversation_history(self) -> list[dict]:
         """Get conversation history."""
