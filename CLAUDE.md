@@ -10,9 +10,9 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 
 **Why this matters**: A Gemma 4 model with excellent RAG context beats much larger models without RAG. The knowledge graph is the "long-term memory"; the LLM is just the "narrator."
 
-**Current Version**: v0.2.0 (MVP release, all core mechanics working, 50-turn playtest verified)
+**Current Version**: v0.3.0 (Combat, progression, encounters, TTS narration)
 
-**Status**: MVP complete. Game loop is fully functional with working character location, combat, inventory, and quest systems. All core gameplay mechanics verified through 50-turn playtest.
+**Status**: v0.3 complete. Game loop fully functional with D&D combat system, character progression with leveling, dynamic encounter generation, text-to-speech narration, and real LLM narrator. All core gameplay mechanics verified and production-ready.
 
 **Technology Stack**:
 - **Python 3.11+** - Core language
@@ -22,20 +22,29 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 - **PyMuPDF** - PDF text extraction
 - **pytest** - Testing framework
 
-## v0.2.0 MVP Release Summary (2026-04-11)
+## v0.3.0 Release Summary (2026-04-11)
 
-RAG-Quest v0.2.0 is the first fully playable release. All core game systems are working:
+RAG-Quest v0.3.0 adds D&D combat mechanics, character progression, and immersive TTS narration:
 
-- **Game Loop**: Fully functional with auto-save every turn
-- **Character System**: Location tracking, HP, inventory, status
-- **Combat**: Encounter generation, turn-based battles, HP damage, victory/defeat
-- **Inventory**: Item discovery, carrying, usage in gameplay
-- **Quests**: Quest offers from NPCs, tracking, completion
-- **LightRAG Integration**: Full knowledge graph retrieval for world context
-- **Documentation**: Comprehensive guides for users and developers
-- **Testing**: 50-turn playtest completed successfully with 100% success rate
+### Combat & Progression
+- **Combat System**: Dice rolling (d4-d20), initiative, attack rolls vs AC, damage calculation, critical hits
+- **Character Progression**: Six attributes (STR/DEX/CON/INT/WIS/CHA), XP, leveling to 10, class abilities
+- **Encounters**: Location-based enemy tables, difficulty scaling, boss encounters with 5x XP, loot tables
+- **Equipment**: Weapon, armor, and accessory slots with stat bonuses
 
-All P2 gameplay issues fixed. Ready for public release and gameplay.
+### Narration & Audio
+- **Real LLM Narrator**: Actual LLM calls for dynamic narration, no hardcoded responses
+- **Context Injection**: Game state, RAG knowledge, and conversation history in every prompt
+- **TTS Narration**: pyttsx3 (offline) and gTTS (online) support with voice selection
+- **Voice Commands**: /abilities, /equipment, /voice for game mechanics
+
+### Verification
+- All combat mechanics tested and working
+- Character progression with leveling system verified
+- Encounter generation with scaling and loot working
+- TTS narration functional with multiple voices
+- Real LLM narrator with context injection verified
+- All LLM providers compatible (Ollama, OpenRouter, OpenAI)
 
 ## RAG Profiles & Speed vs Fidelity Configuration
 
@@ -142,11 +151,14 @@ rag-quest/
 │   │   └── ingest.py            # Lore ingestion (txt/md/pdf)
 │   ├── engine/                  # Game logic & state
 │   │   ├── __init__.py
-│   │   ├── character.py         # Player character
+│   │   ├── character.py         # Player character with attributes & progression
 │   │   ├── world.py             # World state
 │   │   ├── inventory.py         # Item management
 │   │   ├── quests.py            # Quest tracking
+│   │   ├── combat.py            # D&D combat system with dice rolls & mechanics
+│   │   ├── encounters.py        # Encounter generation & loot tables
 │   │   ├── narrator.py          # Lightweight AI narrator & response generation
+│   │   ├── tts.py               # Text-to-speech narration (pyttsx3, gTTS)
 │   │   └── game.py              # Main game loop
 │   └── prompts/                 # System prompts
 │       ├── __init__.py

@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Version 0.2.0](https://img.shields.io/badge/version-0.2.0%20MVP-brightgreen.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.2.0)
+[![Version 0.3.0](https://img.shields.io/badge/version-0.3.0-brightgreen.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.3.0)
 
 > **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone.**
 
@@ -84,11 +84,12 @@ in these woods. There's been talk of a dragon in the mountains..."
 ## Features
 
 ### Game Mechanics
+- **D&D Combat System** — Initiative, dice rolls (d4-d20), attack vs AC, damage calculation, critical hits
+- **Character Progression** — Six attributes (STR/DEX/CON/INT/WIS/CHA), XP, leveling to 10, class abilities, equipment slots
 - **Location Tracking** — Your character's position matters; locations persist and evolve
-- **Combat System** — Turn-based battles with HP, damage calculation, and encounter difficulty
+- **Dynamic Encounters** — Location-based enemy tables, difficulty scaling, boss encounters with 5x XP rewards
 - **Inventory Management** — Find, carry, use, and lose items during gameplay
 - **Quest System** — Receive quests from NPCs, track objectives, earn rewards
-- **Character Progression** — Experience, leveling, attributes, class abilities
 - **Save System** — Auto-save every turn; load and resume any time
 
 ### LightRAG Knowledge Graph
@@ -103,6 +104,8 @@ in these woods. There's been talk of a dragon in the mountains..."
 - **ASCII Art** — Visual scene descriptions and maps (in development)
 - **Status Bar** — HP, location, inventory summary always visible
 - **Natural Actions** — Type what you want to do; the AI understands intent and context
+- **Real LLM Narrator** — No hardcoded responses; actual LLM calls generate dynamic narration based on game state
+- **Text-to-Speech** — Optional narrator voice narration (pyttsx3 or gTTS)
 
 ### LLM Providers (All First-Class Citizens)
 | Provider | Best For | Cost | Speed | Setup |
@@ -232,15 +235,57 @@ Game saves are stored at: `~/.local/share/rag-quest/saves/{world_name}.json`
 
 RAG databases live at: `~/.local/share/rag-quest/worlds/{world_name}/`
 
-## v0.2.0 Changelog
+## v0.3.0 Changelog
 
-### New in v0.2.0 MVP
+### New in v0.3.0 - Combat, Progression & TTS
+
+**D&D Combat System** ✅
+- Dice rolling (d4, d6, d8, d10, d12, d20) with configurable rolls
+- Initiative system for encounter order
+- Attack rolls vs AC with hit/miss resolution
+- Damage calculation with weapon bonuses
+- Critical hits on natural 20s
+- 20+ enemy types with scaled stats
+- Boss encounters with 5x XP rewards
+
+**Character Progression** ✅
+- Six attributes: STR, DEX, CON, INT, WIS, CHA
+- XP and leveling system (up to level 10)
+- Class abilities unlocked at milestone levels
+- Equipment slots: weapon, armor, accessory
+- Character sheet and attribute viewing
+
+**Dynamic Encounter Generation** ✅
+- Location-based enemy tables
+- Difficulty scaling (easy/normal/hard/deadly)
+- Level-scaled enemy stats
+- Loot tables with rarity tiers
+- Contextual enemy selection
+
+**Text-to-Speech Narration** ✅
+- pyttsx3 (offline) and gTTS (online) engine support
+- Voice selection and customization
+- Audio caching for repeated narration
+- Toggle with /voice command or TTS_ENABLED env var
+
+**Real LLM Narrator** ✅
+- Narrator now calls the actual LLM instead of hardcoded responses
+- Builds context from game state, RAG knowledge, and conversation history
+- 30-second timeout with retry logic
+- Graceful fallback for failures
+
+**New Commands** ✅
+- `/abilities` — Show character abilities unlocked at current level
+- `/equipment` — View and manage equipped items
+- `/voice` — Toggle TTS on/off, select voice, adjust settings
+- `/combat` — View combat stats and history
+
+### v0.2.0 Features (Inherited)
 
 **Game Loop & Mechanics** ✅
-- Core game engine with character, world, inventory, quests fully working
-- 50-turn playtest completed successfully with all systems functional
-- Location tracking and movement
-- Combat system with HP and damage calculation
+- Full game engine with character, world, inventory, quests
+- Location tracking and movement with narrator integration
+- Combat system mechanics (now with actual dice rolls and class abilities)
 - Inventory system with item discovery and usage
 - Quest system with NPC offers and completion tracking
 
@@ -254,7 +299,7 @@ RAG databases live at: `~/.local/share/rag-quest/worlds/{world_name}/`
 **LLM Providers** ✅
 - OpenAI (GPT-4, GPT-3.5-turbo)
 - OpenRouter (100+ models)
-- Ollama (local, free, private)
+- Ollama (local, free, private) — Gemma 4 E2B/E4B recommended
 - Synchronous architecture for turn-based gameplay
 
 **RAG Profiles** ✅
@@ -264,7 +309,7 @@ RAG databases live at: `~/.local/share/rag-quest/worlds/{world_name}/`
 
 **Terminal UI** ✅
 - Rich colored output with formatted panels
-- Status bar with character HP, location, inventory
+- Status bar with character HP, level, location, inventory
 - Natural language action processing
 - Graceful error recovery and fallbacks
 
@@ -272,35 +317,39 @@ RAG databases live at: `~/.local/share/rag-quest/worlds/{world_name}/`
 - Comprehensive README with quick-start guide
 - CLAUDE.md — Developer reference for AI assistants
 - AGENTS.md — LLM provider integration guide
-- ROADMAP.md — Vision for v0.3+ features
+- ROADMAP.md — Vision for v0.4+ features
 
 ### Verified Functionality
-- ✅ 50-turn playtest with all game mechanics
-- ✅ Three LLM providers working reliably
-- ✅ PDF lore ingestion and knowledge graph queries
-- ✅ Auto-save and recovery
-- ✅ Configuration via env vars or interactive setup
-- ✅ Runs on Ollama with Gemma 4 E2B/E4B models
+- ✅ Combat system with dice rolls, damage, HP
+- ✅ Character progression with 10 levels and class abilities
+- ✅ Encounter generation with loot and scaling
+- ✅ TTS narration with voice selection
+- ✅ Real LLM narrator with context injection
+- ✅ All LLM providers working (Ollama, OpenRouter, OpenAI)
+- ✅ Runs on consumer hardware with Gemma 4 E2B/E4B
 
 ## Roadmap
 
-### v0.3 (Coming Q2 2026)
+### v0.3 — Now Live
+- ✅ D&D-style combat with dice rolls and class abilities
+- ✅ Character progression with leveling and equipment
+- ✅ Dynamic encounter generation with loot
+- ✅ Text-to-speech narrator (TTS)
+- ✅ Real LLM narrator (no hardcoded responses)
+
+### v0.4 (Coming Q3-Q4 2026)
 - Multi-character parties
 - NPC relationship system and companion recruitment
 - Quest chains and branching narratives
-- **Text-to-speech narrator** (voice narration for immersion)
 - World events and faction dynamics
+- Advanced dialogue trees
 
-### v0.4 (Coming Q3 2026)
-- Multiplayer support
+### v0.5+ (Coming 2027+)
+- Multiplayer support with shared worlds
 - Cloud save synchronization
-- Community world sharing
-- Persistent cross-session economies
-
-### Future
-- Native iOS app with SwiftUI (on-device Apple Intelligence inference)
-- Web client
+- Community world sharing and templates
 - Procedural dungeon generation
+- Native iOS app with SwiftUI and Apple Intelligence
 - Advanced spell and crafting systems
 
 ## Contributing
@@ -338,6 +387,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-**v0.2.0 MVP Release — Ready for Game Night!**
+**v0.3.0 Release — Combat, Progression & Voice Narration!**
 
-Built with ❤️ for solo and group play. Designed to run on your hardware. Powered by LightRAG and lightweight LLMs.
+Built with ❤️ for solo and group play. Designed to run on your hardware. Powered by LightRAG, lightweight LLMs, and immersive TTS narration.

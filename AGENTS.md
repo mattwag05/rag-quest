@@ -8,7 +8,7 @@ RAG-Quest uses a **provider-agnostic** architecture that treats OpenAI, OpenRout
 
 **The Architectural Philosophy**: The LLM is not expected to be a large or sophisticated model. LightRAG's knowledge graph retrieval injects all necessary context per query. A 2-4B parameter model (Ollama Gemma 4 E2B or E4B) paired with strong RAG context performs as well as much larger models running blind. This enables consumer-hardware deployment and dramatically reduces costs.
 
-**v0.2.0 MVP Release (2026-04-11)**: All LLM providers verified working in production playtest. Synchronous architecture proven stable for turn-based gameplay. All three providers (Ollama, OpenRouter, OpenAI) tested and working reliably. Recommended setup: Ollama Gemma 4 E4B on GPU or E2B on CPU.
+**v0.3.0 Release (2026-04-11)**: All LLM providers verified working in production with real narrator. Narrator now makes actual LLM calls instead of hardcoded responses. Synchronous architecture proven stable for turn-based gameplay. All three providers (Ollama, OpenRouter, OpenAI) tested with dynamic narration. Recommended setup: Ollama Gemma 4 E4B on GPU or E2B on CPU.
 
 ## LLM Provider Architecture
 
@@ -299,9 +299,9 @@ The Narrator is the AI "Dungeon Master" that generates story responses. It's not
 
 **Design Philosophy**: The Narrator is intentionally simple. LightRAG does the complexity work (knowledge graph retrieval, entity matching, context relevance). The Narrator just orchestrates: query RAG, build messages, call LLM, parse response.
 
-### Narrator Flow
+### Narrator Flow (v0.3+)
 
-The narrator implements a sophisticated pipeline for generating contextual, consistent responses:
+The narrator implements a sophisticated pipeline for generating contextual, consistent responses with real LLM narration:
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -322,45 +322,60 @@ The narrator implements a sophisticated pipeline for generating contextual, cons
         ┌────────▼──────────────┐
         │  Build Message List   │
         │  - System prompt      │
+        │  - World state        │
+        │  - Character stats    │
         │  - RAG context        │
-        │  - Character status   │
-        │  - History (last 3)   │
+        │  - History (last 6)   │
         │  - Current action     │
         └────────┬──────────────┘
                  │
-        ┌────────▼──────────┐
-        │  LLM Complete     │
-        │  (call provider)  │ ← Small model is fine here
-        └────────┬──────────┘
+        ┌────────▼──────────────────┐
+        │  Real LLM Complete        │
+        │  (actual narrator call)   │ ← Gemma 4 E2B/E4B or larger
+        │  30s timeout + retry      │
+        └────────┬──────────────────┘
                  │
-   ┌─────────────────────────────────┐
-   │ Generated Response:               │
-   │ "You find old journals and       │
-   │  a small jewelry box..."         │
-   └─────────────────────────────────┘
+   ┌─────────────────────────────────────┐
+   │ Generated Response (dynamic):        │
+   │ "You carefully examine the desk.    │
+   │  Inside a hidden compartment, you   │
+   │  find old journals and a key..."    │
+   └─────────────────────────────────────┘
                  │
         ┌────────▼────────────────┐
-        │  Parse for State Changes│ ← TODO: Needs implementation
-        │  - Location changes?    │ (currently a stub)
-        │  - New NPCs?            │
-        │  - Items gained?        │
+        │  Parse for State Changes│
+        │  - Location changes     │
+        │  - Item discovery       │
+        │  - NPC encounters       │
         └────────┬────────────────┘
+                 │
+        ┌────────▼──────────────┐
+        │  TTS Narration (opt)  │
+        │  - pyttsx3 or gTTS   │
+        │  - Voice selection    │
+        │  - Audio playback     │
+        └────────┬──────────────┘
                  │
         ┌────────▼──────────────┐
         │  Record to RAG        │
         │  - New facts          │
         │  - Events             │
+        │  - Discovery log      │
         └────────┬──────────────┘
                  │
         ┌────────▼──────────────┐
         │  Update Game State    │
+        │  - Apply changes      │
+        │  - Update inventory   │
+        │  - Track XP/level     │
         │  - Add to history     │
         │  - Auto-save          │
         └────────┬──────────────┘
                  │
-        ┌────────▼──────────┐
-        │  Display Response │
-        └───────────────────┘
+        ┌────────▼──────────────┐
+        │  Display Response     │
+        │  (text + audio)       │
+        └───────────────────────┘
 ```
 
 ### Key Methods
