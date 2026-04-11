@@ -73,10 +73,14 @@ def run_game(
     save_path: Optional[Path] = None,
 ) -> None:
     """
-    Main game loop.
+    Main game loop with comprehensive error handling and auto-save.
     """
     console.clear()
     _print_banner(game_state.world)
+
+    action_count = 0
+    errors_in_row = 0
+    max_errors_in_row = 3
 
     try:
         while game_state.character.is_alive():
@@ -98,27 +102,55 @@ def run_game(
                     break
                 continue
 
-            # Process action through narrator
+            # Process action through narrator with error recovery
             with console.status("[bold green]Thinking...[/bold green]"):
                 try:
                     response = game_state.narrator.process_action(player_input)
+                    errors_in_row = 0  # Reset error counter on success
                 except Exception as e:
+                    errors_in_row += 1
                     console.print(
-                        f"[red]Error generating response: {e}[/red]"
+                        f"[yellow]⚠️  Error generating response: {type(e).__name__}[/yellow]"
                     )
-                    continue
+                    
+                    # If too many errors in a row, suggest exiting
+                    if errors_in_row >= max_errors_in_row:
+                        console.print(
+                            f"[red]Too many errors. Consider saving and restarting.[/red]"
+                        )
+                        response = (
+                            "The world seems unstable. You should find a safe place to rest "
+                            "before continuing your adventure."
+                        )
+                    else:
+                        continue
 
             # Display response
             console.print(Panel(response, border_style="blue"))
 
-            # Auto-save periodically
-            if save_path and len(game_state.narrator.conversation_history) % 4 == 0:
-                _save_game(game_state, save_path)
+            # Auto-save frequently to protect progress
+            action_count += 1
+            if save_path:
+                # Save every 3 actions or every 5 minutes of gameplay
+                if action_count % 3 == 0:
+                    try:
+                        _save_game(game_state, save_path)
+                    except Exception as e:
+                        console.print(f"[yellow]Could not auto-save: {e}[/yellow]")
 
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Game interrupted by player.[/yellow]")
     finally:
         # Cleanup
-        game_state.world_rag.close()
-        game_state.llm.close()
+        try:
+            game_state.world_rag.close()
+        except Exception as e:
+            pass
+        
+        try:
+            game_state.llm.close()
+        except Exception as e:
+            pass
 
     _print_game_over(game_state)
 

@@ -69,11 +69,37 @@ Fix the 4 P2 issues above. Target deliverable:
 
 **Implementation approach**: Enhance `Narrator._parse_and_apply_changes()` to detect and apply state changes from LLM responses using regex patterns and rule-based parsing.
 
-### P3 Issues (Nice to Have, Lower Priority)
+### P3 Issues (Completed in v0.1.1 - April 11, 2026)
 
-1. **PDF Ingestion Extremely Slow** - Workaround: Use smaller test lore files
-2. **Insufficient Narrator Context Injection** - Enhance system prompts with full game state
-3. **No Error Recovery** - Add retry logic and fallback behavior
+All three P3 issues have been addressed with comprehensive solutions:
+
+1. **PDF Ingestion Extremely Slow** ✓
+   - Implemented intelligent chunking with RAGProfileConfig
+   - Added file hash caching to skip re-ingestion of unchanged files
+   - Added PDF progress reporting with progress bars
+   - Profile-aware chunk sizes (4000 for fast, 1000 for deep)
+   - Chunking respects section boundaries for better coherence
+
+2. **Insufficient Narrator Context Injection** ✓
+   - Created multi-source context injection: location, character, action, recent events
+   - Added specialized RAG queries for different context types
+   - Enhanced system prompts with comprehensive game state
+   - Better formatting of retrieved context for LLM consumption
+
+3. **No Error Recovery** ✓
+   - Implemented retry logic with exponential backoff (up to 3 retries)
+   - Added graceful fallback responses when LLM fails
+   - Wrapped all RAG queries in try/except with safe defaults
+   - Added frequent auto-save (every 3 actions) to protect progress
+   - Error counter to warn when too many failures in a row
+
+**New Feature: RAG Profiles** ✓
+- Three user-configurable profiles: fast, balanced, deep
+- Profiles optimize chunk size, query mode, and token limits
+- Configuration via environment variable or interactive setup
+- Intelligent PDF chunking with section detection
+- File hash caching for smart change detection
+- Profile-aware ingestion reporting
 
 ---
 

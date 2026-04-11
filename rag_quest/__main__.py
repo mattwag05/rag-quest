@@ -40,8 +40,14 @@ def _main() -> None:
     world = config.create_world_from_config(game_config)
     character = config.create_character_from_config(game_config)
 
-    # Initialize RAG system
-    world_rag = WorldRAG(world.name, llm_config, llm_provider)
+    # Get RAG profile from config
+    rag_config = game_config.get("rag", {})
+    rag_profile = rag_config.get("profile", "balanced")
+    
+    console.print(f"[cyan]Using RAG profile: {rag_profile}[/cyan]")
+
+    # Initialize RAG system with profile
+    world_rag = WorldRAG(world.name, llm_config, llm_provider, rag_profile=rag_profile)
     world_rag.initialize()
 
     # Check for lore files to ingest
@@ -54,8 +60,8 @@ def _main() -> None:
                 if lore_file.is_file():
                     world_rag.ingest_file(str(lore_file))
                 else:
-                    from .knowledge import ingest_directory
-                    files = ingest_directory(str(lore_file))
+                    from .knowledge.ingest import ingest_directory
+                    files = ingest_directory(str(lore_file), profile=rag_profile)
                     for filename, content in files.items():
                         world_rag.ingest_text(content, source=filename)
                 console.print("[green]Lore ingested successfully![/green]")

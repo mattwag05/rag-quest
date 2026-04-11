@@ -36,47 +36,165 @@ class Narrator:
 
     def process_action(self, player_input: str) -> str:
         """
-        Process a player action and generate a narrative response.
+        Process a player action and generate a narrative response with error recovery.
         """
-        # Query RAG for relevant world context
-        context_query = (
-            f"Player: {self.character.name} ({self.character.race.value} "
-            f"{self.character.character_class.value})\n"
-            f"Location: {self.character.location}\n"
-            f"Action: {player_input}\n"
-            f"Recent context: {' | '.join(self.world.recent_events[-3:] if self.world.recent_events else ['None'])}"
-        )
+        try:
+            # Query RAG for relevant world context
+            location_context = self._query_location_context()
+            character_context = self._query_character_context()
+            action_context = self._query_action_context(player_input)
+            recent_events_context = self._get_recent_events_context()
 
-        world_context = self.world_rag.query_world(
-            context_query,
-            param="hybrid",
-        )
+            # Combine multiple context sources for richer narrative
+            world_context = self._combine_contexts(
+                location_context,
+                character_context,
+                action_context,
+                recent_events_context
+            )
 
-        # Build messages for LLM
-        messages = self._build_messages(player_input, world_context)
+            # Build messages for LLM
+            messages = self._build_messages(player_input, world_context)
 
-        # Generate response
-        response = self.llm.complete(
-            messages,
-            temperature=0.85,
-            max_tokens=1024,
-        )
+            # Generate response with retry logic
+            response = self._generate_response_with_retry(messages)
 
-        # Parse response for state changes
-        self._parse_and_apply_changes(response, player_input)
+            # Parse response for state changes
+            self._parse_and_apply_changes(response, player_input)
 
-        # Record the interaction
-        self.conversation_history.append(
-            {"role": "user", "content": player_input}
-        )
-        self.conversation_history.append({"role": "assistant", "content": response})
+            # Record the interaction
+            self.conversation_history.append(
+                {"role": "user", "content": player_input}
+            )
+            self.conversation_history.append({"role": "assistant", "content": response})
 
-        # Record new facts to RAG
-        self.world_rag.record_event(
-            f"{self.character.name} {player_input}"
-        )
+            # Record new facts to RAG asynchronously (don't fail on this)
+            try:
+                self.world_rag.record_event(
+                    f"{self.character.name} {player_input}"
+                )
+            except Exception as e:
+                # Log but don't crash if RAG recording fails
+                pass
 
-        return response
+            return response
+
+        except Exception as e:
+            # Last resort: return a fallback response
+            return self._get_fallback_response(str(e))
+
+    def _query_location_context(self) -> str:
+        """Query detailed context about current location."""
+        try:
+            query = f"What is {self.character.location}? What do you see, smell, hear?"
+            return self.world_rag.query_world(query) or ""
+        except Exception as e:
+            return ""
+
+    def _query_character_context(self) -> str:
+        """Query context about character, class, and recent interactions."""
+        try:
+            query = (
+                f"Character {self.character.name} is a {self.character.race.value} "
+                f"{self.character.character_class.value}. "
+                f"What do we know about this character type?"
+            )
+            return self.world_rag.query_world(query) or ""
+        except Exception as e:
+            return ""
+
+    def _query_action_context(self, action: str) -> str:
+        """Query context relevant to the player's action."""
+        try:
+            # Extract key nouns/verbs from action
+            query = f"In this world, how would someone {action}?"
+            return self.world_rag.query_world(query) or ""
+        except Exception as e:
+            return ""
+
+    def _get_recent_events_context(self) -> str:
+        """Get formatted context of recent events."""
+        if not self.world.recent_events:
+            return ""
+        return "Recent events: " + " > ".join(self.world.recent_events[-5:])
+
+    def _combine_contexts(
+        self,
+        location: str,
+        character: str,
+        action: str,
+        recent: str
+    ) -> str:
+        """Combine multiple context sources into a coherent narrative context."""
+        parts = []
+        
+        if location:
+            parts.append(f"Location Context:\n{location}")
+        
+        if character:
+            parts.append(f"Character Knowledge:\n{character}")
+        
+        if action:
+            parts.append(f"Action Context:\n{action}")
+        
+        if recent:
+            parts.append(recent)
+        
+        return "\n\n".join(parts) if parts else ""
+
+    def _generate_response_with_retry(
+        self, messages: list[dict], max_retries: int = 3
+    ) -> str:
+        """Generate response with retry logic and exponential backoff."""
+        import time
+        
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.llm.complete(
+                    messages,
+                    temperature=0.85,
+                    max_tokens=1024,
+                )
+                
+                # Validate response is not empty
+                if response and response.strip():
+                    return response
+                
+                raise ValueError("Empty response from LLM")
+                
+            except Exception as e:
+                last_error = e
+                
+                if attempt < max_retries - 1:
+                    # Exponential backoff
+                    wait_time = (2 ** attempt) * 0.5
+                    time.sleep(wait_time)
+                    continue
+        
+        # All retries failed
+        raise last_error or Exception("Failed to generate response after retries")
+
+    def _get_fallback_response(self, error_msg: str = "") -> str:
+        """Return a fallback response when LLM fails."""
+        fallback_responses = [
+            f"The dungeon master pauses for a moment, gathering their thoughts...",
+            f"There's a moment of silence as reality seems to shimmer around you...",
+            f"The world seems to fade for an instant, then refocuses...",
+            f"You feel a strange presence, as if the very fabric of reality is thinking...",
+        ]
+        
+        import random
+        base = random.choice(fallback_responses)
+        
+        # Try to construct something meaningful about current state
+        if self.character.current_hp < self.character.max_hp // 2:
+            return f"{base} You're battered and worn, but still standing."
+        elif self.character.location:
+            return f"{base} Around you is {self.character.location}."
+        else:
+            return base
 
     def _build_messages(self, player_input: str, world_context: str) -> list[dict]:
         """Build message list for the LLM."""

@@ -80,10 +80,15 @@ def load_config_from_env() -> dict:
         "background": os.getenv("CHARACTER_BACKGROUND"),
     }
 
+    rag_config = {
+        "profile": os.getenv("RAG_PROFILE", "balanced"),
+    }
+
     return {
         "llm": llm_config,
         "world": world_config,
         "character": character_config,
+        "rag": rag_config,
     }
 
 
@@ -118,11 +123,21 @@ def setup_first_run() -> dict:
     # Character creation
     character_config = _create_character()
 
+    # RAG profile setup
+    rag_profile = Prompt.ask(
+        "\n[bold]RAG Profile (speed vs fidelity)[/bold]",
+        choices=["fast", "balanced", "deep"],
+        default="balanced",
+    )
+
     # Save config
     config = {
         "llm": provider_config,
         "world": world_config,
         "character": character_config,
+        "rag": {
+            "profile": rag_profile,
+        }
     }
 
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)

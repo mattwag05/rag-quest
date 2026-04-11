@@ -55,10 +55,31 @@ This will prompt you to:
    - OpenAI (GPT-4, GPT-3.5-turbo) - Best quality, cloud-hosted
    - OpenRouter (100+ models) - Best flexibility, cloud-hosted
    - Ollama (local, free) - Best for consumer hardware, local inference
-2. **Configure the world**: Name, setting, tone
-3. **Create your character**: Name, race, class
+2. **Select RAG Profile** (speed vs fidelity tradeoff):
+   - **fast** - Large chunks, naive queries, minimal context (best for weak hardware)
+   - **balanced** - Moderate chunks, entity-focused retrieval (recommended)
+   - **deep** - Small chunks, hybrid queries, maximum context (best for immersion on capable hardware)
+3. **Configure the world**: Name, setting, tone
+4. **Create your character**: Name, race, class
 
 Configuration is saved to `~/.config/rag-quest/config.json`.
+
+### RAG Profiles Explained
+
+The RAG profile controls how the system balances speed vs narrative quality:
+
+| Profile | Chunk Size | Query Mode | Speed | Quality | Best For |
+|---------|-----------|------------|-------|---------|----------|
+| **fast** | 4000 chars | Naive | Fastest | Lower | CPU-only, testing |
+| **balanced** | 2000 chars | Local (entity) | Good | Good | Typical gameplay |
+| **deep** | 1000 chars | Hybrid | Slower | Excellent | Maximum immersion |
+
+Set via environment variable:
+```bash
+RAG_PROFILE=balanced python -m rag_quest
+```
+
+Or during interactive setup when creating a new game.
 
 ### First Game
 

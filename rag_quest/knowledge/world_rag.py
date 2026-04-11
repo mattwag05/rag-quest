@@ -7,24 +7,35 @@ from pathlib import Path
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 
-from lightrag import LightRAG
+from lightrag import LightRAG, QueryParam
 
 from ..llm import BaseLLMProvider, LLMConfig
+from .chunking import RAGProfileConfig, chunk_pdf_text
 
 
 class WorldRAG:
-    """Manages world knowledge using LightRAG."""
+    """Manages world knowledge using LightRAG with configurable profiles."""
 
     def __init__(
-        self, world_name: str, llm_config: LLMConfig, llm_provider: BaseLLMProvider
+        self,
+        world_name: str,
+        llm_config: LLMConfig,
+        llm_provider: BaseLLMProvider,
+        rag_profile: str = "balanced"
     ):
         self.world_name = world_name
         self.llm_config = llm_config
         self.llm_provider = llm_provider
+        self.rag_profile = rag_profile
+        self.profile_config = RAGProfileConfig(rag_profile)
 
         # Set up working directory
         self.data_dir = Path.home() / ".local/share/rag-quest/worlds" / world_name
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Cache directory for file hashes
+        self.cache_dir = self.data_dir / ".ingestion_cache"
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         self.rag: Optional[LightRAG] = None
         self.initialized = False
@@ -88,34 +99,76 @@ class WorldRAG:
         self.initialized = True
 
     def ingest_text(self, text: str, source: str = "lore") -> None:
-        """Ingest text into the knowledge graph."""
+        """Ingest text into the knowledge graph with profile-aware chunking."""
         if not self.initialized:
             self.initialize()
 
-        # Run insert asynchronously in thread
-        self._run_async(self.rag.ainsert(text))
+        # Chunk text based on profile for optimal ingestion
+        from .ingest import should_re_ingest
+        
+        chunk_size = self.profile_config.get_chunk_size()
+        
+        # Split text into chunks appropriate for the profile
+        from .chunking import TextChunker
+        chunker = TextChunker(self.rag_profile)
+        chunks = chunker.chunk_text(text)
+        
+        # Ingest each chunk
+        for i, chunk in enumerate(chunks):
+            try:
+                # Run insert asynchronously in thread
+                self._run_async(self.rag.ainsert(chunk))
+            except Exception as e:
+                # Log but don't crash on chunk ingestion failure
+                print(f"[!] Warning: Failed to ingest chunk {i} from {source}: {e}")
+                continue
 
     def ingest_file(self, path: str) -> None:
-        """Ingest a file into the knowledge graph."""
-        from .ingest import ingest_file as process_file
+        """Ingest a file into the knowledge graph with caching and smart chunking."""
+        from .ingest import ingest_file as process_file, should_re_ingest, save_ingest_hash
 
-        text = process_file(path)
+        # Check if file has changed since last ingestion
+        if not should_re_ingest(path, self.cache_dir):
+            print(f"[*] Skipping {Path(path).name} (already ingested, no changes detected)")
+            return
+
+        print(f"[*] Ingesting {Path(path).name} with {self.rag_profile} profile...")
+        text = process_file(path, profile=self.rag_profile)
         self.ingest_text(text, source=Path(path).name)
+        
+        # Save hash for future change detection
+        save_ingest_hash(path, self.cache_dir)
 
     def query_world(
-        self, question: str, context: str = "", param: str = "hybrid"
+        self, question: str, context: str = "", param: Optional[str] = None
     ) -> str:
-        """Query the world knowledge graph."""
+        """Query the world knowledge graph with profile-optimized settings."""
         if not self.initialized:
             self.initialize()
+
+        # Use profile's preferred query mode if not specified
+        if param is None:
+            param = self.profile_config.get_query_mode()
 
         full_query = question
         if context:
             full_query = f"{context}\n\nQuestion: {question}"
 
+        # Create QueryParam with profile-optimized settings
+        query_param = QueryParam(
+            mode=param,
+            top_k=self.profile_config.get_top_k(),
+            chunk_top_k=self.profile_config.get_chunk_top_k(),
+        )
+
         # Run query asynchronously in thread
-        result = self._run_async(self.rag.aquery(full_query, param=param))
-        return result
+        try:
+            result = self._run_async(self.rag.aquery(full_query, param=query_param))
+            return result
+        except Exception as e:
+            # Graceful fallback if query fails
+            print(f"[!] Warning: RAG query failed: {e}")
+            return ""
 
     def record_event(self, event: str) -> None:
         """Record a new game event in the knowledge graph."""

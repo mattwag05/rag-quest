@@ -22,6 +22,72 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 - **PyMuPDF** - PDF text extraction
 - **pytest** - Testing framework
 
+## RAG Profiles & Speed vs Fidelity Configuration (2026-04-11)
+
+RAG-Quest now supports user-configurable speed vs fidelity tradeoffs via **RAG Profiles**. This allows the system to adapt to different hardware capabilities and use cases.
+
+### Available Profiles
+
+**fast** - Speed optimized (weak hardware, quick testing)
+- Larger text chunks (4000 chars with 200 overlap)
+- Naive query mode (pure vector search, fastest)
+- Lower token limits (top_k: 15, chunk_top_k: 10)
+- Best for: CPU-only systems, fast iteration during development
+
+**balanced** - Default (recommended for most users)
+- Moderate chunks (2000 chars with 300 overlap)
+- Local query mode (entity-focused, good quality)
+- Standard token limits (top_k: 30, chunk_top_k: 15)
+- Best for: Consumer hardware with moderate GPU, typical gameplay
+
+**deep** - Quality optimized (capable hardware, immersive experience)
+- Smaller chunks (1000 chars with 400 overlap)
+- Hybrid query mode (entity + relationship graph, best quality)
+- Higher token limits (top_k: 50, chunk_top_k: 25)
+- Best for: High-end systems, maximum narrative immersion
+
+### Configuration
+
+Set via environment variable:
+```bash
+export RAG_PROFILE=balanced  # or: fast, deep
+python -m rag_quest
+```
+
+Or during interactive setup:
+```
+RAG Profile (speed vs fidelity): [fast/balanced/deep] ?
+```
+
+Or in config file (`~/.config/rag-quest/config.json`):
+```json
+{
+  "rag": {
+    "profile": "balanced"
+  }
+}
+```
+
+### Implementation Details
+
+**New Files**:
+- `rag_quest/knowledge/chunking.py` - RAGProfileConfig, TextChunker, intelligent chunking strategies
+
+**Modified Files**:
+- `config.py` - Added RAG profile setup in first-run wizard
+- `world_rag.py` - Profile-aware QueryParam configuration, smart chunking on ingest
+- `ingest.py` - PDF progress reporting, file hash caching for change detection
+- `narrator.py` - Improved context injection, error recovery, retry logic
+- `game.py` - Enhanced error handling, graceful fallbacks, frequent auto-save
+- `__main__.py` - Pass profile to WorldRAG initialization
+
+**Key Features**:
+- Intelligent PDF chunking that respects section boundaries
+- File hash caching to skip re-ingestion of unchanged files
+- Profile-optimized QueryParam settings for LightRAG
+- Better error recovery with retry logic and fallback responses
+- More comprehensive context injection from multiple RAG queries
+
 ## Critical Fixes Applied (2026-04-11)
 
 The following 6 critical bugs were fixed to make the game functional:
