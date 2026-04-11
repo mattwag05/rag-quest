@@ -33,7 +33,7 @@ class Narrator:
         # Query RAG for relevant world context
         context_query = (
             f"Player: {self.character.name} ({self.character.race.value} "
-            f"{self.character.class.value})\n"
+            f"{character_class})\n"
             f"Location: {self.character.location}\n"
             f"Action: {player_input}\n"
             f"Recent context: {' | '.join(self.world.recent_events[-3:] if self.world.recent_events else ['None'])}"
