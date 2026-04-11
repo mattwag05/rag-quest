@@ -308,6 +308,60 @@ Native integration with Apple's on-device foundation models as an LLM provider. 
 
 **Why this matters**: Users with Apple Silicon hardware (M-series Macs, iPhone 16 Pro+) can play RAG-Quest with zero external dependencies—just the game, LightRAG, and Apple's foundation models. Gameplay stays private and fast on their device.
 
+### iOS App with SwiftUI Interface
+
+**Timeline**: Post v0.4 / Future Vision  
+**Foundation**: Builds on Apple Intelligence Foundation Models integration
+
+Native iOS and iPadOS app bringing RAG-Quest to iPhone and iPad with seamless touch-optimized gameplay:
+
+#### Core Features
+- [ ] Native SwiftUI interface designed for mobile gameplay
+- [ ] Touch-optimized action UI (gesture-based movement, quick actions)
+- [ ] On-device LLM inference via Apple Intelligence foundation models
+- [ ] Lightweight on-device LightRAG variant for offline knowledge graph queries
+- [ ] Rich text rendering with advanced typography for narrator output
+- [ ] Haptic feedback system for gameplay events (combat hits, critical strikes, world events)
+- [ ] Full-featured inventory and character sheet interfaces
+
+#### Persistence & Sharing
+- [ ] iCloud CloudKit sync for save files and character data
+- [ ] Seamless sync between iOS and macOS versions
+- [ ] World export/import via AirDrop and iCloud
+- [ ] Campaign sharing with other players via AirDrop
+- [ ] Automatic cloud backup with conflict resolution
+
+#### User Experience
+- [ ] Split-view support for iPad (narrative on left, actions on right)
+- [ ] Dark mode optimized for extended play sessions
+- [ ] Portrait and landscape orientation support
+- [ ] Keyboard and gamepad support for iPad
+- [ ] Custom action quick-bar for frequent commands
+- [ ] Audio narrator integration (TTS from v0.3) with speaker output and volume control
+
+#### Companion macOS Support
+- [ ] SwiftUI multiplatform codebase (iOS/iPadOS/macOS)
+- [ ] Mac version with optimized desktop UI
+- [ ] Seamless game state sync across all Apple platforms
+- [ ] Native menu bar integration on macOS
+- [ ] Share worlds between mobile and desktop seamlessly
+
+#### Technical Architecture
+- [ ] Shared Swift foundation with platform-specific UI layers
+- [ ] On-device LightRAG using Core Data or similar local persistence
+- [ ] Apple Intelligence framework integration for LLM inference
+- [ ] CloudKit schema for multiplayer save sync
+- [ ] Haptic Engine integration (iOS) and Haptics framework (macOS)
+- [ ] AVFoundation for TTS audio playback
+
+**Why this matters**: RAG-Quest on mobile is pure immersion. Players can explore worlds during commutes, breaks, or relaxation time. With on-device Apple Intelligence and lightweight LightRAG, everything runs privately and instantly on their phone—no cloud dependency, no latency. Haptic feedback transforms the tactile experience, making discoveries and combat visceral. iCloud sync means your campaign seamlessly follows you from phone to iPad to Mac.
+
+**Implementation notes**: 
+- The lightweight LLM + LightRAG architecture enables this—too much compute overhead would be impossible on mobile
+- Apple Intelligence on-device models are optimized for privacy and latency, making them ideal for mobile RPG narration
+- Share via AirDrop leverages iOS native conventions for seamless social play
+- Haptic feedback is surprisingly impactful in text-based games, providing crucial sensory feedback for narrative impact
+
 ### Ecosystem
 - [ ] Official world templates
 - [ ] Community modding support
