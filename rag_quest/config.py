@@ -4,7 +4,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, Dict
 
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
@@ -21,8 +21,385 @@ CONFIG_DIR = Path.home() / ".config" / "rag-quest"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 
+# ============================================================================
+# Configuration Manager
+# ============================================================================
+
+class ConfigManager:
+    """Manages persistent configuration for RAG-Quest."""
+    
+    DEFAULT_CONFIG = {
+        "version": "0.5.2",
+        "llm": {
+            "provider": "ollama",
+            "model": "gemma4",
+            "base_url": "http://localhost:11434",
+            "api_key": None,
+        },
+        "rag": {
+            "profile": "balanced",
+        },
+        "audio": {
+            "tts_enabled": False,
+            "tts_engine": "pyttsx3",
+            "tts_voice": None,
+        },
+        "game": {
+            "auto_save_interval": 3,
+            "auto_save_slots": 3,
+            "achievements_enabled": True,
+            "dungeons_enabled": True,
+        }
+    }
+    
+    def __init__(self):
+        """Initialize config manager."""
+        self.config = self._load_config()
+    
+    def _load_config(self) -> dict:
+        """Load configuration from file, env vars, or defaults.
+        
+        Priority: env vars > config file > defaults
+        """
+        # Check for environment variables first
+        if os.getenv("LLM_PROVIDER"):
+            return self._load_from_env()
+        
+        # Check for config file
+        if CONFIG_FILE.exists():
+            try:
+                with open(CONFIG_FILE) as f:
+                    config = json.load(f)
+                    # Merge with defaults to ensure all keys exist
+                    return self._merge_with_defaults(config)
+            except Exception as e:
+                console.print(f"[yellow]Warning: Could not load config file: {e}[/yellow]")
+        
+        # Return defaults
+        return self.DEFAULT_CONFIG.copy()
+    
+    def _load_from_env(self) -> dict:
+        """Load configuration from environment variables."""
+        provider = os.getenv("LLM_PROVIDER", "ollama")
+        
+        llm_config = {
+            "provider": provider,
+        }
+        
+        # Provider-specific model/API key
+        if provider == "openai":
+            llm_config["model"] = os.getenv("OPENAI_MODEL", "gpt-4o")
+            llm_config["api_key"] = os.getenv("OPENAI_API_KEY")
+        elif provider == "openrouter":
+            llm_config["model"] = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4")
+            llm_config["api_key"] = os.getenv("OPENROUTER_API_KEY")
+        else:  # ollama
+            llm_config["model"] = os.getenv("OLLAMA_MODEL", "gemma4")
+            llm_config["base_url"] = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        
+        rag_config = {
+            "profile": os.getenv("RAG_PROFILE", "balanced"),
+        }
+        
+        audio_config = {
+            "tts_enabled": os.getenv("TTS_ENABLED", "false").lower() == "true",
+            "tts_engine": os.getenv("TTS_ENGINE", "pyttsx3"),
+            "tts_voice": os.getenv("TTS_VOICE"),
+        }
+        
+        config = {
+            "version": self.DEFAULT_CONFIG["version"],
+            "llm": llm_config,
+            "rag": rag_config,
+            "audio": audio_config,
+            "game": self.DEFAULT_CONFIG["game"].copy(),
+        }
+        
+        return config
+    
+    def _merge_with_defaults(self, config: dict) -> dict:
+        """Merge loaded config with defaults to ensure all keys exist."""
+        merged = self.DEFAULT_CONFIG.copy()
+        
+        # Deep merge
+        if "llm" in config:
+            merged["llm"].update(config["llm"])
+        if "rag" in config:
+            merged["rag"].update(config["rag"])
+        if "audio" in config:
+            merged["audio"].update(config["audio"])
+        if "game" in config:
+            merged["game"].update(config["game"])
+        
+        return merged
+    
+    def _save_config(self) -> None:
+        """Persist configuration to ~/.config/rag-quest/config.json"""
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(self.config, f, indent=2)
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get a configuration value using dot notation.
+        
+        Example: config.get("llm.model")
+        """
+        parts = key.split(".")
+        value = self.config
+        for part in parts:
+            if isinstance(value, dict):
+                value = value.get(part)
+            else:
+                return default
+        return value if value is not None else default
+    
+    def set(self, key: str, value: Any) -> None:
+        """Set and persist a configuration value using dot notation.
+        
+        Example: config.set("llm.model", "gemma4")
+        """
+        parts = key.split(".")
+        current = self.config
+        
+        # Navigate to parent of final key
+        for part in parts[:-1]:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        
+        # Set the value
+        current[parts[-1]] = value
+        self._save_config()
+    
+    def setup_wizard(self) -> dict:
+        """Interactive first-run setup wizard."""
+        console.clear()
+        console.print(
+            Panel(
+                "[bold cyan]RAG-Quest v0.5.2[/bold cyan]\nAI-Powered D&D Adventure",
+                border_style="cyan",
+            )
+        )
+        console.print("[bold]Welcome! Let's set up your adventure...[/bold]\n")
+        
+        # Step 1: LLM Provider
+        self.config["llm"] = self._setup_llm_provider()
+        
+        # Step 2: RAG Profile
+        self.config["rag"]["profile"] = self._setup_rag_profile()
+        
+        # Step 3: TTS
+        self.config["audio"]["tts_enabled"] = self._setup_tts()
+        
+        # Save config
+        self._save_config()
+        console.print("\n[green]✓ Configuration saved![/green]\n")
+        
+        return self.config
+    
+    def _setup_llm_provider(self) -> dict:
+        """Setup LLM provider with detailed explanations."""
+        console.print("[bold]LLM Provider Setup[/bold]")
+        console.print("[dim]Choose where your AI narrator runs:[/dim]\n")
+        
+        # Show options with descriptions
+        options = {
+            "1": {
+                "name": "Ollama (Local - Recommended)",
+                "desc": "Run AI locally on your machine. Fast, free, no API key needed.\n      Great for: Privacy, speed, consumer hardware with Gemma 4."
+            },
+            "2": {
+                "name": "OpenAI (Cloud)",
+                "desc": "Use OpenAI's GPT models. Requires API key and costs per request.\n      Great for: Maximum quality, if you have an API key."
+            },
+            "3": {
+                "name": "OpenRouter (Multi-Model Cloud)",
+                "desc": "Access 100+ models from one API. Requires API key and costs per request.\n      Great for: Trying different models, flexible provider."
+            },
+        }
+        
+        for key, opt in options.items():
+            console.print(f"[bold cyan]{key}[/bold cyan] {opt['name']}")
+            console.print(f"   {opt['desc']}\n")
+        
+        choice = Prompt.ask(
+            "Choose provider",
+            choices=["1", "2", "3"],
+            default="1",
+        )
+        
+        if choice == "1":
+            return self._setup_ollama()
+        elif choice == "2":
+            return self._setup_openai()
+        else:
+            return self._setup_openrouter()
+    
+    def _setup_ollama(self) -> dict:
+        """Setup Ollama provider."""
+        console.print("\n[bold]Ollama Setup[/bold]")
+        console.print("[dim]Recommended: Gemma 4 E2B (2B - fast, CPU) or E4B (4B - quality, GPU)[/dim]\n")
+        
+        model = Prompt.ask(
+            "Model name",
+            default="gemma4",
+        )
+        
+        base_url = Prompt.ask(
+            "Ollama base URL",
+            default="http://localhost:11434",
+        )
+        
+        return {
+            "provider": "ollama",
+            "model": model,
+            "base_url": base_url,
+            "api_key": None,
+        }
+    
+    def _setup_openai(self) -> dict:
+        """Setup OpenAI provider."""
+        console.print("\n[bold]OpenAI Setup[/bold]\n")
+        
+        model = Prompt.ask(
+            "Model (e.g., gpt-4o, gpt-4-turbo)",
+            default="gpt-4o",
+        )
+        
+        api_key = Prompt.ask(
+            "API key (will be saved securely)",
+            password=True,
+        )
+        
+        return {
+            "provider": "openai",
+            "model": model,
+            "api_key": api_key,
+            "base_url": None,
+        }
+    
+    def _setup_openrouter(self) -> dict:
+        """Setup OpenRouter provider."""
+        console.print("\n[bold]OpenRouter Setup[/bold]\n")
+        
+        model = Prompt.ask(
+            "Model (e.g., anthropic/claude-sonnet-4)",
+            default="anthropic/claude-sonnet-4",
+        )
+        
+        api_key = Prompt.ask(
+            "API key (will be saved securely)",
+            password=True,
+        )
+        
+        return {
+            "provider": "openrouter",
+            "model": model,
+            "api_key": api_key,
+            "base_url": None,
+        }
+    
+    def _setup_rag_profile(self) -> str:
+        """Setup RAG profile with explanations."""
+        console.print("\n[bold]RAG Profile (Speed vs Quality)[/bold]")
+        console.print("[dim]Choose how much AI context to use per narration:[/dim]\n")
+        
+        profiles = {
+            "1": {
+                "name": "fast",
+                "desc": "Quick responses, uses less context.\n      Best for: Older hardware, fast testing, limited RAM."
+            },
+            "2": {
+                "name": "balanced",
+                "desc": "Good balance of speed and quality. [DEFAULT]\n      Best for: Most users, consumer hardware, fun gameplay."
+            },
+            "3": {
+                "name": "deep",
+                "desc": "Maximum narrative quality, uses full knowledge graph.\n      Best for: High-end hardware, immersive experience, slow gameplay OK."
+            },
+        }
+        
+        for key, prof in profiles.items():
+            marker = " ← DEFAULT" if key == "2" else ""
+            console.print(f"[bold cyan]{key}[/bold cyan] {prof['name']}{marker}")
+            console.print(f"   {prof['desc']}\n")
+        
+        choice = Prompt.ask(
+            "Choose profile",
+            choices=["1", "2", "3"],
+            default="2",
+        )
+        
+        return profiles[choice]["name"]
+    
+    def _setup_tts(self) -> bool:
+        """Setup Text-to-Speech."""
+        console.print("\n[bold]Text-to-Speech[/bold]")
+        console.print("[dim]Have the narrator read responses aloud?[/dim]\n")
+        
+        enable = Confirm.ask("Enable TTS", default=False)
+        return enable
+    
+    def modify_settings_menu(self) -> None:
+        """In-game settings modification menu."""
+        while True:
+            console.clear()
+            console.print(Panel("[bold cyan]Settings[/bold cyan]", border_style="cyan"))
+            
+            # Show current settings
+            console.print("\n[bold]Current Configuration:[/bold]\n")
+            console.print(f"LLM Provider: [cyan]{self.config['llm']['provider']}[/cyan]")
+            console.print(f"Model: [cyan]{self.config['llm']['model']}[/cyan]")
+            console.print(f"RAG Profile: [cyan]{self.config['rag']['profile']}[/cyan]")
+            console.print(f"TTS: [cyan]{'Enabled' if self.config['audio']['tts_enabled'] else 'Disabled'}[/cyan]")
+            
+            console.print("\n[bold]Modify:[/bold]\n")
+            console.print("[cyan]1[/cyan] LLM Provider")
+            console.print("[cyan]2[/cyan] Model")
+            console.print("[cyan]3[/cyan] RAG Profile")
+            console.print("[cyan]4[/cyan] TTS Toggle")
+            console.print("[cyan]5[/cyan] Return to Game")
+            
+            choice = Prompt.ask("\nChoose setting", choices=["1", "2", "3", "4", "5"])
+            
+            if choice == "1":
+                self.config["llm"] = self._setup_llm_provider()
+                console.print("[green]✓ Provider updated![/green]")
+                console.print("[yellow]Note: Requires restart to take effect[/yellow]")
+                Prompt.ask("Press Enter to continue")
+            elif choice == "2":
+                model = Prompt.ask("New model name")
+                self.config["llm"]["model"] = model
+                self._save_config()
+                console.print("[green]✓ Model updated![/green]")
+                console.print("[yellow]Note: Requires restart to take effect[/yellow]")
+                Prompt.ask("Press Enter to continue")
+            elif choice == "3":
+                self.config["rag"]["profile"] = self._setup_rag_profile()
+                self._save_config()
+                console.print("[green]✓ RAG profile updated![/green]")
+                Prompt.ask("Press Enter to continue")
+            elif choice == "4":
+                self.config["audio"]["tts_enabled"] = not self.config["audio"]["tts_enabled"]
+                self._save_config()
+                status = "Enabled" if self.config["audio"]["tts_enabled"] else "Disabled"
+                console.print(f"[green]✓ TTS {status}![/green]")
+                Prompt.ask("Press Enter to continue")
+            else:
+                break
+
+
+# ============================================================================
+# Legacy API (for backward compatibility)
+# ============================================================================
+
+_global_config_manager: Optional[ConfigManager] = None
+
+
 def get_config() -> dict:
     """Get or create configuration."""
+    global _global_config_manager
+    
     # Check config file first
     if CONFIG_FILE.exists():
         with open(CONFIG_FILE) as f:
@@ -39,32 +416,31 @@ def get_config() -> dict:
             "or create a config file at ~/.config/rag-quest/config.json"
         )
 
-    return setup_first_run()
+    # Run setup wizard
+    if _global_config_manager is None:
+        _global_config_manager = ConfigManager()
+    
+    _global_config_manager.setup_wizard()
+    return _global_config_manager.config
 
 
 def load_config_from_env() -> dict:
     """Load configuration from environment variables."""
     provider = os.getenv("LLM_PROVIDER", "ollama")
-    model = os.getenv("OLLAMA_MODEL", "gemma3:4b")
-    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-
+    
     llm_config = {
         "provider": provider,
-        "model": model,
     }
 
     if provider == "openai":
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable not set")
-        llm_config["api_key"] = api_key
+        llm_config["model"] = os.getenv("OPENAI_MODEL", "gpt-4o")
+        llm_config["api_key"] = os.getenv("OPENAI_API_KEY")
     elif provider == "openrouter":
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if not api_key:
-            raise ValueError("OPENROUTER_API_KEY environment variable not set")
-        llm_config["api_key"] = api_key
+        llm_config["model"] = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4")
+        llm_config["api_key"] = os.getenv("OPENROUTER_API_KEY")
     elif provider == "ollama":
-        llm_config["base_url"] = base_url
+        llm_config["model"] = os.getenv("OLLAMA_MODEL", "gemma4")
+        llm_config["base_url"] = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
     world_config = {
         "name": os.getenv("WORLD_NAME", "Generated World"),
@@ -94,187 +470,9 @@ def load_config_from_env() -> dict:
 
 def setup_first_run() -> dict:
     """Interactive first-run setup."""
-    console.clear()
-    console.print(
-        Panel(
-            "[bold cyan]RAG-Quest[/bold cyan] - First Run Setup",
-            border_style="cyan",
-        )
-    )
-
-    # LLM Provider selection
-    provider_config = _setup_llm_provider()
-
-    # World setup
-    world_choice = Prompt.ask(
-        "\n[bold]How would you like to set up your world?[/bold]",
-        choices=["1", "2", "3"],
-        default="1",
-    )
-
-    world_config = {}
-    if world_choice == "1":
-        world_config = _setup_world_from_prompt()
-    elif world_choice == "2":
-        world_config = _setup_world_manual()
-    else:
-        world_config = _setup_world_from_lore()
-
-    # Character creation
-    character_config = _create_character()
-
-    # RAG profile setup
-    rag_profile = Prompt.ask(
-        "\n[bold]RAG Profile (speed vs fidelity)[/bold]",
-        choices=["fast", "balanced", "deep"],
-        default="balanced",
-    )
-
-    # Save config
-    config = {
-        "llm": provider_config,
-        "world": world_config,
-        "character": character_config,
-        "rag": {
-            "profile": rag_profile,
-        }
-    }
-
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=2)
-
-    console.print("\n[green]Configuration saved![/green]")
-    return config
-
-
-def _setup_llm_provider() -> dict:
-    """Setup LLM provider configuration."""
-    console.print("\n[bold]LLM Provider Setup[/bold]")
-
-    provider = Prompt.ask(
-        "Select LLM provider",
-        choices=["openai", "openrouter", "ollama"],
-        default="openrouter",
-    )
-
-    config = {"provider": provider}
-
-    if provider == "openai":
-        config["model"] = Prompt.ask(
-            "Model (e.g., gpt-4o, gpt-4-turbo)",
-            default="gpt-4o",
-        )
-        config["api_key"] = Prompt.ask(
-            "OpenAI API key",
-            password=True,
-        )
-    elif provider == "openrouter":
-        config["model"] = Prompt.ask(
-            "Model (e.g., anthropic/claude-sonnet-4)",
-            default="anthropic/claude-sonnet-4",
-        )
-        config["api_key"] = Prompt.ask(
-            "OpenRouter API key",
-            password=True,
-        )
-    else:  # ollama
-        config["model"] = Prompt.ask(
-            "Model (e.g., llama3.1, mistral)",
-            default="llama3.1",
-        )
-        config["base_url"] = Prompt.ask(
-            "Ollama base URL",
-            default="http://localhost:11434/v1",
-        )
-
-    return config
-
-
-def _setup_world_from_prompt() -> dict:
-    """Setup world from a user prompt."""
-    prompt = Prompt.ask(
-        "Describe your ideal world (e.g., 'Dark medieval fantasy with dragon riders')"
-    )
-
-    console.print("[yellow]Note: World generation from prompts is planned for v0.2[/yellow]")
-
-    return _setup_world_manual()
-
-
-def _setup_world_manual() -> dict:
-    """Manually setup world configuration."""
-    world_name = Prompt.ask("World name", default="Untitled Realm")
-    setting = Prompt.ask(
-        "World setting",
-        default="Medieval Fantasy",
-    )
-    tone = Prompt.ask(
-        "World tone (Dark, Heroic, Whimsical, etc.)",
-        default="Dark",
-    )
-    starting_location = Prompt.ask(
-        "Starting location",
-        default="A small tavern",
-    )
-
-    return {
-        "name": world_name,
-        "setting": setting,
-        "tone": tone,
-        "starting_location": starting_location,
-    }
-
-
-def _setup_world_from_lore() -> dict:
-    """Setup world from lore files."""
-    lore_path = Prompt.ask(
-        "Path to lore file or directory",
-        default="./lore",
-    )
-
-    # For now, just store the path
-    world_config = _setup_world_manual()
-    world_config["lore_path"] = lore_path
-
-    return world_config
-
-
-def _create_character() -> dict:
-    """Create player character."""
-    console.print("\n[bold]Character Creation[/bold]")
-
-    name = Prompt.ask("Character name")
-
-    # Race selection
-    races = [r.value for r in Race]
-    race_idx = Prompt.ask(
-        "Race",
-        choices=[str(i) for i in range(len(races))],
-        default="0",
-    )
-    race = Race(races[int(race_idx)])
-
-    # Class selection
-    classes = [c.value for c in CharacterClass]
-    class_idx = Prompt.ask(
-        "Class",
-        choices=[str(i) for i in range(len(classes))],
-        default="0",
-    )
-    character_class = CharacterClass(classes[int(class_idx)])
-
-    background = Prompt.ask(
-        "Character background (optional, press Enter to skip)",
-        default="",
-    )
-
-    return {
-        "name": name,
-        "race": race.name,
-        "class": character_class.name,
-        "background": background or None,
-    }
+    manager = ConfigManager()
+    manager.setup_wizard()
+    return manager.config
 
 
 def load_llm_provider(config: dict) -> tuple:

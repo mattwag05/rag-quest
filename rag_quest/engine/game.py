@@ -348,6 +348,12 @@ def _handle_command(
             if room.items:
                 console.print(f"[green]Items:[/green] {', '.join(room.items)}")
 
+    elif cmd == "/config" or cmd == "/settings":
+        # In-game settings menu
+        from ..config import ConfigManager
+        config_manager = ConfigManager()
+        config_manager.modify_settings_menu()
+
     elif cmd == "/help":
         ui.print_help()
 
