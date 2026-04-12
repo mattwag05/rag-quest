@@ -643,6 +643,23 @@ python -m py_compile rag_quest/**/*.py
 3. **PDF Ingestion Slow** — Large PDFs take minutes to ingest due to entity extraction.
    Recommend 5-10 page files for testing.
 
+### `from_dict` hardening helpers
+
+`rag_quest/engine/_serialization.py` provides two helpers used by every
+hardened deserializer:
+
+- `safe_enum(cls, value, default)` — enum lookup that tries member name
+  first, then member value, and collapses to `default` on any failure
+  (None, unknown name, wrong type). Use this for any `X[data["k"]]` or
+  `X(data["k"])` pattern in a `from_dict`.
+- `filter_init_kwargs(cls, data)` — strips dict keys that aren't valid
+  `cls.__init__` parameters. Use before `cls(**data)` so newer save
+  formats (with extra fields) don't crash older builds with "unexpected
+  keyword argument".
+
+When adding a new `from_dict` to the engine, reach for these instead of
+`data["key"]` + bracket-enum lookups. Backed by `tests/test_from_dict_hardening.py`.
+
 ### Save Format Versioning Convention
 
 New state fields bump `save_version` and add safe defaults in `GameState.from_dict()`. Policy

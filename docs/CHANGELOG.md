@@ -12,6 +12,20 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+### Changed
+- **Hardened `from_dict` deserializers against corrupted saves.** New
+  `rag_quest/engine/_serialization.py` module exposes `safe_enum(cls,
+  value, default)` (by-name-or-value enum lookup with safe fallback) and
+  `filter_init_kwargs(cls, data)` (strips keys that aren't valid
+  `__init__` parameters). Applied to `Character`, `World`, `NPC`,
+  `NPCRelationship`, `Faction`, `Quest`, `QuestObjective`, and
+  `QuestReward` `from_dict` methods. Corrupted/partial saves now load
+  with sensible defaults instead of raising `KeyError` /
+  `TypeError` tracebacks — unknown enum values (e.g. a renamed
+  `CharacterClass`) degrade to canonical defaults, and extra fields
+  from newer builds are stripped before `cls(**data)` so an older
+  binary can still load a newer save.
+
 ### Added
 - **`RAG_QUEST_DEBUG=1` env flag** — new `rag_quest/_debug.py` module exposes
   `log_swallowed_exc(context)`. When the env var is set, every additive

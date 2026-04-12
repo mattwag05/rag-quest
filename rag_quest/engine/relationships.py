@@ -2,11 +2,12 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 
 class Disposition(Enum):
     """NPC relationship status."""
+
     HOSTILE = "Hostile"
     UNFRIENDLY = "Unfriendly"
     NEUTRAL = "Neutral"
@@ -31,6 +32,7 @@ class Disposition(Enum):
 @dataclass
 class Faction:
     """A group/organization NPCs belong to."""
+
     name: str
     description: str
     values: List[str] = field(default_factory=list)
@@ -49,13 +51,19 @@ class Faction:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Faction":
-        """Deserialize faction."""
-        return cls(**data)
+        """Deserialize faction. Strips extra keys from newer save builds."""
+        from ._serialization import filter_init_kwargs
+
+        data = dict(data)
+        data.setdefault("name", "Unknown Faction")
+        data.setdefault("description", "")
+        return cls(**filter_init_kwargs(cls, data))
 
 
 @dataclass
 class NPC:
     """Represents an NPC that can be tracked."""
+
     name: str
     role: str
     disposition: Disposition = Disposition.NEUTRAL
@@ -115,15 +123,22 @@ class NPC:
 
     @classmethod
     def from_dict(cls, data: dict) -> "NPC":
-        """Deserialize NPC."""
-        data = data.copy()
-        data["disposition"] = Disposition(data["disposition"])
-        return cls(**data)
+        """Deserialize NPC with safe defaults for corrupted/partial saves."""
+        from ._serialization import filter_init_kwargs, safe_enum
+
+        data = dict(data)
+        data["disposition"] = safe_enum(
+            Disposition, data.get("disposition"), Disposition.NEUTRAL
+        )
+        data.setdefault("name", "Unknown")
+        data.setdefault("role", "Unknown")
+        return cls(**filter_init_kwargs(cls, data))
 
 
 @dataclass
 class NPCRelationship:
     """Tracks relationship with a specific NPC."""
+
     npc_name: str
     disposition: Disposition = Disposition.NEUTRAL
     trust: int = 50  # 0-100
@@ -137,7 +152,7 @@ class NPCRelationship:
     def modify_trust(self, amount: int, reason: str = "") -> None:
         """
         Modify trust with NPC.
-        
+
         Args:
             amount: Change to trust (-100 to +100)
             reason: Reason for change (stored in last interaction)
@@ -187,10 +202,15 @@ class NPCRelationship:
 
     @classmethod
     def from_dict(cls, data: dict) -> "NPCRelationship":
-        """Deserialize relationship."""
-        data = data.copy()
-        data["disposition"] = Disposition(data["disposition"])
-        return cls(**data)
+        """Deserialize relationship with safe defaults for corrupted saves."""
+        from ._serialization import filter_init_kwargs, safe_enum
+
+        data = dict(data)
+        data["disposition"] = safe_enum(
+            Disposition, data.get("disposition"), Disposition.NEUTRAL
+        )
+        data.setdefault("npc_name", "Unknown")
+        return cls(**filter_init_kwargs(cls, data))
 
 
 class RelationshipManager:
@@ -200,7 +220,9 @@ class RelationshipManager:
         self.relationships: Dict[str, NPCRelationship] = {}
         self.npcs: Dict[str, NPC] = {}
         self.factions: Dict[str, Faction] = {}
-        self.faction_reputation: Dict[str, int] = {}  # Faction name -> reputation (-100 to 100)
+        self.faction_reputation: Dict[str, int] = (
+            {}
+        )  # Faction name -> reputation (-100 to 100)
 
     def add_npc(self, npc_name: str, role: str = "Unknown") -> NPC:
         """Add an NPC to track relationships with."""
@@ -208,14 +230,19 @@ class RelationshipManager:
         self.npcs[npc_name] = npc
         return npc
 
-    def add_faction(self, name: str, description: str, values: List[str] = None,
-                    members: List[str] = None) -> Faction:
+    def add_faction(
+        self,
+        name: str,
+        description: str,
+        values: List[str] = None,
+        members: List[str] = None,
+    ) -> Faction:
         """Create a new faction."""
         faction = Faction(
             name=name,
             description=description,
             values=values or [],
-            members=members or []
+            members=members or [],
         )
         self.factions[name] = faction
         self.faction_reputation[name] = 0
@@ -265,10 +292,23 @@ class RelationshipManager:
         elif rel.disposition == Disposition.NEUTRAL:
             interactions = ["Greet", "Ask for directions", "Trade"]
         elif rel.disposition == Disposition.FRIENDLY:
-            interactions = ["Chat", "Ask for help", "Trade", "Exchange gifts", "Request information"]
+            interactions = [
+                "Chat",
+                "Ask for help",
+                "Trade",
+                "Exchange gifts",
+                "Request information",
+            ]
         elif rel.disposition == Disposition.ALLIED:
-            interactions = ["Chat", "Ask for help", "Trade", "Exchange gifts", "Request information",
-                          "Recruit to party", "Request favor"]
+            interactions = [
+                "Chat",
+                "Ask for help",
+                "Trade",
+                "Exchange gifts",
+                "Request information",
+                "Recruit to party",
+                "Request favor",
+            ]
 
         interactions.extend(rel.dialogue_options_unlocked)
         return list(set(interactions))
@@ -304,10 +344,10 @@ class RelationshipManager:
             lines.append(f"{faction_name}: {rep_display}")
 
         return "\n".join(lines)
-    
+
     def change_disposition(self, npc_name: str, disposition: str) -> None:
         """Change NPC disposition (backwards compatibility alias).
-        
+
         Args:
             npc_name: Name of the NPC
             disposition: Disposition level as string
@@ -320,21 +360,28 @@ class RelationshipManager:
             "friendly": 70,
             "allied": 90,
         }
-        
+
         trust_value = disposition_map.get(disposition.lower(), 50)
         change = trust_value - 50  # Center around neutral
-        self.modify_relationship(npc_name, change, f"Disposition changed to {disposition}")
-    
-    def create_faction(self, name: str, description: str, values: List[str] = None,
-                      members: List[str] = None) -> Faction:
+        self.modify_relationship(
+            npc_name, change, f"Disposition changed to {disposition}"
+        )
+
+    def create_faction(
+        self,
+        name: str,
+        description: str,
+        values: List[str] = None,
+        members: List[str] = None,
+    ) -> Faction:
         """Create a new faction (backwards compatibility alias for add_faction).
-        
+
         Args:
             name: Faction name
             description: Faction description
             values: List of faction values
             members: List of initial members
-        
+
         Returns:
             Created Faction object
         """
@@ -344,7 +391,9 @@ class RelationshipManager:
         """Serialize relationship manager."""
         return {
             "npcs": {name: npc.to_dict() for name, npc in self.npcs.items()},
-            "relationships": {name: rel.to_dict() for name, rel in self.relationships.items()},
+            "relationships": {
+                name: rel.to_dict() for name, rel in self.relationships.items()
+            },
             "factions": {name: fac.to_dict() for name, fac in self.factions.items()},
             "faction_reputation": self.faction_reputation,
         }

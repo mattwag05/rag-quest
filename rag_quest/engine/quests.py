@@ -2,11 +2,12 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Dict, List
+from typing import Dict, List, Optional
 
 
 class QuestStatus(Enum):
     """Quest status."""
+
     ACTIVE = "Active"
     COMPLETED = "Completed"
     FAILED = "Failed"
@@ -15,6 +16,7 @@ class QuestStatus(Enum):
 
 class ObjectiveType(Enum):
     """Types of quest objectives."""
+
     KILL = "Kill"
     FETCH = "Fetch"
     TALK = "Talk"
@@ -26,6 +28,7 @@ class ObjectiveType(Enum):
 @dataclass
 class QuestObjective:
     """A single objective within a quest."""
+
     description: str
     objective_type: ObjectiveType
     target: str  # Enemy name, item name, NPC name, or location
@@ -54,24 +57,39 @@ class QuestObjective:
 
     @classmethod
     def from_dict(cls, data: dict) -> "QuestObjective":
-        """Deserialize objective."""
-        data = data.copy()
-        data["objective_type"] = ObjectiveType(data["objective_type"])
-        return cls(**data)
+        """Deserialize objective with safe defaults."""
+        from ._serialization import filter_init_kwargs, safe_enum
+
+        data = dict(data)
+        data["objective_type"] = safe_enum(
+            ObjectiveType,
+            data.get("objective_type"),
+            list(ObjectiveType)[0],
+        )
+        data.setdefault("description", "")
+        data.setdefault("target", "")
+        return cls(**filter_init_kwargs(cls, data))
 
 
 @dataclass
 class QuestReward:
     """Reward for completing a quest."""
+
     xp: int = 0
     gold: int = 0
     items: List[str] = field(default_factory=list)
     reputation_changes: Dict[str, int] = field(default_factory=dict)
     unlocks: List[str] = field(default_factory=list)
-    
-    def __init__(self, xp: int = 0, gold: int = 0, items: List[str] = None,
-                 reputation_changes: Dict[str, int] = None, unlocks: List[str] = None,
-                 experience: int = None):  # Backwards compatibility parameter
+
+    def __init__(
+        self,
+        xp: int = 0,
+        gold: int = 0,
+        items: List[str] = None,
+        reputation_changes: Dict[str, int] = None,
+        unlocks: List[str] = None,
+        experience: int = None,
+    ):  # Backwards compatibility parameter
         """Initialize reward. Supports both 'xp' and 'experience' parameters."""
         # Handle backwards compatibility: 'experience' is an alias for 'xp'
         if experience is not None and xp == 0:
@@ -94,8 +112,10 @@ class QuestReward:
 
     @classmethod
     def from_dict(cls, data: dict) -> "QuestReward":
-        """Deserialize reward."""
-        return cls(**data)
+        """Deserialize reward, ignoring unknown keys."""
+        from ._serialization import filter_init_kwargs
+
+        return cls(**filter_init_kwargs(cls, dict(data)))
 
 
 @dataclass
@@ -155,17 +175,24 @@ class Quest:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Quest":
-        """Create from dictionary."""
-        data = data.copy()
-        data["status"] = QuestStatus[data["status"]]
-        data["objectives"] = [QuestObjective.from_dict(obj) for obj in data.get("objectives", [])]
+        """Create from dictionary with safe defaults for corrupted saves."""
+        from ._serialization import filter_init_kwargs, safe_enum
+
+        data = dict(data)
+        data["status"] = safe_enum(QuestStatus, data.get("status"), QuestStatus.ACTIVE)
+        data["objectives"] = [
+            QuestObjective.from_dict(obj) for obj in data.get("objectives", [])
+        ]
         data["reward"] = QuestReward.from_dict(data.get("reward", {}))
-        return cls(**data)
+        data.setdefault("title", "Untitled Quest")
+        data.setdefault("description", "")
+        return cls(**filter_init_kwargs(cls, data))
 
 
 @dataclass
 class QuestChain:
     """A series of connected quests that tell a story."""
+
     chain_id: str
     title: str
     description: str
@@ -184,10 +211,10 @@ class QuestChain:
     def advance(self, choice: Optional[str] = None) -> bool:
         """
         Advance to the next quest in the chain.
-        
+
         Args:
             choice: For branching points, which branch to take
-        
+
         Returns:
             True if advanced, False if chain is complete
         """
@@ -212,7 +239,9 @@ class QuestChain:
         """Add a quest to the chain."""
         self.quests.append(quest)
 
-    def add_branching_point(self, quest_index: int, choice: str, next_index: int) -> None:
+    def add_branching_point(
+        self, quest_index: int, choice: str, next_index: int
+    ) -> None:
         """Add a branching point to the chain."""
         if quest_index not in self.branching_points:
             self.branching_points[quest_index] = {}
@@ -271,7 +300,7 @@ class QuestLog:
             # Handle reward_xp / reward_description style arguments from narrator.py
             if reward_xp or reward_description:
                 reward = QuestReward(xp=reward_xp, gold=0)
-            
+
             quest = Quest(
                 title=title or "Untitled Quest",
                 description=description or "",
@@ -280,7 +309,7 @@ class QuestLog:
                 giver_npc=giver_npc,
                 required_level=required_level,
             )
-        
+
         self.quests.append(quest)
         return quest
 
@@ -340,7 +369,9 @@ class QuestLog:
         """Convert to dictionary."""
         return {
             "quests": [q.to_dict() for q in self.quests],
-            "quest_chains": {cid: chain.to_dict() for cid, chain in self.quest_chains.items()},
+            "quest_chains": {
+                cid: chain.to_dict() for cid, chain in self.quest_chains.items()
+            },
         }
 
     @classmethod

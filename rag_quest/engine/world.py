@@ -117,14 +117,21 @@ class World:
 
     @classmethod
     def from_dict(cls, data: dict) -> "World":
-        """Create from dictionary."""
-        data = data.copy()
-        data["current_time"] = TimeOfDay[data["current_time"]]
-        data["weather"] = Weather[data["weather"]]
+        """Create from dictionary with safe defaults for corrupted/partial saves."""
+        from ._serialization import filter_init_kwargs, safe_enum
+
+        data = dict(data)
+        data.setdefault("name", "Unknown World")
+        data.setdefault("setting", "Generic Fantasy")
+        data.setdefault("tone", "Neutral")
+        data["current_time"] = safe_enum(
+            TimeOfDay, data.get("current_time"), TimeOfDay.MORNING
+        )
+        data["weather"] = safe_enum(Weather, data.get("weather"), Weather.CLEAR)
         data["visited_locations"] = set(data.get("visited_locations", []))
         data["npcs_met"] = set(data.get("npcs_met", []))
         data["bases"] = [Base.from_dict(b) for b in data.get("bases", [])]
         data["module_registry"] = ModuleRegistry.from_dict(
             data.get("module_registry", {})
         )
-        return cls(**data)
+        return cls(**filter_init_kwargs(cls, data))
