@@ -1,322 +1,156 @@
-================================================================================
-RAG-QUEST v0.4 COMPREHENSIVE PLAYTEST SUMMARY
-================================================================================
-Date: April 11, 2026
-Tester: Claude AI Agent
-Test Type: Systematic feature testing (22 focused turns)
-Scope: All major game systems
+RAG-QUEST v0.5.0 END-TO-END PLAYTEST SUMMARY
+============================================================
 
-================================================================================
-HEADLINE RESULTS
-================================================================================
+TEST DATE: 2026-04-12
+DURATION: ~2 minutes
+ENVIRONMENT: Python 3.14.3, macOS
+COVERAGE: 14 major game systems, 55 individual tests
 
-OVERALL STATUS: v0.4 has solid foundation with 6 critical API bugs
+RESULTS
+============================================================
+Total Tests Run: 55
+Tests Passed: 39 (70%)
+Tests Failed: 16 (30%)
+Bugs Found: 12 (4 P1, 8 P2)
 
-Test Results:
-- 22 test turns completed
-- 9 major systems evaluated
-- 5 systems working well
-- 4 systems have blockers
-- Success Rate: 78%
-
-Critical Issues: 6 (all API-related, not logic errors)
-- P1 (blocker): 4 issues
-- P2 (important): 2 issues
-- P3 (nice-to-have): 2 improvements
-
-Estimated Fix Time: 2-3 hours for all P1 bugs
-
-================================================================================
 SYSTEMS TESTED
-================================================================================
+============================================================
+1.  Character & World Setup               ✓ PASS (12/12)
+2.  Engine Systems Init                   ⚠ MOSTLY (11/12) - Inventory.to_dict() empty
+3.  World Exploration & State             ✓ PASS (4/4)
+4.  Combat System                         ✗ FAIL (1/4) - Enemy/CombatEncounter API broken
+5.  Character Progression                 ✓ PASS (3/3)
+6.  Party & Relationships                 ⚠ MOSTLY (4/6) - RelationshipManager API changed
+7.  Quest System                          ⚠ MOSTLY (2/3) - QuestReward API changed
+8.  World Events                          ✗ FAIL (0/4) - WorldEvent API redesigned
+9.  Achievements                          ⚠ MOSTLY (2/3) - check_achievements() API changed
+10. Procedural Dungeons                   ✗ FAIL (0/2) - DifficultyLevel enum wrong
+11. Save/Load System                      ✗ FAIL (1/4) - SaveManager API completely redesigned
+12. World Export/Import                   ✗ FAIL (0/2) - WorldExporter now static method
+13. Multiplayer                           ✗ FAIL (0/3) - MultiplayerSession constructor changed
+14. Full Integration                      ✓ PASS (2/2)
 
-✓ PASS - Character Creation
-  - Race selection and bonuses working
-  - Class selection and bonuses working
-  - All 5 classes supported (Fighter, Mage, Rogue, Ranger, Cleric)
-  - All 5 races supported (Human, Elf, Dwarf, Halfling, Orc)
-  - Stat calculations correct
-  
-✓ PASS - World State Management
-  - World initialization (name, setting, tone)
-  - Location tracking (visited locations persist)
-  - Time advancement (day/night cycle works)
-  - Weather system implemented
-  - Day counter increments correctly
-  
-⚠ PARTIAL - Inventory System
-  - Item addition: WORKS
-  - Weight tracking: WORKS
-  - Quantity tracking: WORKS
-  - Item serialization: WORKS
-  - Listing method: BROKEN (returns list not dict)
-  
-✗ FAIL - Party System
-  - Cannot initialize with leader parameter
-  - API signature mismatch with documentation
-  - Cannot recruit companions
-  - BLOCKS: All party gameplay
-  
-✗ FAIL - Relationship System
-  - RelationshipManager initializes
-  - add_npc() method MISSING
-  - Cannot add NPCs to track
-  - BLOCKS: All NPC interactions
-  
-✓ PASS - Combat System
-  - Combat encounters initialize correctly
-  - Damage calculations work
-  - Initiative/turn order implicit
-  - Combat resolution completes
-  - Victory conditions trigger
-  - XP awards on victory
-  
-⚠ PARTIAL - Experience & Leveling
-  - XP accumulation: WORKS
-  - Manual leveling: WORKS
-  - Auto-level trigger: UNTESTED
-  - Ability unlock: INCOMPLETE (methods missing)
-  
-✗ FAIL - Quest System
-  - Can create Quest objects
-  - add_quest() has API confusion
-  - Cannot add quests to log reliably
-  - BLOCKS: Quest gameplay
-  
-✗ FAIL - Events System
-  - EventManager initializes
-  - EventType enum INCOMPLETE
-  - Missing event types (CONFLICT, DISCOVERY, etc.)
-  - Cannot create diverse events
-  
-✗ FAIL - Abilities System
-  - CLASS_ABILITIES constant defined
-  - get_available_abilities() MISSING
-  - Cannot list or use abilities
-  - BLOCKS: Ability gameplay
-  
-✓ PASS - Save/Load System
-  - Character data serializes to JSON
-  - Can load and restore game state
-  - Experience persists
-  - Level persists
-  - Works reliably
-  
-✓ PASS - Edge Cases
-  - Empty inventory: Handled gracefully
-  - Very high stats: No crashes
-  - Long input: No crashes
-  - Invalid commands: Handled
+CRITICAL ISSUES (P1 - BLOCKING RELEASE)
+============================================================
+1. Enemy Class Attributes (rag-quest-5h0)
+   - Enemy uses current_hp, not hp
+   - Breaks CombatEncounter integration
+   - Status: OPEN
 
-================================================================================
-CRITICAL BUGS (P1 - Must Fix Before Release)
-================================================================================
+2. CombatEncounter Constructor (rag-quest-m0h)
+   - Constructor: (player_character, enemies: List[Enemy])
+   - Docs show: (player=..., enemy=..., location=...)
+   - Status: OPEN
 
-BUG #1: Inventory.list_items() Wrong Return Type
-  File: rag_quest/engine/inventory.py
-  Issue: Returns list instead of dict[str, Item]
-  Impact: All inventory iteration code breaks
-  Turn Found: 5
-  Fix Time: 5 minutes
-  Severity: BLOCKER
-  
-BUG #2: Party.__init__() Signature Wrong
-  File: rag_quest/engine/party.py
-  Issue: Doesn't accept 'leader' keyword argument
-  Impact: Cannot initialize party, all party gameplay blocked
-  Turn Found: 7
-  Fix Time: 10 minutes
-  Severity: BLOCKER
-  
-BUG #3: RelationshipManager.add_npc() Missing
-  File: rag_quest/engine/relationships.py
-  Issue: Method doesn't exist
-  Impact: Cannot add NPCs, relationship system non-functional
-  Turn Found: 9
-  Fix Time: 30 minutes
-  Severity: BLOCKER
-  
-BUG #4: QuestLog.add_quest() API Mismatch
-  File: rag_quest/engine/quests.py
-  Issue: Signature doesn't match usage documentation
-  Impact: Cannot add quests reliably
-  Turn Found: 14
-  Fix Time: 20 minutes
-  Severity: BLOCKER
+3. SaveManager API Completely Redesigned (rag-quest-pxd)
+   - Real: save_game(game_state: dict, slot_name: str | None)
+   - Docs: save_game(world_name, slot, state, character_name)
+   - Real: list_saves() - no parameters
+   - Docs: list_saves(world_name)
+   - Real: load_game(slot_id: str)
+   - Docs: load_game(world_name, slot)
+   - Status: OPEN
 
-================================================================================
-HIGH PRIORITY ISSUES (P2 - Before v0.5)
-================================================================================
+4. Inventory Serialization Broken (rag-quest-96h)
+   - Inventory.to_dict() returns empty dict {}
+   - Should serialize item state
+   - Breaks save/load functionality
+   - Status: OPEN
 
-BUG #5: EventType Enum Incomplete
-  File: rag_quest/engine/events.py
-  Issue: Missing CONFLICT, DISCOVERY, TRADE, POLITICS types
-  Impact: Cannot create diverse events
-  Turn Found: 16
-  Fix Time: 15 minutes
-  
-BUG #6: Character Ability Methods Missing
-  File: rag_quest/engine/character.py
-  Issue: No get_available_abilities() method
-  Impact: Cannot list or use abilities
-  Turn Found: 17
-  Fix Time: 15 minutes
+MAJOR ISSUES (P2 - SHOULD FIX BEFORE RELEASE)
+============================================================
+1. RelationshipManager Method Names Changed (rag-quest-a86)
+   - change_disposition() → modify_relationship()
+   - create_faction() → add_faction()
+   - Status: OPEN
 
-================================================================================
-WHAT WORKS WELL
-================================================================================
+2. WorldExporter API Changed (rag-quest-l0k)
+   - Now static: export_world(game_state: dict, output_path: Path, author, description)
+   - Was instance: export_world(world=..., character_name=..., output_path=...)
+   - Status: OPEN
 
-1. Combat Engine
-   - Damage calculations
-   - Battle resolution
-   - Victory conditions
-   - Good game feel
+3. Quest Reward Parameter Names (rag-quest-ara)
+   - Uses: xp (not reward_xp or experience)
+   - Uses: gold (not reward_gold)
+   - Status: OPEN
 
-2. Character Creation
-   - Race/class selection
-   - Stat bonuses applied correctly
-   - Six D&D attributes
-   - Equipment slots
+4. WorldEvent Constructor Redesigned (rag-quest-lxh)
+   - Uses: name, severity, duration_turns, turns_remaining
+   - Docs show: title, description, event_type, location
+   - Status: OPEN
 
-3. World Management
-   - Location tracking
-   - Time advancement
-   - Day/night cycle
-   - Weather system
-   - Setting/tone
+5. AchievementManager.check_achievements() API (rag-quest-3n2)
+   - Takes: game_state: dict
+   - Docs show: player: Character
+   - Breaks game loop integration
+   - Status: OPEN
 
-4. Inventory (Core)
-   - Adding items
-   - Weight tracking
-   - Quantity management
-   - Item metadata (rarity, description)
-   - Serialization
+6. DifficultyLevel Enum Values (rag-quest-q70)
+   - Has: EASY, NORMAL, HARD
+   - Docs/tests expect: EASY, MEDIUM, HARD
+   - Status: OPEN
 
-5. Save/Load
-   - JSON serialization works
-   - Character data persists
-   - Experience preserved
-   - Level preserved
-   - Reliable
+7. MultiplayerSession Constructor (rag-quest-12r)
+   - Real: (session_id: str, host_player: str)
+   - Docs: (world_name, max_players)
+   - Status: OPEN
 
-6. Experience System
-   - XP accumulation
-   - Manual leveling works
-   - Foundation for progression
+8. EventManager Missing Method (rag-quest-74x)
+   - Missing: get_active_events()
+   - Referenced in docs but not implemented
+   - Status: OPEN
 
-================================================================================
-WHAT NEEDS WORK
-================================================================================
+KEY FINDINGS
+============================================================
+✓ WORKING WELL:
+  - Character creation and serialization
+  - World state management and time advancement
+  - Party member management
+  - Quest log basic functionality
+  - Full game state serialization/deserialization
+  - Achievement system loading
+  - Basic dungeon generation (if API fixed)
 
-Before v0.4.1 Release (Critical):
-  - Fix 4 P1 bugs (estimated 2 hours)
-  - Rerun playtest after fixes
-  - Verify all blocked systems work
+✗ BROKEN:
+  - Combat system (Enemy/CombatEncounter)
+  - Save/load system (API completely changed)
+  - World export/import (API changed)
+  - Event management (API changed)
+  - Multiplayer session (API changed)
 
-Before v0.5 Release (Important):
-  - Complete EventType enum
-  - Add ability lookup methods
-  - Implement quest progression
-  - Test full quest chains
-  - Verify NPC interaction flow
+⚠ PARTIALLY WORKING:
+  - Inventory (serialization broken)
+  - Relationships (method names changed)
+  - Quests (parameter names changed)
+  - Achievements (API signature changed)
 
-Nice to Have (Polish):
-  - Consistent API naming patterns
-  - Better error messages
-  - Complete type hints
-  - Comprehensive docstrings
-  - Ability usage in combat
-
-================================================================================
 RECOMMENDATIONS
-================================================================================
+============================================================
+1. NOT READY FOR RELEASE - Fix P1 issues first
+2. Document all API breaking changes from v0.4 to v0.5
+3. Update CLAUDE.md with actual signatures
+4. Consider compatibility layer for save/load system
+5. Add integration tests to catch these issues earlier
+6. Establish API stability guidelines before releases
 
-IMMEDIATE (Next 2-3 hours):
-1. Fix BUG #1-4 (critical path blockers)
-2. Rerun playtest to verify fixes
-3. Tag v0.4.1 with bug fixes
-4. Deploy to production
+TEST FILES
+============================================================
+- test_v050_e2e.py         : Test script (521 lines)
+- v050_test_log.txt        : Detailed test output
+- V050_PLAYTEST_FINDINGS.md: Full analysis report
 
-SHORT TERM (This sprint):
-1. Complete EventType enum (BUG #5)
-2. Add ability methods (BUG #6)
-3. Implement quest progression
-4. Test party combat flow
+GIT COMMITS
+============================================================
+- test: v0.5.0 end-to-end comprehensive playtest
+- beads: File 12 critical bugs found in v0.5.0 playtest
 
-MEDIUM TERM (v0.5 sprint):
-1. Multiplayer support
-2. Cloud saves
-3. World sharing
-4. NPC dialogue expansion
-5. Ability usage in combat
-
-================================================================================
-TEST COVERAGE METRICS
-================================================================================
-
-Systems Tested: 9 / 9 (100%)
-- Character System: 100% tested
-- World System: 100% tested
-- Combat System: 100% tested
-- Inventory System: 80% tested (listing broken)
-- Party System: 10% tested (initialization broken)
-- Relationship System: 10% tested (add_npc missing)
-- Quest System: 30% tested (add_quest API broken)
-- Event System: 50% tested (enum incomplete)
-- Save/Load System: 100% tested
-- Ability System: 20% tested (methods missing)
-
-Overall Coverage: ~63% functionality working
-
-Feature Completeness:
-- Core game loop: 100%
-- Combat mechanics: 100%
-- Character progression: 80%
-- World management: 100%
-- Social systems: 10% (blocked by bugs)
-- Quest system: 30% (blocked by bugs)
-- Persistence: 100%
-
-================================================================================
-FILES GENERATED
-================================================================================
-
-Playtest Scripts:
-- test_v04_comprehensive.py (422 lines)
-- test_v04_playtest.py (1077 lines, initial version)
-- test_save.json (sample save file)
-
-Documentation:
-- PLAYTEST_FINDINGS.md (detailed analysis)
-- docs/TEST_REPORT_v04.md (executive report)
-- PLAYTEST_SUMMARY.txt (this file)
-- README.md (updated with known issues)
-- ROADMAP.md (updated v0.4 status)
-
-Issue Tracking:
-- .beads-issues.md (bug descriptions for beads)
-
-================================================================================
 CONCLUSION
-================================================================================
+============================================================
+v0.5.0 has undergone significant architectural changes that
+break backward compatibility with documented APIs. While core
+game systems work (70% pass rate on basic initialization),
+real-world usage would be problematic due to 12 documented
+API mismatches in save/load, combat, events, and multiplayer.
 
-RAG-Quest v0.4 has a strong foundation. The core systems (combat, character
-creation, inventory, world state, save/load) are solid and well-implemented.
-
-The main issues are API inconsistencies rather than logic errors. The bugs
-found are all related to method signatures and missing methods—the underlying
-game mechanics are sound.
-
-With focused effort on the 6 identified bugs (estimated 2-3 hours total), the
-system will be production-ready. The fixes are straightforward and low-risk.
-
-Recommendation: Fix critical bugs immediately, run follow-up playtest, then
-proceed to v0.5 feature development.
-
-Status: READY FOR BUG FIX SPRINT
-
-================================================================================
-Test Date: April 11, 2026
-Tester: Claude AI Agent
-Generated: 20:47 UTC
-================================================================================
+Recommendation: Postpone release until P1 issues are fixed
+and all documented APIs are verified against implementation.
