@@ -25,6 +25,8 @@ def main() -> None:
         sys.exit(_cmd_export_campaign(positional[1:]))
     if positional and positional[0] == "import-campaign":
         sys.exit(_cmd_import_campaign(positional[1:]))
+    if positional and positional[0] == "serve":
+        sys.exit(_cmd_serve(sys.argv[2:]))
 
     try:
         _main()
@@ -209,6 +211,30 @@ def _cmd_import_campaign(args: list[str]) -> int:
         console.print(
             "  [dim]no save.json in archive — you'll start a new character[/dim]"
         )
+    return 0
+
+
+def _cmd_serve(args: list[str]) -> int:
+    """Subcommand: rag-quest serve [--host HOST] [--port PORT].
+
+    Launches the FastAPI web wrapper via uvicorn. Requires the
+    optional `[web]` extras (fastapi + uvicorn) — install with
+    `pip install -e '.[web]'`.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(prog="rag-quest serve", add_help=True)
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+    opts = parser.parse_args(args)
+
+    from .web.app import run as run_web
+
+    try:
+        run_web(host=opts.host, port=opts.port)
+    except ImportError as exc:
+        ui.print_error(str(exc))
+        return 1
     return 0
 
 

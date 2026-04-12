@@ -38,6 +38,23 @@ changelog" for the full convention.
   <file.rqworld>` wrap the round-trip so players can move a campaign
   between machines without a cloud account.
 
+### Added
+- **v0.8 web scaffold** — new `rag_quest/web/` subpackage holds a
+  FastAPI app (`rag_quest.web.app.app`), an in-memory `SessionStore`
+  that registers loaded-campaign triples (`GameState` / `Narrator`
+  / `WorldRAG`) by save name, and a `rag_quest.web.app.run(host,
+  port)` uvicorn launcher. `fastapi` + `uvicorn` are pulled in via a
+  new optional `[web]` extras group — the base install stays slim.
+  CLI gains `rag-quest serve [--host 127.0.0.1] [--port 8000]` which
+  hands off to uvicorn; missing-extras failures raise ImportError
+  with a clear install hint instead of a confusing
+  `ModuleNotFoundError`. One endpoint ships in this sub-bead:
+  `GET /healthz` → `{"status": "ok", "version": __version__}`.
+  Subsequent sub-beads (tracked under rag-quest-a7h) add `/saves`,
+  `/session/load`, `/session/{id}/state`, `POST /session/{id}/turn`,
+  the SSE streaming variant, and a static HTML frontend. 5 new
+  scaffold tests in `tests/test_v08_web_scaffold.py`. (rag-quest-9gx)
+
 ### Fixed
 - **`run_game` shutdown catches now route through `log_swallowed_exc`.**
   The `finally` block in `rag_quest/engine/game.py::run_game` wraps

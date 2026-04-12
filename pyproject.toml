@@ -30,6 +30,10 @@ dev = [
     "isort>=5.0",
     "mypy>=1.0",
 ]
+web = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
 
 [project.scripts]
 rag-quest = "rag_quest.__main__:main"
