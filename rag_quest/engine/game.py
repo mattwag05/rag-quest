@@ -537,6 +537,12 @@ def _handle_command(
     elif cmd == "/lore" or cmd == "/l":
         _cmd_lore(parts, game_state)
 
+    # ------------------------------------------------------------------
+    # v0.7 Hub Bases: /base, /base claim [name]
+    # ------------------------------------------------------------------
+    elif cmd == "/base":
+        _cmd_base(parts, game_state)
+
     else:
         ui.print_unknown_command(cmd)
 
@@ -730,6 +736,51 @@ def _cmd_lore(parts: list, game_state: GameState) -> None:
         table.add_row(entry.name, entry.summary or "")
     console.print(table)
     console.print(f"[dim]Use /lore {sub} <name> for a detailed RAG lookup.[/dim]")
+
+
+def _cmd_base(parts: list, game_state: GameState) -> None:
+    """List bases or claim a new one at the current location.
+
+    Usage:
+      /base                — list all claimed bases
+      /base claim [name]   — claim the current location as a base
+    """
+    sub = parts[1].lower() if len(parts) > 1 else None
+    world = game_state.world
+
+    if sub == "claim":
+        supplied_name = " ".join(parts[2:]).strip() if len(parts) > 2 else ""
+        location = game_state.character.location or ""
+        base = world.claim_base_at(location, name=supplied_name)
+        if base is not None:
+            ui.print_success(
+                f"Claimed {base.name} at {base.location_ref} as your base."
+            )
+        elif not location.strip():
+            ui.print_warning("You have no known location to claim yet.")
+        else:
+            ui.print_warning(f"A base already exists at {location}.")
+        return
+
+    if not world.bases:
+        console.print(
+            "[yellow]You have no bases yet. Use /base claim [name] at a location "
+            "you'd like to make your own.[/yellow]"
+        )
+        return
+
+    from rich.table import Table
+
+    table = Table(title="Your Bases", border_style="magenta")
+    table.add_column("Name", style="bold")
+    table.add_column("Location")
+    table.add_column("Services")
+    table.add_column("Storage", justify="right")
+    for base in world.bases:
+        services = ", ".join(base.services) if base.services else "—"
+        storage_count = len(base.storage.items)
+        table.add_row(base.name, base.location_ref, services, str(storage_count))
+    console.print(table)
 
 
 def _print_banner(world: World) -> None:

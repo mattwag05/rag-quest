@@ -21,6 +21,7 @@ class StateChange:
     npc_recruited: Optional[str] = None
     npc_relationship_change: Dict[str, int] = None
     world_event_triggered: Optional[str] = None
+    claim_base: bool = False  # narrator confirmed a base claim at current location
 
     def __post_init__(self):
         if self.items_gained is None:
@@ -215,6 +216,28 @@ class StateParser:
             "chair",
         }
 
+        # Base-claim phrasings. Narrator must explicitly tie the location to a
+        # dwelling-word (base/stronghold/headquarters/hideout/etc). Player
+        # saying "claim it" alone doesn't fire — the pattern looks at narrator
+        # prose, not player input.
+        #
+        # Dwelling words trigger a claim ONLY when preceded by a possessive
+        # ("your"/"thy") — "claim the treasure chest" never matches, "buy a
+        # base for the statue" never matches. Leading verbs are restrictive
+        # (claim / make / establish / found / become / be your).
+        _dwell = r"(?:base|stronghold|headquarters|hideout|refuge|keep|encampment)"
+        _poss = r"(?:your|thy)"
+        self.claim_base_patterns = [
+            re.compile(p, re.IGNORECASE)
+            for p in (
+                rf"claim(?:s|ed|ing)?\s+.{{1,60}}?\s+as\s+{_poss}\s+(?:new\s+|own\s+)?{_dwell}\b",
+                rf"(?:make[s]?|made|makes)\s+.{{1,60}}?\s+{_poss}\s+(?:new\s+|own\s+)?{_dwell}\b",
+                rf"\b(?:this|it|here)\s+(?:is\s+now|becomes|shall\s+be|will\s+be)\s+{_poss}\s+(?:new\s+|own\s+)?{_dwell}\b",
+                rf"\bshall\s+be\s+{_poss}\s+(?:new\s+|own\s+)?(?:{_dwell}|hideaway|sanctuary)\b",
+                rf"(?:establish(?:es|ed)?|found(?:s|ed)?)\s+(?:a|{_poss}|the)\s+(?:new\s+)?(?:{_dwell}|camp|outpost)\s+here",
+            )
+        ]
+
         # Trailing preposition clauses (or dangling prepositions) that leak
         # into greedy extractions. Matches "...at dawn" AND "...in" at EOL.
         self._trailing_prep_pattern = re.compile(
@@ -325,7 +348,14 @@ class StateParser:
         # 6. Parse NPC meetings
         change.npc_met = self._extract_npc(response)
 
+        # 7. Parse base claim (v0.7)
+        change.claim_base = self._detect_claim_base(response)
+
         return change
+
+    def _detect_claim_base(self, response: str) -> bool:
+        """True iff the narrator confirmed a base claim at the current location."""
+        return any(p.search(response) for p in self.claim_base_patterns)
 
     def _extract_location(self, response: str) -> Optional[str]:
         """Extract location from response."""

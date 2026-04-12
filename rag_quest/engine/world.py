@@ -71,6 +71,22 @@ class World:
         if len(self.recent_events) > 10:
             self.recent_events.pop(0)
 
+    def claim_base_at(self, location: str, name: str = "") -> Optional[Base]:
+        """Claim a Base at the given location.
+
+        Dedupes on `location_ref`. Returns the new `Base` on success, or None
+        if `location` is empty or a base already exists there.
+        """
+        location = (location or "").strip()
+        if not location:
+            return None
+        if any(b.location_ref == location for b in self.bases):
+            return None
+        base = Base(name=(name or "").strip() or location, location_ref=location)
+        self.bases.append(base)
+        self.add_event(f"Claimed {base.name} as a base")
+        return base
+
     def get_context(self) -> str:
         """Get a formatted world context string."""
         lines = [

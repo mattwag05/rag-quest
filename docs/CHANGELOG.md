@@ -16,8 +16,13 @@ changelog" for the full convention.
 - **v0.7 foundation: `Base` entity** — new `rag_quest/engine/bases.py` with `Base`
   dataclass (name, location_ref, storage `Inventory`, stationed NPCs, services,
   upgrades) plus `World.bases: list[Base]` that round-trips through `to_dict` /
-  `from_dict`. Not yet wired into gameplay — scaffolding for `/base` claim, service
-  menus, and the `.rqworld` exporter. Old saves without `bases` load as empty.
+  `from_dict`. Old saves without `bases` load as empty.
+- **v0.7: Base claim flow** — narrator phrasings like *"claim the ruined tower as
+  your stronghold"*, *"make this your headquarters"*, or *"this shall be your
+  hideout"* now create a `Base` at the character's current location via a new
+  `StateChange.claim_base` rule. New `/base` command lists claimed bases;
+  `/base claim [name]` is a deterministic escape hatch when regex detection
+  doesn't catch the narrator's phrasing. Claims dedupe on `location_ref`.
 
 ### Fixed
 - State parser: strip Markdown emphasis markers (`**`, `__`, `*`, `_`) from extracted

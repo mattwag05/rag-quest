@@ -381,11 +381,17 @@ unless `notetaker.auto_summary` is set false in config. `/canonize N` promotes a
 into LightRAG via `WorldRAG.ingest_text(body, source="canonized")` — hard boundary means
 raw notes never silently touch retrieval.
 
-**Hub Bases (v0.7 foundation, `engine/bases.py`)** — `Base` dataclass (name,
-location_ref, `storage: Inventory`, `stationed_npcs`, `services`, `upgrades`) lives
-on `World.bases: list[Base]` and serializes alongside the rest of world state.
-Currently scaffolding only — no command routing or state-parser rules yet. Claim
-flow, `/base` menu, and save-format v3 bump land in follow-up beads.
+**Hub Bases (v0.7, `engine/bases.py`)** — `Base` dataclass (name, location_ref,
+`storage: Inventory`, `stationed_npcs`, `services`, `upgrades`) lives on
+`World.bases: list[Base]` and serializes alongside the rest of world state.
+Claim flow: `StateChange.claim_base` fires when the narrator emits phrases like
+*"claim X as your stronghold"* or *"this shall be your hideout"*; the narrator's
+state-change handler calls `World.claim_base_at(location, name)`, which dedupes
+on `location_ref` and returns the new `Base` (or `None`). The `/base` command
+lists claimed bases; `/base claim [name]` is the deterministic escape hatch and
+calls the same `World` method directly. Service
+menus and save-format v3 bump land in follow-up beads (`rag-quest-cxp`,
+`rag-quest-vei`).
 
 **Encyclopedia (`engine/encyclopedia.py`)** — Pure wrapper. `LoreEncyclopedia.list_entries()`
 reads from `World.visited_locations`, `World.npcs_met`,

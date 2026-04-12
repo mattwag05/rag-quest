@@ -351,6 +351,10 @@ Provide a vivid, engaging narrative response to the character's action. Keep it 
             self.world.add_met_npc(change.npc_met)
             self.world.add_event(f"Met {change.npc_met}")
 
+        # 9. Claim a base at the current location when narrator confirms it.
+        if change.claim_base:
+            self.world.claim_base_at(self.character.location or "")
+
         # Always add general event
         self.world.add_event(player_input[:50])
 
