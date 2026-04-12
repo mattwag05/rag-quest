@@ -254,6 +254,14 @@ def process_action(self, action: str, game_state: GameState) -> str:
 
 **Key Point**: The LLM is called with **game state + RAG context + player action**. The RAG knowledge graph ensures consistency, so even a small model produces coherent narratives.
 
+## v0.8 streaming additions
+
+- `BaseLLMProvider.stream_complete(messages)` — abstract method with a safe single-chunk fallback from `.complete()`. Every provider is streamable without a type check.
+- New providers inherit the fallback for free; opt in to real streaming by overriding `stream_complete` and using `yield` instead of `return`.
+- OpenAI-compatible providers share `rag_quest.llm._sse.stream_openai_chat(client, path, payload)` — pass `"stream": True` in the payload and `yield from` the helper.
+- Ollama uses line-delimited JSON, not SSE — each line is a JSON object with `message.content` holding the next token chunk, `done: true` terminates. Example: `rag_quest/llm/ollama_provider.py:stream_complete`.
+- Test streaming providers with a `_MockStreamResponse` context manager that exposes `iter_lines()` (see `tests/test_v08_streaming.py`). No real network calls.
+
 ## Adding a New Provider
 
 To add a new LLM provider (e.g., Anthropic Claude, Cohere, etc.):

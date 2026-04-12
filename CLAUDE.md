@@ -659,6 +659,15 @@ mypy rag_quest/
 python -m py_compile rag_quest/**/*.py
 ```
 
+## Session Gotchas (rediscover-tax savers)
+
+- **Run tests as `.venv/bin/python -m pytest`**, not `.venv/bin/pytest` — the venv's pytest shim has a sys-path bug that fails with `ModuleNotFoundError: rag_quest` on a fresh editable install.
+- **Bumping `__version__`?** Update BOTH `rag_quest/__init__.py` AND `pyproject.toml`. They've drifted before (pyproject stayed at 0.5.6 while `__init__.py` reached 0.6.0) — check both with `grep -n version pyproject.toml rag_quest/__init__.py` when cutting a release.
+- **Character HP roundtrip**: `Character.__init__` recomputes `max_hp` / `current_hp` / `damage_dice` from race+class+level. `to_dict` → `from_dict` preserves identity fields (name, race, class, level, xp, location) but NOT combat stats. Roundtrip tests should only assert on identity.
+- **PostToolUse hook auto-runs `black` + `isort`** on `.py` files after every Edit/Write. Don't manually format between edits — it's wasted work. The "file state is current in your context" note means the hook ran.
+- **Rich `Live` can fail** in non-interactive / subshell contexts. Any new streaming UI helper must wrap the `with Live(...)` block in `try/except` and fall back to a plain `console.print(Panel(...))` (see `ui.stream_narrator_response` for the pattern).
+- **Pre-push gate requires `/simplify` approval**: run the skill, then `touch /tmp/.claude-simplify-approved` before `git commit` AND again before `git push` (both fire the hook). For doc-only commits, the flag may be set manually per the global CLAUDE.md exception.
+
 ## Known Design Limitations
 
 1. **State parser is heuristic** — `engine/state_parser.py` now extracts location changes,
