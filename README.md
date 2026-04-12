@@ -49,11 +49,8 @@
 - **No Command-Line Experience Needed** — Welcoming interface, helpful prompts, no jargon
 - **Command Shortcuts** — `/i` for inventory, `/s` for stats, `/q` for quests, `/p` for party, `/h` for help
 - **Smart Error Handling** — Actionable error messages, zero tracebacks, graceful recovery
-- **Interactive Tutorial** — Built-in `/tutorial` command walks new players through 9 guided steps
-- **User Guide** — Downloadable Word document covering all game features for non-technical users
 - **Text-to-Speech Narration** — Optional TTS with multiple voices (pyttsx3 offline, gTTS online)
 - **RAG Profiles** — Choose speed vs quality (fast/balanced/deep) based on your hardware
-- **25-Turn Automated Test Suite** — All core game systems verified in simulation
 
 ## Quick Start (5 Minutes)
 
