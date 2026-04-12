@@ -239,22 +239,35 @@ class QuestLog:
 
     def add_quest(
         self,
-        title: str,
-        description: str,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
         objectives: Optional[List[QuestObjective]] = None,
         reward: Optional[QuestReward] = None,
         giver_npc: str = "Unknown",
         required_level: int = 1,
+        reward_xp: int = 0,
+        reward_description: str = "",
     ) -> Quest:
-        """Add a new quest."""
-        quest = Quest(
-            title=title,
-            description=description,
-            objectives=objectives or [],
-            reward=reward or QuestReward(),
-            giver_npc=giver_npc,
-            required_level=required_level,
-        )
+        """Add a new quest. Can be called with either a Quest object or individual fields."""
+        # Handle both calling styles: add_quest(quest_object) or add_quest(title=..., description=...)
+        if isinstance(title, Quest):
+            # Called with Quest object as first positional argument
+            quest = title
+        else:
+            # Called with individual fields
+            # Handle reward_xp / reward_description style arguments from narrator.py
+            if reward_xp or reward_description:
+                reward = QuestReward(xp=reward_xp, gold=0)
+            
+            quest = Quest(
+                title=title or "Untitled Quest",
+                description=description or "",
+                objectives=objectives or [],
+                reward=reward or QuestReward(),
+                giver_npc=giver_npc,
+                required_level=required_level,
+            )
+        
         self.quests.append(quest)
         return quest
 

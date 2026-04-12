@@ -1,0 +1,161 @@
+============================================================
+RAG-QUEST v0.4 COMPREHENSIVE PLAYTEST
+============================================================
+Start: 2026-04-11 20:47:51.880357
+
+
+=== PHASE 1: CHARACTER CREATION ===
+
+[TURN 01] Create character (Dwarf Fighter)
+  Created: Thorin (Dwarf Fighter)
+  HP: 30/30, XP: 0, Level: 1
+  Stats: STR=12 DEX=10 CON=13
+
+=== PHASE 2: WORLD STATE ===
+
+[TURN 02] Initialize world
+  World: Khazad-dum (Medieval Fantasy)
+  Time: Morning, Weather: Clear
+  Day: 1
+
+[TURN 03] Visit locations
+  Visited locations: {'Forest', 'Tavern'}
+  Current location count: 2
+
+[TURN 04] Advance time
+  Time advanced to: Noon
+  Time after multiple advances: Morning, Day: 2
+
+=== PHASE 3: INVENTORY SYSTEM ===
+
+[TURN 05] Initialize inventory and add items
+  Items in inventory: 83
+[ERROR] Turn 5 failed: 'str' object has no attribute 'items'
+Traceback (most recent call last):
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 52, in test_turn
+    result = func()
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 127, in turn_5
+    for name, item in list(items.items())[:3]:
+                           ^^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'items'
+
+[TURN 06] Add rare item and check capacity
+
+=== PHASE 4: PARTY SYSTEM ===
+
+[TURN 07] Create party
+[ERROR] Turn 7 failed: Party.__init__() got an unexpected keyword argument 'leader'
+Traceback (most recent call last):
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 52, in test_turn
+    result = func()
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 148, in turn_7
+    party = Party(leader=char)
+TypeError: Party.__init__() got an unexpected keyword argument 'leader'
+
+[TURN 08] Recruit party member
+
+=== PHASE 5: RELATIONSHIP SYSTEM ===
+
+[TURN 09] Initialize relationships
+[ERROR] Turn 9 failed: 'RelationshipManager' object has no attribute 'add_npc'
+Traceback (most recent call last):
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 52, in test_turn
+    result = func()
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 176, in turn_9
+    rel_mgr.add_npc("Barkeep", "Tavern owner")
+    ^^^^^^^^^^^^^^^
+AttributeError: 'RelationshipManager' object has no attribute 'add_npc'
+
+[TURN 10] Give gift to NPC
+
+=== PHASE 6: COMBAT SYSTEM ===
+
+[TURN 11] Initialize combat encounter
+  Combat vs Goblin
+  Player: Thorin HP=30
+  Enemy: Goblin HP=18
+
+[TURN 12] Complete combat encounter
+  Round 1: Player deals 7 damage
+  Enemy counter: 5 damage to player
+  Round 2: Player deals 4 damage
+  Enemy counter: 5 damage to player
+  Round 3: Player deals 11 damage
+  Victory! Defeated Goblin
+
+[TURN 13] Gain XP from combat
+  XP gain: 0 -> 250
+
+=== PHASE 7: QUEST SYSTEM ===
+
+[TURN 14] Create and track quests
+[ERROR] Turn 14 failed: QuestLog.add_quest() missing 1 required positional argument: 'description'
+Traceback (most recent call last):
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 52, in test_turn
+    result = func()
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 269, in turn_14
+    quest_log.add_quest(quest)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^
+TypeError: QuestLog.add_quest() missing 1 required positional argument: 'description'
+
+[TURN 15] Review quest details
+
+=== PHASE 8: WORLD EVENTS ===
+
+[TURN 16] Create world events
+  Event manager initialized
+[ERROR] Turn 16 failed: type object 'EventType' has no attribute 'CONFLICT'
+Traceback (most recent call last):
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 52, in test_turn
+    result = func()
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 302, in turn_16
+    type=EventType.CONFLICT,
+         ^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'EventType' has no attribute 'CONFLICT'
+
+=== PHASE 9: CHARACTER ABILITIES ===
+
+[TURN 17] Check available abilities
+[ERROR] Turn 17 failed: 'Character' object has no attribute 'get_available_abilities'
+Traceback (most recent call last):
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 52, in test_turn
+    result = func()
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 317, in turn_17
+    abilities = char.get_available_abilities()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Character' object has no attribute 'get_available_abilities'
+
+[TURN 18] Level up and check new abilities
+[ERROR] Turn 18 failed: 'Character' object has no attribute 'get_available_abilities'
+Traceback (most recent call last):
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 52, in test_turn
+    result = func()
+  File "/Users/matthewwagner/Desktop/Projects/rag-quest/test_v04_comprehensive.py", line 329, in turn_18
+    abilities = char.get_available_abilities()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Character' object has no attribute 'get_available_abilities'
+
+=== PHASE 10: SAVE/LOAD SYSTEM ===
+
+[TURN 19] Save game state
+  Saved game to /Users/matthewwagner/Desktop/Projects/rag-quest/test_save.json
+
+[TURN 20] Load and verify save
+  Loaded save file
+  Character: Thorin Level 3
+  Experience: 250
+
+=== PHASE 11: EDGE CASES ===
+
+[TURN 21] Empty inventory handling
+  Empty inventory items: 24
+
+[TURN 22] High stat character
+  Set character to max stats: STR=20 INT=20
+
+============================================================
+PLAYTEST COMPLETE
+End: 2026-04-11 20:47:51.881731
+Errors: 7
+Warnings: 0
+============================================================

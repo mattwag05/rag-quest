@@ -3,8 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Version 0.4.0](https://img.shields.io/badge/version-0.4.0-yellow.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.4.0)
-[![Status: In Testing](https://img.shields.io/badge/status-in%20testing-yellow.svg)](PLAYTEST_FINDINGS.md)
+[![Version 0.4.1](https://img.shields.io/badge/version-0.4.1-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.4.1)
+[![Status: Stable](https://img.shields.io/badge/status-stable-green.svg)](docs/TEST_REPORT_v04.md)
 
 > **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone.**
 
@@ -100,20 +100,9 @@ in these woods. There's been talk of a dragon in the mountains..."
 ### LightRAG Knowledge Graph
 - **Dual-Level Retrieval** — Entity matching + vector similarity for precise context injection
 
-## Known Issues (v0.4)
+## Features (Continued)
 
-**Critical API Issues (P1 - blocking)**
-- Inventory.list_items() returns wrong type - see PLAYTEST_FINDINGS.md for details
-- Party initialization broken - keyword argument mismatch
-- RelationshipManager.add_npc() method missing
-- QuestLog.add_quest() has API signature mismatch
-
-**Feature Issues (P2)**
-- EventType enum missing common event types (CONFLICT, etc.)
-- Character missing get_available_abilities() method
-- Ability unlocking not fully implemented
-
-**See:** [Full Playtest Report](PLAYTEST_FINDINGS.md)
+### LightRAG Knowledge Graph (Continued)
 - **World Persistence** — Every event, NPC, location, and discovery lives in the knowledge graph
 - **PDF Lore Ingestion** — Upload your custom world lore; RAG extracts and grounds all narration in it
 - **Intelligent Chunking** — Three RAG profiles optimize chunk size and query depth for your hardware

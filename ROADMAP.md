@@ -183,8 +183,9 @@ All three P3 issues have been addressed with comprehensive solutions:
 
 ## v0.4 - Social & Narrative Depth ✅
 
-**Status**: ✅ COMPLETE (Released 2026-04-11)
+**Status**: ✅ COMPLETE & POLISHED (v0.4.1 Released 2026-04-11)
 **Focus**: Multi-character parties, NPC relationships, quest chains, and world events
+**Latest**: v0.4.1 - All 6 API integration bugs fixed and verified via comprehensive integration test (19 test cases, 100% pass rate)
 
 ### Features Completed ✅
 
@@ -235,9 +236,26 @@ All three P3 issues have been addressed with comprehensive solutions:
 - Narrator generates party-aware responses considering companion dynamics
 - Small model sufficient; RAG handles all relationship and event knowledge
 
+### v0.4.1 Bug Fixes (2026-04-11)
+
+**Status**: ✅ COMPLETE - All API integration bugs fixed and verified
+
+Six critical bugs found in v0.4 playtest were fixed and verified:
+
+1. **Inventory.list_items()** ✅ - Fixed return type and dict iteration
+2. **Party.__init__()** ✅ - Added missing `leader` keyword argument support
+3. **RelationshipManager.add_npc()** ✅ - Implemented missing method with full NPC tracking
+4. **QuestLog.add_quest()** ✅ - Fixed API to support both Quest objects and individual parameters
+5. **EventType enum** ✅ - Added missing CONFLICT event type
+6. **Character.get_available_abilities()** ✅ - Added missing ability listing method
+
+**Verification**: Created comprehensive integration test suite with 19 test cases covering all fixed systems, 30-turn simulation, and full GameState interaction. All tests passing.
+
+**Release Quality**: v0.4.1 is production-ready with all documented APIs working correctly.
+
 ---
 
-## v0.5 - Multiplayer & Persistence
+## v0.5 - Multiplayer & Persistence (Next Target)
 
 **Timeline**: Q4 2026 - Q1 2027  
 **Focus**: Enable shared worlds and long-term persistence

@@ -16,6 +16,7 @@ class EventType(Enum):
     SOCIAL = "Social"
     COMBAT = "Combat"
     SUPERNATURAL = "Supernatural"
+    CONFLICT = "Conflict"
 
 
 class EventSeverity(Enum):

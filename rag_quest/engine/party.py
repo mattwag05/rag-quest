@@ -145,10 +145,11 @@ class PartyMember:
 class Party:
     """Manages the player's party of companions."""
 
-    def __init__(self, max_size: int = 4):
+    def __init__(self, max_size: int = 4, leader: Optional['PartyMember'] = None):
         """Initialize party. Default size includes player."""
         self.members: List[PartyMember] = []
         self.max_size = max_size
+        self.leader = leader
 
     def add_member(self, member: PartyMember) -> bool:
         """
@@ -234,11 +235,14 @@ class Party:
         return {
             "members": [m.to_dict() for m in self.members],
             "max_size": self.max_size,
+            "leader": self.leader.to_dict() if self.leader else None,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "Party":
         """Deserialize party."""
-        party = cls(max_size=data.get("max_size", 4))
+        leader_data = data.get("leader")
+        leader = PartyMember.from_dict(leader_data) if leader_data else None
+        party = cls(max_size=data.get("max_size", 4), leader=leader)
         party.members = [PartyMember.from_dict(m) for m in data.get("members", [])]
         return party

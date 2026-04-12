@@ -240,6 +240,10 @@ class Character:
         """Get list of unlocked ability names."""
         return [a.name for a in self.unlocked_abilities]
 
+    def get_available_abilities(self) -> List[str]:
+        """Get list of available ability names. Alias for get_abilities()."""
+        return self.get_abilities()
+
     @classmethod
     def from_dict(cls, data: dict) -> "Character":
         """Create a character from a dictionary."""

@@ -54,6 +54,74 @@ class Faction:
 
 
 @dataclass
+class NPC:
+    """Represents an NPC that can be tracked."""
+    name: str
+    role: str
+    disposition: Disposition = Disposition.NEUTRAL
+    trust: int = 50  # 0-100
+    interactions_count: int = 0
+    last_interaction_summary: str = ""
+    faction_affiliations: List[str] = field(default_factory=list)
+    gifts_given: List[str] = field(default_factory=list)
+    quests_completed_for: List[str] = field(default_factory=list)
+    dialogue_options_unlocked: List[str] = field(default_factory=list)
+
+    def modify_trust(self, amount: int, reason: str = "") -> None:
+        """Modify trust with NPC."""
+        self.trust = max(0, min(100, self.trust + amount))
+        self.disposition = Disposition.from_trust(self.trust)
+        if reason:
+            self.last_interaction_summary = reason
+        self.interactions_count += 1
+
+    def give_gift(self, gift_name: str) -> None:
+        """Record giving a gift to NPC."""
+        self.gifts_given.append(gift_name)
+        self.modify_trust(10, f"Gave gift: {gift_name}")
+
+    def complete_quest(self, quest_name: str) -> None:
+        """Record completing a quest for NPC."""
+        self.quests_completed_for.append(quest_name)
+        self.modify_trust(15, f"Completed quest: {quest_name}")
+
+    def unlock_dialogue_option(self, option: str) -> None:
+        """Unlock a dialogue option at higher trust levels."""
+        if option not in self.dialogue_options_unlocked:
+            self.dialogue_options_unlocked.append(option)
+
+    def can_recruit(self) -> bool:
+        """Check if NPC can be recruited (friendly or allied)."""
+        return self.disposition in [Disposition.FRIENDLY, Disposition.ALLIED]
+
+    def get_shop_discount(self) -> float:
+        """Get shop price multiplier based on trust (0.5 to 1.0)."""
+        return max(0.5, 1.0 - (self.trust / 200))
+
+    def to_dict(self) -> dict:
+        """Serialize NPC."""
+        return {
+            "name": self.name,
+            "role": self.role,
+            "disposition": self.disposition.value,
+            "trust": self.trust,
+            "interactions_count": self.interactions_count,
+            "last_interaction_summary": self.last_interaction_summary,
+            "faction_affiliations": self.faction_affiliations,
+            "gifts_given": self.gifts_given,
+            "quests_completed_for": self.quests_completed_for,
+            "dialogue_options_unlocked": self.dialogue_options_unlocked,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "NPC":
+        """Deserialize NPC."""
+        data = data.copy()
+        data["disposition"] = Disposition(data["disposition"])
+        return cls(**data)
+
+
+@dataclass
 class NPCRelationship:
     """Tracks relationship with a specific NPC."""
     npc_name: str
@@ -130,8 +198,15 @@ class RelationshipManager:
 
     def __init__(self):
         self.relationships: Dict[str, NPCRelationship] = {}
+        self.npcs: Dict[str, NPC] = {}
         self.factions: Dict[str, Faction] = {}
         self.faction_reputation: Dict[str, int] = {}  # Faction name -> reputation (-100 to 100)
+
+    def add_npc(self, npc_name: str, role: str = "Unknown") -> NPC:
+        """Add an NPC to track relationships with."""
+        npc = NPC(name=npc_name, role=role)
+        self.npcs[npc_name] = npc
+        return npc
 
     def add_faction(self, name: str, description: str, values: List[str] = None,
                     members: List[str] = None) -> Faction:
@@ -233,6 +308,7 @@ class RelationshipManager:
     def to_dict(self) -> dict:
         """Serialize relationship manager."""
         return {
+            "npcs": {name: npc.to_dict() for name, npc in self.npcs.items()},
             "relationships": {name: rel.to_dict() for name, rel in self.relationships.items()},
             "factions": {name: fac.to_dict() for name, fac in self.factions.items()},
             "faction_reputation": self.faction_reputation,
@@ -242,6 +318,10 @@ class RelationshipManager:
     def from_dict(cls, data: dict) -> "RelationshipManager":
         """Deserialize relationship manager."""
         mgr = cls()
+        mgr.npcs = {
+            name: NPC.from_dict(npc_data)
+            for name, npc_data in data.get("npcs", {}).items()
+        }
         mgr.relationships = {
             name: NPCRelationship.from_dict(rel)
             for name, rel in data.get("relationships", {}).items()
