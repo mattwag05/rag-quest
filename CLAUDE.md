@@ -108,7 +108,110 @@ All fixes verified via comprehensive test suite (`test_v051_core.py`):
 
 ---
 
-## v0.5.2 Release Summary - Final Bug Fixes (2026-04-11)
+## v0.5.2 Release Summary - Comprehensive UX Polish (2026-04-11)
+
+RAG-Quest v0.5.2 transforms the user experience with comprehensive accessibility improvements, making the game maximally user-friendly for non-developers.
+
+### Command System Enhancements
+
+**Command Abbreviations** (faster access):
+- `/i` — Inventory (was `/inventory`)
+- `/s` — Stats (was `/status` or `/stats`)
+- `/q` — Quests (was `/quests`)
+- `/p` — Party (was `/party`)
+- `/h` — Help (was `/help`)
+- `/rel` — Relationships (was `/relationships`)
+- `/f` — Factions (was `/factions`)
+- `/world` — World info (alias for `/map`)
+- `/exit` — Quit game (alias for `/quit`)
+
+**New Commands**:
+- `/new` — Start a new game without quitting
+- Better unknown command feedback with suggestions
+
+### Input Validation & Error Handling
+
+**Character Creation**:
+- Name validation (no empty names, max 50 characters)
+- Race/class selection feedback (green checkmarks)
+- Character confirmation screen before finalizing
+
+**API Key Setup**:
+- Validation for OpenAI and OpenRouter API keys
+- Minimum length checking with helpful error messages
+- Clear links to provider websites
+
+**Game Input**:
+- Empty input handling with gentle nudges
+- Helpful prompt when user types unknown commands
+- "Did you mean...?" suggestions
+
+**Error Recovery**:
+- No tracebacks ever shown to users
+- Smart error classification (Ollama, timeout, API, file errors)
+- Friendly, actionable error messages for each scenario
+- Graceful degradation instead of crashes
+
+### UX Improvements
+
+**Setup & Configuration**:
+- Better first-time wizard with clear explanations
+- Provider descriptions explaining what each is good for
+- Visual feedback throughout setup (✓ checkmarks)
+- Links to external services (Ollama, OpenAI, OpenRouter)
+- TTS setup note about /voice toggle
+
+**Character Experience**:
+- Race/class selection with stat bonuses shown
+- Character creation summary before finalizing
+- Clear visual feedback for each selection
+
+**Game Loop**:
+- Subtle "✓ Progress saved" notification on auto-save
+- Clear save confirmation with character/world info
+- Game recap when loading (character, level, world, days)
+- Better status bar formatting
+- Improved narrator response panels
+
+**Help System**:
+- Comprehensive /help with full command reference table
+- Command shortcuts displayed prominently
+- Pro tips and game features highlighted
+- Troubleshooting guidance for stuck players
+- Examples of natural language actions
+
+### Technical Polish
+
+**Save/Load**:
+- Auto-save every 5 actions (optimized frequency)
+- Save failures show as warnings, not blocking
+- Character confirmation before overwriting saves
+- Save metadata tracking (character name, world, date)
+
+**Terminal Compatibility**:
+- Consistent Rich formatting throughout
+- Safe line widths (80-char compatible)
+- Color contrast for accessibility
+- Clear hierarchical formatting with panels and tables
+
+**Configuration**:
+- World description prompt with examples
+- RAG profile explanations (fast, balanced, deep)
+- Clear provider setup with sensible defaults
+
+### Verification
+
+- ✓ All syntax validated (py_compile)
+- ✓ Version bumped to 0.5.2
+- ✓ All commands tested for conflicts (no duplicates)
+- ✓ No tracebacks in error paths
+- ✓ Backwards compatible with existing saves
+
+**Status**: v0.5.2 COMPLETE - Ready for release
+
+---
+
+## v0.5.2.1 Release Note - Previous Changes (see below for older releases)
 
 RAG-Quest v0.5.2 resolves all remaining 10 API bugs from the v0.5.0 playtest:
 
