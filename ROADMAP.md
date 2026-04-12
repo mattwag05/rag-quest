@@ -10,7 +10,41 @@ This philosophy shapes every version and feature below.
 
 ---
 
-## v0.5.0 (Current) - Multiplayer, Saves & World Sharing
+## v0.5.1 (Current) - Polished for Everyone
+
+**Status**: ✅ Complete — UX polish for non-developers, full backwards compatibility
+
+### What's New in v0.5.1
+
+**Friendly Setup**
+- ✅ Automatic Ollama detection
+- ✅ Clear, jargon-free setup wizard
+- ✅ No command-line knowledge required
+
+**Comprehensive Help System**
+- ✅ `/help` shows all commands with examples
+- ✅ Command-specific help with `/help <command>`
+- ✅ Pro tips built into setup wizard
+
+**Graceful Error Handling**
+- ✅ User-friendly error messages instead of tracebacks
+- ✅ Helpful suggestions for fixing common issues
+- ✅ Automatic recovery from transient failures
+
+**Smart Save Management**
+- ✅ Auto-save on every turn
+- ✅ Ctrl+C always offers to save before exit
+- ✅ Save backup and disaster recovery
+
+**Visual Rewards**
+- ✅ Achievement notifications with fanfare
+- ✅ Level-up celebrations with stat bonuses
+- ✅ Treasure reveal animations
+- ✅ Boss victory celebrations
+
+---
+
+## v0.5.0 - Multiplayer, Saves & World Sharing
 
 **Status**: ✅ Complete — All features implemented, tested, and verified
 

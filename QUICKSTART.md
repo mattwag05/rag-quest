@@ -1,445 +1,174 @@
 # RAG-Quest Quick Start Guide
 
-Get from zero to playing in 5 minutes.
+Welcome! This guide takes you from zero to adventuring in about 5 minutes. **No command-line experience needed.**
 
-## 1. Install
+## What You'll Need
 
-### Option A: Homebrew (Recommended)
+1. A Mac or Linux computer
+2. About 30 minutes for the first time (mostly downloading)
+3. Internet connection (for downloading, play is offline)
+
+That's it! No coding skills required.
+
+## Step 1: Install Ollama (Free AI Brain)
+
+Ollama is the AI that runs locally on your computer. Think of it as the dungeon master.
+
+1. Go to **https://ollama.ai**
+2. Click **Download** and choose your operating system (Mac/Linux/Windows)
+3. Install it like any other program (click the installer, drag to Applications, etc.)
+4. Open Ollama from your Applications folder
+5. Let it finish installing (you'll see a progress bar)
+
+**You're done!** Ollama is now running in the background.
+
+## Step 2: Download the Ollama Model (The Narrator)
+
+Open your **Terminal** (Mac) or **Command Prompt** (Windows/Linux) and paste this:
+
+```bash
+ollama pull gemma4:e4b
+```
+
+This downloads the AI model that will be your narrator. It's about 5-6GB, so grab a coffee—this takes 5-10 minutes depending on your internet speed.
+
+**If you have a very slow connection or old computer**, use the smaller model instead:
+```bash
+ollama pull gemma4:e2b
+```
+
+## Step 3: Install RAG-Quest
+
+Choose one of these options:
+
+### Option A: Homebrew (Mac) — Easiest
 ```bash
 brew install mattwag05/tap/rag-quest
-rag-quest
 ```
 
-### Option B: pip
+### Option B: pip (Mac/Linux/Windows)
 ```bash
-pip install rag-quest
-rag-quest
+pip3 install rag-quest
 ```
 
-### Option C: From Source
+### Option C: From Source (Most Control)
 ```bash
 git clone https://github.com/mattwag05/rag-quest.git
 cd rag-quest
-pip install -e .
-rag-quest
+pip3 install -e .
 ```
 
-## 2. Set Up Ollama (For Local Play)
+## Step 4: Play!
 
-If you want to play for free, locally, and privately:
-
-```bash
-# Download Ollama from ollama.ai, then:
-ollama pull gemma4:e4b   # 4B, best quality (needs GPU)
-# OR
-ollama pull gemma4:e2b   # 2B, fast on CPU
-```
-
-Keep the Ollama server running in a terminal:
-```bash
-ollama serve
-```
-
-## 3. Start a Game
-
+Open Terminal and type:
 ```bash
 rag-quest
 ```
 
-On first run, you'll see the interactive **Setup Wizard** with three start modes:
+Press Enter and watch the magic happen. You'll see a friendly welcome screen, then a **Setup Wizard** that guides you through the rest.
 
-### Three Start Modes
+### The Setup Wizard (Don't Worry, It's Simple!)
 
-**🌟 Mode 1: Fresh Adventure**
-- Start with a blank world
-- Name your world and character
-- Choose race and class
-- Let the narrator create dynamic encounters
-- Default model: Gemma 4 (Free on Ollama)
+When you run `rag-quest`, you'll be asked to pick a start mode:
 
-**⚡ Mode 2: Quick Start Template**
-- Choose from 4 pre-built starter worlds
-- (Classic Dungeon, Enchanted Forest, Port City, War-Torn Kingdom)
-- Customize character and jump in
-- Perfect for trying the game fast
+**🌟 Fresh Adventure** (Recommended for first time)
+- Start with a brand new world
+- Name your character and world
+- Pick a race (Human, Elf, Dwarf, etc.) and class (Warrior, Mage, Rogue, etc.)
+- The narrator creates the adventure for you
 
-**📚 Mode 3: Upload Custom Lore**
-- Upload your own PDFs, markdown, or text files
-- Knowledge graph ingests your world
-- Narrator draws from your custom lore
-- Best for worldbuilders
+**⚡ Quick Start** (Fastest way to play)
+- Choose a pre-built world (Classic Dungeon, Enchanted Forest, etc.)
+- Customize your character
+- Start playing immediately
 
----
+**📚 Custom Lore** (For world builders)
+- Upload your own PDF, Word document, or text file
+- The game learns from your world
+- More advanced, skip for now
 
-Once you choose a mode, here's the interactive setup:
+Pick "Fresh Adventure" if you're not sure. The wizard will ask you a few simple questions, then you'll be ready to play!
 
-### Interactive Setup Menu
+## Step 5: Start Playing!
 
-```
-RAG-Quest: New Game Setup
-
-LLM Provider? [openai/openrouter/ollama]
-  > ollama
-
-Ollama Model? [gemma4:e4b]
-  > gemma4:e4b
-
-RAG Profile (speed vs fidelity)? [fast/balanced/deep]
-  > balanced
-
-World Name?
-  > The Shattered Citadel
-
-World Setting?
-  > Post-apocalyptic ruins
-
-World Tone?
-  > Dark and mysterious
-
-Character Name?
-  > Kael
-
-Character Race? [HUMAN/ELF/DWARF/HALFLING/ORC]
-  > HUMAN
-
-Character Class? [FIGHTER/MAGE/ROGUE/RANGER/CLERIC]
-  > RANGER
-
-Upload custom lore? (txt/md/pdf, space-separated)
-  > lore/shattered_citadel.pdf
-  
-Ingesting lore...
-████████████████████ 100%
-
-Creating game...
-Done! Ready to play.
-```
-
-## 4. Play
+Once you're in the game, just type what you want to do:
 
 ```
-═══════════════════════════════════════════════════════════════════════════════
-  THE SHATTERED CITADEL — Post-Apocalyptic Ruins
-═══════════════════════════════════════════════════════════════════════════════
+You are standing in a dark forest.
 
-📍 LOCATION: Rusted Plaza
-Broken towers loom overhead, their facades crumbling. The smell of rust and
-decay fills the air. You notice a path leading east to the collapsed library...
-
-💚 KAEL | HP: 30/30 | Level 1 | Ranger
-📦 Inventory: Worn Backpack (5/20)
-⚔️  Active Quests: None
-
-> I cautiously move north toward the makeshift shelter
-
-You carefully approach the shelter, hand on your knife. As you draw near,
-smoke curls from an opening. A figure emerges—a grizzled woman with a rifle...
-
-> I raise my hands peacefully
-
-"Easy, friend," she says, lowering her weapon. "Name's Vera. Most folks
-'round here ain't friendly. You look like you got a story..."
-
-> Ask about the safehouse
-
-"The safehouse? That's a legend..." she says. "But three weeks back, I found
-a map showing a route to the old military bunker below the citadel..."
-
-✨ NEW QUEST: Vera's Map — Find the Military Bunker
-
-> /quests
-
-Active Quests:
-  • Vera's Map (ACTIVE) — Find the Military Bunker
-
-> /inventory
-
-Inventory (5/20 lbs):
-  • Worn Backpack
-  • Water Canteen
-  • Rope
-  • Knife
-  
-> /status
-
-═══════════════════════════════════════════════════════════════════════════════
-  KAEL — Ranger (Level 1)
-═══════════════════════════════════════════════════════════════════════════════
-  HP: 30/30 ████████████████████████████████ 100%
-  Location: Rusted Plaza
-  Experience: 0/100
-  
-Inventory: 5/20 lbs
-Quests Active: 1
-
-> I take Vera's map and thank her
-
-You carefully take the worn map from Vera's hands...
-
-> /save
-
-Game saved.
+What do you do? > Go north
 ```
 
-## In-Game Commands
+The AI narrator will tell you what happens next. Combat, treasure, NPCs—it all unfolds as you play.
 
-Type naturally or use commands:
+### Useful Commands
 
-| Action | Example |
-|--------|---------|
-| **Natural Language** | `I search the desk for clues` |
-| **Movement** | `I go north to the library` |
-| **Combat** | `I attack the goblin with my sword` |
-| **Dialogue** | `Ask Vera about the bunker` |
-| **Inventory** | `/i` or `/inventory` |
-| **Quests** | `/q` or `/quests` — see quest chains and choices |
-| **Status** | `/s` or `/status` |
-| **Party** | `/party` — view party roster and morale |
-| **Recruit** | `/recruit <NPC name>` — add companion to party |
-| **Dismiss** | `/dismiss <companion name>` — remove from party |
-| **Relationships** | `/relationships` — view trust and disposition with NPCs |
-| **Factions** | `/factions` — see faction reputation and standing |
-| **Events** | `/events` — view active world events and consequences |
-| **Saves** | `/saves` — list all save slots and metadata |
-| **Export Save** | `/export` — export current game to `.rqsave` file |
-| **Import Save** | `/import` — import save file or world template |
-| **Multiplayer** | `/multiplayer` — start local multiplayer session |
-| **Trade** | `/trade` — trade items with other players |
-| **Achievements** | `/achievements` — view achievement progress (11 total) |
-| **Dungeon** | `/dungeon` — enter procedurally generated dungeon |
-| **Look** | `/look` or `/examine` |
-| **Map** | `/map` to see discovered locations |
-| **Config** | `/config` — change settings mid-game (LLM, model, RAG profile) |
-| **Save** | `/save` to save progress |
-| **Help** | `/help` for full command reference |
-| **Quit** | `/quit` to exit (prompts to save) |
+Once you're playing, try these:
 
-## Configuration
+- `/help` — Shows all commands and tips
+- `/save` — Save your game manually
+- `/load` — Load a previous save
+- `/inventory` — See what you're carrying
+- `/status` — Check your health and abilities
+- `/party` — See your party members
+- `/quests` — See active quests
+- `/achievements` — See badges you've unlocked
+- `/settings` — Change game settings
 
-### Change Settings Mid-Game
-
-Once you're playing, use the `/config` command to adjust settings without restarting:
-
-```bash
-> /config
-
-Current Configuration:
-  ✓ Provider: ollama
-  ✓ Model: gemma4:e4b
-  ✓ RAG Profile: balanced
-  ✓ Auto-Save Interval: 5 turns
-
-Options:
-  1. Change LLM Provider
-  2. Change Model
-  3. Change RAG Profile (fast/balanced/deep)
-  4. Auto-Save Interval
-  5. Back to Game
-
-Choose: > 3
-
-RAG Profile? [fast/balanced/deep]
-  > deep
-
-✓ Configuration updated and saved to ~/.config/rag-quest/config.json
-```
-
-Your settings persist immediately and are saved to: **~/.config/rag-quest/config.json**
-
-### Skip Interactive Setup with Environment Variables (Advanced)
-
-For non-interactive environments, set these before running `rag-quest`:
-
-```bash
-# LLM Setup
-export LLM_PROVIDER=ollama
-export OLLAMA_MODEL=gemma4:e4b
-export OLLAMA_BASE_URL=http://localhost:11434
-
-# World Setup
-export WORLD_NAME="The Shattered Citadel"
-export WORLD_SETTING="Post-apocalyptic"
-export WORLD_TONE="Dark"
-
-# Character Setup
-export CHARACTER_NAME="Kael"
-export CHARACTER_RACE=HUMAN
-export CHARACTER_CLASS=RANGER
-
-# RAG Profile (optional)
-export RAG_PROFILE=balanced  # fast, balanced, or deep
-
-# Then start
-rag-quest
-```
-
-## LLM Provider Comparison
-
-### Ollama (Recommended for First Play)
-- **Cost**: Free
-- **Speed**: 2-20 seconds per response
-- **Quality**: Excellent with RAG
-- **Setup**: Download ollama.ai, run `ollama serve`
-- **Models**: `gemma4:e4b` (GPU) or `gemma4:e2b` (CPU)
-- **Privacy**: Everything local, no data sent anywhere
-
-### OpenAI (Highest Quality)
-- **Cost**: ~$0.05-0.30 per turn
-- **Speed**: 3-10 seconds
-- **Quality**: Excellent
-- **Setup**: Get API key from openai.com
-- **Models**: GPT-4, GPT-4 Turbo, GPT-3.5-turbo
-
-### OpenRouter (Flexibility, Great Value)
-- **Cost**: ~$0.005-0.15 per turn
-- **Speed**: 1-5 seconds
-- **Quality**: Good to excellent (depends on model)
-- **Setup**: Get API key from openrouter.ai
-- **Models**: 100+ options (Claude, Llama, Mistral, etc.)
-
-## Gameplay Tips
-
-### Combat
-- Describe your action vividly: "I dodge left and counterattack with a thrust"
-- Combat is turn-based; the narrator responds to each action
-- Monitor your HP with `/status`
-
-### Dialogue
-- Talk to NPCs to discover quests and lore
-- Try asking about things: "Ask the innkeeper about rumors"
-- NPCs remember previous conversations
-
-### Exploration
-- Visit new locations to find items and meet NPCs
-- Use `/map` to see where you've been
-- Every location has secrets to discover
-
-### Inventory Management
-- Keep an eye on weight (`/inventory`)
-- Find useful items during exploration
-- Use items in actions: "Use the rope to climb down"
-
-### Saving
-- Auto-save happens every 3 turns
-- Use `/save` before dangerous actions
-- Saves are stored in `~/.local/share/rag-quest/saves/`
+Type `/help` during the game to see everything.
 
 ## Troubleshooting
 
-### "No response from LLM"
-1. **Ollama**: Make sure `ollama serve` is running in another terminal
-2. **Check connectivity**: `curl http://localhost:11434/api/tags`
-3. **OpenAI/OpenRouter**: Verify API key is set and valid
-
-### Game runs slow
-1. **Ollama on CPU**: Try `gemma4:e2b` instead of E4B
-2. **GPU users**: Increase VRAM allocated to Ollama
-3. **OpenAI/OpenRouter**: These are cloud-hosted and should be fast
-
-### Config errors
-1. Set environment variables: `echo $LLM_PROVIDER`
-2. Check `~/.config/rag-quest/config.json` exists
-3. Try interactive setup again (delete config and re-run `rag-quest`)
-
-### Class not recognized
-Valid classes: FIGHTER, MAGE, ROGUE, RANGER, CLERIC (case-sensitive)
-
-## What's New in v0.2.0
-
-- ✅ Full game loop with character location, combat, inventory, quests
-- ✅ 50-turn playtest verified all systems working
-- ✅ Three RAG profiles (fast/balanced/deep) for speed vs quality
-- ✅ PDF lore ingestion with intelligent chunking
-- ✅ Auto-save every turn with error recovery
-- ✅ Works with Ollama, OpenAI, and OpenRouter
-
-## What's New in v0.3.0
-
-- ✅ D&D combat with dice rolls, initiative, and critical hits
-- ✅ Character progression with 6 attributes and leveling to 10
-- ✅ Equipment system with weapon, armor, and accessory slots
-- ✅ Dynamic encounter generation with loot and difficulty scaling
-- ✅ Text-to-speech narrator (pyttsx3 and gTTS support)
-- ✅ Real LLM narrator with context injection
-
-## What's New in v0.4.0
-
-- ✅ Multi-character parties (recruit NPCs, up to 4 members)
-- ✅ NPC relationship system (trust, disposition, faction reputation)
-- ✅ Quest chains with branching paths and player choices
-- ✅ Dynamic world events affecting gameplay (10+ event types)
-- ✅ Companion AI with personality and loyalty system
-- ✅ Relationship-gated dialogue and quests
-
-## What's New in v0.5.0
-
-- ✅ Multi-slot persistent saves with auto-save rotation
-- ✅ World sharing via `.rqworld` packages
-- ✅ 4 built-in starter worlds (Classic Dungeon, Enchanted Forest, Port City, War-Torn Kingdom)
-- ✅ Local multiplayer (hot-seat) with shared world state
-- ✅ Achievement system (11 achievements tracking exploration, combat, social, progression)
-- ✅ Procedural dungeon generation with ASCII maps and scaling difficulty
-
-### Playing with Saves (v0.5)
-
+### "Command not found: rag-quest"
+Make sure the installation finished. Try:
 ```bash
-# List all save slots
-/saves
-
-# Export current game to file
-/export
-
-# Import a saved game or world template
-/import
-
-# Example: Export and share your world
-/export  # Creates MyWorld.rqsave
-# Send MyWorld.rqsave to a friend
-# Friend runs: /import and loads MyWorld.rqsave
+pip3 install rag-quest --force-reinstall
 ```
 
-### Local Multiplayer (v0.5)
+### "Cannot connect to Ollama"
+Ollama needs to be running. Open Ollama from your Applications folder and make sure the icon is in the menu bar at the top of your screen.
 
+### "Model download failed"
+Your internet might have hiccupped. Try the pull command again:
 ```bash
-# Start multiplayer with friends on same computer
-/multiplayer
-
-# Takes turns playing the same world
-# Can trade items: /trade
-# Shared party and NPC relationships
+ollama pull gemma4:e4b
 ```
 
-### Achievements (v0.5)
-
-11 achievements to unlock:
-- **Explorer** — Visit 20 unique locations
-- **Warrior** — Win 10 combat encounters
-- **Diplomat** — Complete 5 social quests
-- **Scholar** — Read 50 lore entries
-- **Treasure Hunter** — Find 25 valuable items
-- And 6 more...
-
-Check progress with `/achievements`
-
-### Procedural Dungeons (v0.5)
-
+### "Game is running very slowly"
+You might be using the model that's too heavy for your computer. Try the smaller model:
 ```bash
-# Enter a randomly generated dungeon
-/dungeon
-
-# Explore multiple levels (5-15 rooms each)
-# ASCII map reveals as you move
-# Enemies scale with depth
-# Boss rooms at regular intervals
-# Rare loot in treasure rooms
+ollama pull gemma4:e2b
+rag-quest  # Game will automatically use the smaller model
 ```
 
-## Have Fun!
+### Still stuck?
+Open an issue on GitHub: **https://github.com/mattwag05/rag-quest/issues**
 
-RAG-Quest is designed for creative, emergent storytelling. Your choices matter. Every playthrough is unique. Enjoy your adventure!
+Include what you tried and the error message you got. We'll help!
+
+## Tips for a Great First Adventure
+
+1. **Be creative** — The game responds to anything you type. Describe what you want to do in detail.
+2. **Save often** — Use `/save` to create checkpoints. You can load them later.
+3. **Try new things** — Talking to NPCs, exploring, trying weird combinations—the game handles it all.
+4. **Don't worry about "right answers"** — There's no one way to play. Your story is unique.
+5. **Check your stats** — Type `/status` to see your health, abilities, and inventory.
+
+## Next Steps
+
+Once you're comfortable playing:
+
+- **Upload custom lore** — Next game, try Mode 3 to make the world truly yours
+- **Try multiplayer** — Play with friends in hot-seat mode (everyone takes turns on same computer)
+- **Export your world** — Share your world with others via `.rqworld` files
+- **Read the full docs** — GitHub README has advanced features and command reference
+
+## Still Have Questions?
+
+- **README.md** — Feature overview and detailed documentation
+- **`/help` command** — In-game help for all commands
+- **GitHub Issues** — Report bugs or request features
 
 ---
 
-**Version**: v0.5.0  
-**Status**: Multiplayer, Saves & World Sharing!  
-**License**: MIT
+**Welcome to RAG-Quest, adventurer.** Your legend awaits!

@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Version 0.5.0](https://img.shields.io/badge/version-0.5.0-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.5.0)
+[![Version 0.5.1](https://img.shields.io/badge/version-0.5.1-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.5.1)
 [![Status: Stable](https://img.shields.io/badge/status-stable-green.svg)](docs/TEST_REPORT_v04.md)
 
 > **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone. Now with persistent saves, world sharing, local multiplayer, achievements, and procedural dungeons.**
@@ -56,6 +56,33 @@ RAG-Quest is the first playable release of an AI-powered text adventure game tha
 - Difficulty-scaled enemies and loot based on level
 - Command: `/dungeon`
 
+## v0.5.1 — Polished for Everyone
+
+**🎯 Friendly Setup** — No command-line knowledge required
+- Automatic Ollama detection (just install it and go)
+- Clear, jargon-free setup wizard
+- Sensible defaults that work out of the box
+
+**📖 Comprehensive Help System** — Learn as you play
+- `/help` shows all commands with examples
+- `/help <command>` for command-specific tips
+- Pro tips built into the setup wizard
+
+**😊 Graceful Error Handling** — User-friendly error messages
+- Clear explanations instead of confusing tracebacks
+- Helpful suggestions for fixing problems
+- Automatic recovery from common issues
+
+**💾 Smart Save Management** — Never lose progress
+- Auto-save on every turn (configurable interval)
+- Ctrl+C always prompts to save before exiting
+- Save backups for disaster recovery
+
+**🎉 Rewarding Milestones** — Celebrate your progress
+- Clearer achievement notifications
+- Level-up celebrations with stat bonuses
+- Boss victory fanfare and treasure reveals
+
 ## Quick Install
 
 ```bash
@@ -72,6 +99,8 @@ pip install rag-quest
 ```
 
 ## Quick Start (5 Minutes)
+
+> **No command-line experience needed!** The setup wizard is completely interactive and guides you through every step.
 
 ### 1. Install Ollama (if playing locally)
 

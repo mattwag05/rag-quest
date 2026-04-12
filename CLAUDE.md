@@ -10,9 +10,9 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 
 **Why this matters**: A Gemma 4 model with excellent RAG context beats much larger models without RAG. The knowledge graph is the "long-term memory"; the LLM is just the "narrator."
 
-**Current Version**: v0.5.2 (All bugs fixed, full backwards compatibility)
+**Current Version**: v0.5.1 (Polished UX for non-developers, full backwards compatibility)
 
-**Status**: v0.5.2 complete with all critical bugs resolved. Game features persistent multi-slot saves with auto-save rotation, world sharing via .rqworld packages, local multiplayer (hot-seat), 11 built-in achievements, and procedural dungeon generation with ASCII maps. All 12 core game systems verified and working correctly with 100% API compatibility and full backwards compatibility for legacy code.
+**Status**: v0.5.1 complete with UX polish for accessibility. Game features persistent multi-slot saves with auto-save rotation, world sharing via .rqworld packages, local multiplayer (hot-seat), 11 built-in achievements, and procedural dungeon generation with ASCII maps. Friendly setup wizard, comprehensive help system, graceful error handling, and smart save management make the game accessible to players with no command-line experience. All 12 core game systems verified and working correctly with 100% API compatibility and full backwards compatibility for legacy code.
 
 **Technology Stack**:
 - **Python 3.11+** - Core language
@@ -318,7 +318,9 @@ rag-quest/
 ├── rag_quest/                    # Main package
 │   ├── __init__.py              # Package initialization
 │   ├── __main__.py              # Entry point (python -m rag_quest)
+│   ├── startup.py               # Welcome screen & startup messaging
 │   ├── config.py                # Configuration & setup wizard
+│   ├── ui.py                    # Terminal UI utilities & formatting
 │   ├── llm/                     # LLM provider implementations
 │   │   ├── __init__.py
 │   │   ├── base.py              # BaseLLMProvider abstract class
@@ -364,6 +366,38 @@ rag-quest/
 ```
 
 ## Key Classes & Patterns
+
+### Startup & Welcome Screen (startup.py)
+
+**print_welcome_screen()** — Friendly welcome and information display
+
+The startup module provides a welcoming first impression for players with no command-line experience:
+
+```python
+def print_welcome_screen() -> None:
+    """Display RAG-Quest welcome banner and feature highlights."""
+    # Shows:
+    # - Large ASCII art logo
+    # - Current version
+    # - Key features and highlights
+    # - Tips for getting started
+    # - No jargon or technical terms
+```
+
+**Design Philosophy**:
+- **Non-threatening**: Uses friendly language, clear instructions
+- **Self-contained**: All startup messages in one place
+- **Rich Formatting**: Color, style, and layout for visual appeal
+- **Information**: Explains key concepts without overwhelming detail
+- **Guidance**: Pro tips and hints for new players
+
+**UX Design Principles for v0.5.1**:
+1. **Accessibility First** — No command-line knowledge assumed
+2. **Clear Terminology** — Avoid jargon, use plain English
+3. **Graceful Fallbacks** — Helpful errors instead of tracebacks
+4. **Visual Rewards** — Celebrate achievements and milestones
+5. **Smart Defaults** — Configuration that "just works"
+6. **Save on Exit** — Never lose progress (Ctrl+C always offers to save)
 
 ### Configuration Management (config.py)
 
