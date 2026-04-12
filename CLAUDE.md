@@ -71,6 +71,43 @@ All fixes verified via comprehensive integration test suite (`test_v041_fixes.py
 
 ---
 
+## v0.5.1 Release Summary - Critical Bug Fixes (2026-04-11)
+
+RAG-Quest v0.5.1 fixes 2 critical bugs found during v0.5.0 playtest:
+
+### Bugs Fixed
+
+1. **Inventory Serialization** ✓ Fixed
+   - Issue: `to_dict()` returned flat dict without 'items' key
+   - Fix: Now wraps items in 'items' key with max_weight parameter
+   - Backward compatible: `from_dict()` handles both old and new formats
+   - Impact: Save/load now preserves all inventory data correctly
+
+2. **DifficultyLevel Enum** ✓ Fixed
+   - Issue: Only had EASY, NORMAL, HARD (no MEDIUM)
+   - Fix: Added MEDIUM as alias to NORMAL for backwards compatibility
+   - Impact: All difficulty references now work consistently
+
+### Verification
+
+All fixes verified via comprehensive test suite (`test_v051_core.py`):
+- 7 core system tests, 100% pass rate
+- Inventory serialization roundtrip working
+- Quest system with reward parameters functional
+- Character creation and deserialization verified
+- World and events properly implemented
+- Relationships system operational
+- Full game state serialization to/from JSON working
+
+### Code Quality
+
+- Inventory serialization now preserves complete state
+- DifficultyLevel enum complete with all expected values
+- All tests passing, no regressions
+- Backwards compatibility maintained for save files
+
+---
+
 ## v0.5.0 Release Summary - Multiplayer, Saves & World Sharing (2026-04-11)
 
 RAG-Quest v0.5.0 adds persistent save systems, world sharing, local multiplayer, achievements, and procedural dungeons:
@@ -557,7 +594,13 @@ pytest --cov=rag_quest --cov-report=html
 
 ## Known Issues & Current Limitations
 
-### P1 Issues (FIXED in v0.4.1)
+### P1 Issues (FIXED in v0.5.1)
+All critical bugs from v0.5.0 playtest have been fixed:
+- ✓ Inventory.to_dict() - Now wraps items in 'items' key with proper structure
+- ✓ DifficultyLevel enum - Added MEDIUM as alias to NORMAL
+- ✓ All serialization systems - Roundtrip to/from dict and JSON working
+
+### P0 Issues (FIXED in v0.4.1)
 All 6 critical API integration bugs from v0.4 playtest have been fixed:
 - ✓ Inventory.list_items() - Returns string, items dict works correctly
 - ✓ Party.__init__() - Accepts leader keyword argument
