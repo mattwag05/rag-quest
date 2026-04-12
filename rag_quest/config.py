@@ -324,3 +324,23 @@ def create_world_from_config(config: dict) -> World:
         setting=world_config["setting"],
         tone=world_config["tone"],
     )
+
+
+# v0.5.0 Configuration defaults
+CONFIG_DEFAULTS = {
+    "saves": {
+        "save_dir": None,  # Defaults to ~/.local/share/rag-quest/saves/
+        "auto_save_interval": 3,  # Auto-save every 3 actions
+        "auto_save_slots": 3,  # Keep 3 rotating auto-saves
+    },
+    "multiplayer": {
+        "enabled": True,
+        "mode": "local",  # "local" for hot-seat, "network" for future
+    },
+    "procedural_dungeons": {
+        "enabled": True,
+    },
+    "achievements": {
+        "enabled": True,
+    },
+}

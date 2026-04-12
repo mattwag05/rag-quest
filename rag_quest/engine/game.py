@@ -12,6 +12,7 @@ from rich.panel import Panel
 
 from ..knowledge import WorldRAG
 from ..llm import BaseLLMProvider
+from ..saves import SaveManager
 from .. import ui
 from .character import Character
 from .inventory import Inventory
@@ -24,6 +25,8 @@ from .tts import TTSNarrator
 from .party import Party
 from .relationships import RelationshipManager
 from .events import EventManager
+from .achievements import AchievementManager
+from .dungeon import DungeonGenerator
 
 
 console = Console()
@@ -45,7 +48,9 @@ class GameState:
     events: EventManager
     combat_manager: Optional[CombatManager] = None
     tts_narrator: Optional[TTSNarrator] = None
+    achievements: Optional[AchievementManager] = None
     turn_number: int = 0
+    playtime_seconds: float = 0.0
 
     def to_dict(self) -> dict:
         """Serialize game state."""
@@ -57,7 +62,9 @@ class GameState:
             "party": self.party.to_dict(),
             "relationships": self.relationships.to_dict(),
             "events": self.events.to_dict(),
+            "achievements": self.achievements.to_dict() if self.achievements else {},
             "turn_number": self.turn_number,
+            "playtime_seconds": self.playtime_seconds,
         }
 
     @classmethod
@@ -77,6 +84,7 @@ class GameState:
         party = Party.from_dict(data.get("party", {"members": [], "max_size": 4}))
         relationships = RelationshipManager.from_dict(data.get("relationships", {"relationships": {}, "factions": {}, "faction_reputation": {}}))
         events = EventManager.from_dict(data.get("events", {"active_events": [], "event_history": []}))
+        achievements = AchievementManager.from_dict(data.get("achievements", {})) if data.get("achievements") else AchievementManager()
         
         combat_mgr = CombatManager(narrator)
         tts = TTSNarrator(enabled=tts_enabled) if tts_enabled else None
@@ -92,9 +100,11 @@ class GameState:
             party=party,
             relationships=relationships,
             events=events,
+            achievements=achievements,
             combat_manager=combat_mgr,
             tts_narrator=tts,
             turn_number=data.get("turn_number", 0),
+            playtime_seconds=data.get("playtime_seconds", 0.0),
         )
 
 
@@ -169,6 +179,12 @@ def run_game(
 
             # Display response
             ui.print_narrator_response(response)
+            
+            # Check for new achievements
+            if game_state.achievements:
+                new_achievements = game_state.achievements.check_achievements(game_state.to_dict())
+                for achievement in new_achievements:
+                    ui.print_achievement_unlocked(achievement.name, achievement.icon)
 
             # Auto-save frequently to protect progress
             action_count += 1
@@ -308,6 +324,29 @@ def _handle_command(
             console.print(Panel(events_text, title="Active World Events", border_style="red"))
         else:
             console.print("[yellow]No active world events.[/yellow]")
+
+    elif cmd == "/achievements":
+        if game_state.achievements:
+            unlocked = game_state.achievements.get_unlocked()
+            if unlocked:
+                ach_text = "\n".join([f"{a.icon} {a.name}: {a.description}" for a in unlocked])
+                console.print(Panel(ach_text, title="Achievements", border_style="blue"))
+            else:
+                console.print("[yellow]No achievements unlocked yet.[/yellow]")
+        else:
+            console.print("[yellow]Achievements not enabled.[/yellow]")
+
+    elif cmd == "/dungeon":
+        # Start a procedural dungeon crawl
+        dungeon = DungeonGenerator.generate(depth=5, difficulty="normal")
+        room = dungeon.enter()
+        console.print(Panel(dungeon.get_map_ascii(), title="Dungeon Map", border_style="red"))
+        if room:
+            console.print(f"\n[bold]You enter a {room.room_type.value}:[/bold] {room.description}")
+            if room.enemies:
+                console.print(f"[red]Enemies:[/red] {', '.join(room.enemies)}")
+            if room.items:
+                console.print(f"[green]Items:[/green] {', '.join(room.items)}")
 
     elif cmd == "/help":
         ui.print_help()
