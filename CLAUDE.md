@@ -270,6 +270,26 @@ class BaseLLMProvider(ABC):
 
 All now **synchronous** (were async before v0.5.0).
 
+**Streaming (v0.8)** — `BaseLLMProvider.stream_complete(messages)` returns
+an iterator of text chunks. The base class has a safe fallback that
+yields a single chunk from `.complete()`, so every provider can be
+streamed without a type check. Real streaming is implemented in:
+- `OllamaProvider.stream_complete` — parses Ollama's line-delimited JSON
+  (`"stream": True`), with the same thinking-model fallback as `.complete()`.
+- `OpenAIProvider` / `OpenRouterProvider` — share the new
+  `rag_quest.llm._sse.stream_openai_chat` helper which parses
+  OpenAI-compatible SSE (`data: { ... }` events, `data: [DONE]` sentinel).
+
+The narrator exposes streaming via `Narrator.stream_action(player_input)`
+which yields chunks and populates `last_response` / `last_change` /
+`conversation_history` after the generator is exhausted. The state
+parser runs on the joined text so mechanics stay deterministic
+regardless of which provider yielded the tokens.
+
+`ui.stream_narrator_response(iterator)` wraps a Rich `Live` panel update
+loop — `run_game` uses it instead of `process_action` + `print_narrator_response`
+so players see prose render live.
+
 **LLM Provider Gotchas** (ran into these, don't repeat them):
 - **Ollama message format** — Narrator must send `messages=[{"role": "user", "content": ...}]`,
   not a bare `prompt=...`. Bare prompts return HTTP 400 from Ollama's `/api/chat` endpoint.

@@ -13,6 +13,18 @@ changelog" for the full convention.
 ## [Unreleased]
 
 ### Added
+- **v0.8: Streaming narrator responses** — the game loop now renders
+  narration token-by-token via Rich `Live` instead of waiting 2-10
+  seconds for the complete response, so players see prose unfold
+  live. `BaseLLMProvider` gains a `stream_complete(messages)` method
+  with a safe single-chunk fallback; `OllamaProvider` streams Ollama's
+  line-delimited JSON protocol, `OpenAIProvider` and `OpenRouterProvider`
+  share a new `rag_quest/llm/_sse.py` helper that parses OpenAI-compatible
+  SSE events. `Narrator.stream_action(player_input)` is the public
+  streaming entry point: it yields chunks and, after the generator is
+  exhausted, runs the state parser on the full joined response so
+  mechanics stay deterministic. `ui.stream_narrator_response(iterator)`
+  wraps a Rich `Live` panel update loop; `run_game` consumes it.
 - **v0.8: Cross-device save sync** — `WorldExporter.export_world` gains
   an optional `save_file` parameter that bundles the player's save JSON
   (`~/.local/share/rag-quest/saves/<name>.json`) into the archive as

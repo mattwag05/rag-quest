@@ -1,6 +1,7 @@
 """Ollama LLM provider."""
 
-from typing import Optional
+import json
+from typing import Iterator, Optional
 
 import httpx
 
@@ -64,6 +65,66 @@ class OllamaProvider(BaseLLMProvider):
                 content = paragraphs[-1]
 
         return content
+
+    def stream_complete(
+        self,
+        messages: list[dict],
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> Iterator[str]:
+        """Stream chat completions from Ollama as they're generated.
+
+        Ollama's streaming protocol is line-delimited JSON: each line is a
+        JSON object with `message.content` holding the next token chunk.
+        The final object has `done: true` with empty content.
+
+        Same thinking-model safety net as `complete()`: if the model ignores
+        `think=False` and emits a reasoning block with empty content, we
+        fall back to the trailing paragraph of the thinking text so the
+        stream never produces an empty turn.
+        """
+        temp = temperature if temperature is not None else self.config.temperature
+        tokens = max_tokens if max_tokens is not None else self.config.max_tokens
+
+        payload = {
+            "model": self.config.model,
+            "messages": messages,
+            "stream": True,
+            "think": False,
+            "options": {"temperature": temp, "num_predict": tokens},
+        }
+
+        thinking_buffer: list[str] = []
+        yielded_any_content = False
+
+        with self.client.stream(
+            "POST", f"{self.base_url}/api/chat", json=payload
+        ) as response:
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                try:
+                    chunk = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                message = chunk.get("message", {}) or {}
+                content = message.get("content", "")
+                thinking = message.get("thinking", "")
+                if content:
+                    yielded_any_content = True
+                    yield content
+                if thinking:
+                    thinking_buffer.append(thinking)
+                if chunk.get("done"):
+                    break
+
+        if not yielded_any_content and thinking_buffer:
+            combined = "".join(thinking_buffer)
+            paragraphs = [p.strip() for p in combined.split("\n\n") if p.strip()]
+            if paragraphs:
+                yield paragraphs[-1]
 
     def close(self):
         """Close the HTTP client."""

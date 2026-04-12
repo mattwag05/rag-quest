@@ -216,13 +216,16 @@ def run_game(
                     f"{member_name} has left the party due to low loyalty!"
                 )
 
-            # Process action through narrator with error recovery
+            # Process action through narrator with error recovery. v0.8:
+            # streams chunks in place via Rich Live so the player sees prose
+            # unfold; the narrator's state parser still runs on the full
+            # joined response after the stream completes so mechanics stay
+            # deterministic.
             try:
-                with console.status(
-                    "[bold green]The Dungeon Master considers your action...[/bold green]"
-                ):
-                    response = game_state.narrator.process_action(player_input)
-                    errors_in_row = 0  # Reset error counter on success
+                response = ui.stream_narrator_response(
+                    game_state.narrator.stream_action(player_input)
+                )
+                errors_in_row = 0  # Reset error counter on success
             except Exception as e:
                 errors_in_row += 1
                 error_msg = str(e).lower()
@@ -254,9 +257,9 @@ def run_game(
                     )
                 else:
                     continue
-
-            # Display response
-            ui.print_narrator_response(response)
+                # If we hit the error ceiling, render the fallback text
+                # in a normal panel since nothing has been streamed yet.
+                ui.print_narrator_response(response)
 
             # v0.6: record a structured timeline entry from the just-applied StateChange.
             try:

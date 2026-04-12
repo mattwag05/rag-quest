@@ -74,6 +74,99 @@ class Narrator:
             # Last resort: return a fallback response
             return self._get_fallback_response(str(e))
 
+    def stream_action(self, player_input: str):
+        """Process a player action, yielding narrative chunks as they're generated.
+
+        The returned generator yields text chunks (usually token-sized for
+        real streaming providers, or a single chunk for the default
+        fallback). After the generator is exhausted, `self.last_response`,
+        `self.last_change`, and `self.last_player_input` are populated
+        exactly as they would be by `process_action`, and
+        `conversation_history` has been appended to. The state parser runs
+        on the concatenated output so mechanics stay deterministic.
+
+        If streaming fails mid-way, any accumulated chunks are still
+        treated as the final response and state is applied — consistent
+        with the zero-traceback error philosophy.
+        """
+        try:
+            chunks: list[str] = []
+            for chunk in self._stream_response(player_input):
+                if not chunk:
+                    continue
+                chunks.append(chunk)
+                yield chunk
+            response = "".join(chunks)
+            if not response.strip():
+                response = self._get_fallback_response("empty stream")
+                yield response
+
+            self._parse_and_apply_changes(response, player_input)
+            self.last_response = response
+            self.last_player_input = player_input
+            self.conversation_history.append({"role": "user", "content": player_input})
+            self.conversation_history.append({"role": "assistant", "content": response})
+        except Exception as e:
+            fallback = self._get_fallback_response(str(e))
+            self.last_response = fallback
+            self.last_player_input = player_input
+            yield fallback
+
+    def _stream_response(self, player_input: str):
+        """Stream chunks from the real LLM, falling back to a one-shot canned
+        response on failure."""
+        if self.llm and hasattr(self.llm, "stream_complete"):
+            try:
+                messages = self._build_llm_messages(player_input)
+                yield from self.llm.stream_complete(messages)
+                return
+            except Exception:
+                from .._debug import log_swallowed_exc
+
+                log_swallowed_exc("narrator._stream_response.llm")
+        # Fallback path: produce the canned response as a single chunk.
+        yield self._generate_response(player_input)
+
+    def _build_llm_messages(self, player_input: str) -> list[dict]:
+        """Shared prompt builder used by both `_call_llm` and `_stream_response`."""
+        system_prompt = NARRATOR_SYSTEM
+        if self.service_context:
+            system_prompt = f"{system_prompt}\n\n{self.service_context}"
+
+        char = self.character
+        location = char.location or "Unknown Location"
+        hp_status = f"{char.current_hp}/{char.max_hp} HP"
+
+        history_context = ""
+        if self.conversation_history:
+            for msg in self.conversation_history[-8:]:
+                history_context += f"\n{msg['role'].upper()}: {msg['content'][:100]}"
+
+        rag_context = ""
+        if self.world_rag:
+            try:
+                rag_lore = self.world_rag.query_world(player_input)
+                if rag_lore:
+                    rag_context = (
+                        "\n\n=== RELEVANT WORLD LORE ===\n" + str(rag_lore)[:800]
+                    )
+            except Exception:
+                from .._debug import log_swallowed_exc
+
+                log_swallowed_exc("narrator._build_llm_messages.world_rag")
+
+        system_content = f"""{system_prompt}
+
+=== CURRENT SITUATION ===
+Location: {location}
+Character HP: {hp_status}{rag_context}{history_context}
+
+Provide a vivid, engaging narrative response to the character's action. Keep it to 2-3 sentences."""
+        return [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": player_input},
+        ]
+
     def _generate_response(self, player_input: str) -> str:
         """Generate a narrative response using the real LLM with fallback to canned responses."""
         # Try to call the real LLM first

@@ -1,9 +1,10 @@
 """OpenRouter LLM provider."""
 
-from typing import Optional
+from typing import Iterator, Optional
 
 import httpx
 
+from ._sse import stream_openai_chat
 from .base import BaseLLMProvider, LLMConfig
 
 
@@ -48,6 +49,26 @@ class OpenRouterProvider(BaseLLMProvider):
         response.raise_for_status()
         data = response.json()
         return data["choices"][0]["message"]["content"]
+
+    def stream_complete(
+        self,
+        messages: list[dict],
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> Iterator[str]:
+        """Stream chat completions from OpenRouter as OpenAI-style SSE deltas."""
+        temp = temperature if temperature is not None else self.config.temperature
+        tokens = max_tokens if max_tokens is not None else self.config.max_tokens
+
+        payload = {
+            "model": self.config.model,
+            "messages": messages,
+            "temperature": temp,
+            "max_tokens": tokens,
+            "stream": True,
+        }
+        yield from stream_openai_chat(self.client, "/chat/completions", payload)
 
     def close(self):
         """Close the HTTP client."""

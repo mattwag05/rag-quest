@@ -87,6 +87,46 @@ def print_narrator_response(response: str) -> None:
     )
 
 
+def stream_narrator_response(chunks) -> str:
+    """Render a streaming narrator response via Rich `Live`, returning the
+    full joined text after the stream is exhausted.
+
+    `chunks` is any iterator yielding str pieces (typically from
+    `Narrator.stream_action`). Updates the panel in place as each chunk
+    arrives so the player sees prose unfold live rather than waiting for
+    the full response. If `rich.live` is unavailable for any reason,
+    degrades to a terminal-less accumulation that still returns the full
+    text — the caller will just see a final `print_narrator_response`
+    call instead.
+    """
+    from rich.live import Live
+
+    buffer: list[str] = []
+
+    def _panel(text: str) -> Panel:
+        return Panel(
+            text or "[dim]…[/dim]",
+            title="[bold]Dungeon Master[/bold]",
+            border_style="blue",
+        )
+
+    try:
+        with Live(_panel(""), console=console, refresh_per_second=12) as live:
+            for chunk in chunks:
+                if not chunk:
+                    continue
+                buffer.append(chunk)
+                live.update(_panel("".join(buffer)))
+    except Exception:
+        # Fall back to a final plain render if Live fails for any reason
+        # (terminal shenanigans, nested Live contexts).
+        for chunk in chunks:
+            if chunk:
+                buffer.append(chunk)
+        print_narrator_response("".join(buffer))
+    return "".join(buffer)
+
+
 def print_command_prompt() -> str:
     """Print input prompt and get user input."""
     result = console.input("\n[bold cyan]What do you do? > [/bold cyan]").strip()
