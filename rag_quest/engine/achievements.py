@@ -122,15 +122,31 @@ class AchievementManager:
         for achievement in achievement_list:
             self.achievements[achievement.id] = achievement
 
-    def check_achievements(self, game_state: dict) -> List[Achievement]:
+    def check_achievements(self, game_state: dict = None, player: dict = None) -> List[Achievement]:
         """Check for newly unlocked achievements based on game state.
         
         Args:
-            game_state: Current game state dict
+            game_state: Current game state dict (NEW API)
+            player: Player dict (OLD API backwards compat, ignored if game_state provided)
         
         Returns:
             List of newly unlocked achievements
         """
+        # Handle backwards compatibility: check_achievements(player={...})
+        if game_state is None and player is not None:
+            # Old style call with player object, convert to game_state format
+            game_state = {
+                "character": player,
+                "world": {"visited_locations": [], "npcs_met": []},
+                "inventory": {"items": []},
+                "party": {"members": []},
+                "quest_log": {"quests": []},
+                "turn_number": 1
+            }
+        
+        if game_state is None:
+            return []
+        
         newly_unlocked = []
 
         character = game_state.get("character", {})

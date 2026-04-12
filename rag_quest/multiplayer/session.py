@@ -37,13 +37,24 @@ class PlayerState:
 class MultiplayerSession:
     """A shared game session that multiple players can join (local/hot-seat)."""
 
-    def __init__(self, session_id: Optional[str] = None, host_player: str = "Host"):
+    def __init__(self, session_id: Optional[str] = None, host_player: str = "Host",
+                 world_name: str = None, max_players: int = None):
         """Initialize a multiplayer session.
         
         Args:
-            session_id: Optional session ID. Defaults to generated UUID.
-            host_player: Name of the host player
+            session_id: Optional session ID. Defaults to generated UUID. (NEW API)
+            host_player: Name of the host player (NEW API)
+            world_name: World name (OLD API backwards compat)
+            max_players: Max players (OLD API backwards compat)
         """
+        # Handle backwards compatibility: MultiplayerSession(world_name, max_players)
+        if world_name is not None and session_id is None:
+            # Old style call: MultiplayerSession(world_name="...", max_players=4)
+            session_id = f"session-{world_name.lower().replace(' ', '-')}"
+            host_player = f"Host of {world_name}"
+        
+        # Store max_players for backwards compatibility
+        self.max_players = max_players or 4
         self.session_id = session_id or str(uuid4())
         self.host_player = host_player
         self.players: Dict[str, PlayerState] = {}
@@ -52,6 +63,8 @@ class MultiplayerSession:
         self.shared_world: Optional[dict] = None
         self.shared_events: List[str] = []
         self.is_active: bool = False
+        # Store world_name for backwards compatibility
+        self.world_name = world_name
 
     def create_session(self, host_name: str, world_config: dict) -> str:
         """Create and initialize a new session.

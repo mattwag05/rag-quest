@@ -68,6 +68,19 @@ class QuestReward:
     items: List[str] = field(default_factory=list)
     reputation_changes: Dict[str, int] = field(default_factory=dict)
     unlocks: List[str] = field(default_factory=list)
+    
+    def __init__(self, xp: int = 0, gold: int = 0, items: List[str] = None,
+                 reputation_changes: Dict[str, int] = None, unlocks: List[str] = None,
+                 experience: int = None):  # Backwards compatibility parameter
+        """Initialize reward. Supports both 'xp' and 'experience' parameters."""
+        # Handle backwards compatibility: 'experience' is an alias for 'xp'
+        if experience is not None and xp == 0:
+            xp = experience
+        self.xp = xp
+        self.gold = gold
+        self.items = items or []
+        self.reputation_changes = reputation_changes or {}
+        self.unlocks = unlocks or []
 
     def to_dict(self) -> dict:
         """Serialize reward."""

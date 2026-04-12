@@ -49,8 +49,15 @@ class SaveManager:
         self.auto_save_dir = self.save_dir / "autosaves"
         self.auto_save_dir.mkdir(exist_ok=True)
 
-    def list_saves(self) -> List[SaveSlot]:
-        """List all available save slots."""
+    def list_saves(self, world_name: str = None) -> List[SaveSlot]:
+        """List all available save slots.
+        
+        Args:
+            world_name: Optional world name filter (for backwards compatibility, ignored)
+        
+        Returns:
+            List of SaveSlot objects
+        """
         slots = []
         for metadata_file in self.save_dir.glob("*/metadata.json"):
             try:
@@ -64,16 +71,44 @@ class SaveManager:
         slots.sort(key=lambda s: s.updated_at, reverse=True)
         return slots
 
-    def save_game(self, game_state: dict, slot_name: Optional[str] = None) -> SaveSlot:
+    def save_game(self, *args, **kwargs) -> SaveSlot:
         """Save game to a slot.
         
-        Args:
-            game_state: Game state dict (from GameState.to_dict())
-            slot_name: Optional name for this save. If None, generates one from character info
+        Supports both new and old calling styles:
+        - NEW: save_game(game_state, slot_name="...")
+        - OLD: save_game(world_name, slot_number, state, character_name)
         
         Returns:
             SaveSlot metadata for the created save
         """
+        # Handle positional arguments for backwards compatibility
+        if len(args) >= 4:
+            # Old style: save_game(world_name, slot_number, state, character_name)
+            world_name, slot_number, state, character_name = args[:4]
+            game_state = state
+            slot_name = f"{character_name} - Slot {slot_number}" if character_name else f"Slot {slot_number}"
+        elif len(args) >= 1:
+            # New style: save_game(game_state, ...)
+            game_state = args[0]
+            slot_name = args[1] if len(args) > 1 else kwargs.get('slot_name')
+        else:
+            # Kwargs only
+            game_state = kwargs.get('game_state')
+            slot_name = kwargs.get('slot_name')
+            
+            # Handle old-style kwargs
+            if game_state is None:
+                game_state = kwargs.get('state')
+            
+            if slot_name is None:
+                character_name = kwargs.get('character_name')
+                slot_number = kwargs.get('slot_number')
+                if character_name or slot_number:
+                    slot_name = f"{character_name or 'Unknown'} - Slot {slot_number or 0}"
+        
+        if game_state is None:
+            raise ValueError("game_state parameter required")
+        
         slot_id = str(uuid4())
         slot_dir = self.save_dir / slot_id
         slot_dir.mkdir(exist_ok=True)
@@ -114,15 +149,32 @@ class SaveManager:
 
         return metadata
 
-    def load_game(self, slot_id: str) -> Optional[dict]:
+    def load_game(self, slot_id_or_world: str = None, slot_number: int = None) -> Optional[dict]:
         """Load game state from a slot.
         
         Args:
-            slot_id: ID of the save slot to load
+            slot_id_or_world: Slot ID (new) or world name (old backwards compat style)
+            slot_number: Slot number (only used in old style call)
         
         Returns:
             Game state dict, or None if load failed
         """
+        # Handle backwards compatibility: load_game(world_name, slot_number)
+        if slot_number is not None:
+            # Old style: load_game("Test World", 0)
+            # Convert to new style by finding the slot
+            slots = self.list_saves(slot_id_or_world)
+            if slot_number < len(slots):
+                slot_id = slots[slot_number].slot_id
+            else:
+                return None
+        else:
+            # New style: load_game(slot_id)
+            slot_id = slot_id_or_world
+        
+        if not slot_id:
+            return None
+        
         slot_dir = self.save_dir / slot_id
         state_file = slot_dir / "state.json"
 

@@ -121,8 +121,14 @@ class Enemy:
         self.level = level
         self.max_hp = hp
         self.current_hp = hp
+        # Expose as .hp for backwards compatibility
+        self.hp = hp
         self.attack_bonus = attack
+        # Expose as .attack for backwards compatibility
+        self.attack = attack
         self.defense_ac = defense
+        # Expose as .defense for backwards compatibility
+        self.defense = defense
         self.dexterity = dexterity
         self.damage_dice = damage_dice
         self.xp_reward = xp_reward
@@ -187,6 +193,12 @@ class CombatEncounter:
         self.log.append(f"Combat started! {len(self.enemies)} enemy/enemies appeared!")
         for enemy in self.enemies:
             self.log.append(f"  - {enemy.get_status()}")
+    
+    def roll_initiative(self) -> tuple:
+        """Roll initiative and return player and enemy rolls. Alias for _calculate_initiative."""
+        self._calculate_initiative()
+        self._sort_turn_order()
+        return (self.player_initiative, self.enemy_initiatives)
     
     def _calculate_initiative(self):
         """Calculate initiative for all combatants."""

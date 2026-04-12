@@ -11,10 +11,13 @@ class WorldExporter:
     """Export a complete world package for sharing."""
 
     @staticmethod
-    def export_world(game_state: dict, output_path: Path, 
+    def export_world(game_state: dict = None, output_path: Path = None, 
                      author: str = "Unknown", 
                      description: str = "",
-                     tags: Optional[list[str]] = None) -> Optional[Path]:
+                     tags: Optional[list[str]] = None,
+                     world: dict = None,
+                     character_name: str = None,
+                     output_path_old: Path = None) -> Optional[Path]:
         """Export a complete world package as .rqworld file.
         
         Creates a ZIP containing:
@@ -25,15 +28,31 @@ class WorldExporter:
         - thumbnail.txt: ASCII art preview
         
         Args:
-            game_state: Game state dict (from GameState.to_dict())
-            output_path: Path to write .rqworld file
+            game_state: Game state dict (from GameState.to_dict()) - NEW API
+            output_path: Path to write .rqworld file - NEW API
             author: Author name for the world
             description: Description of the world
             tags: Optional list of tags (e.g., ["dungeon", "dark"])
+            world: World state dict - OLD API (backwards compat)
+            character_name: Character name - OLD API (backwards compat)
+            output_path_old: Old output_path parameter name
         
         Returns:
             Path to created .rqworld file, or None if export failed
         """
+        # Handle backwards compatibility
+        if world is not None and game_state is None:
+            # Old style: export_world(world=..., character_name=..., output_path=...)
+            game_state = {"world": world, "quest_log": {}, "events": {}, "relationships": {}}
+            if character_name and not author:
+                author = character_name
+        
+        if output_path_old is not None and output_path is None:
+            output_path = output_path_old
+        
+        if game_state is None or output_path is None:
+            return None
+        
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 

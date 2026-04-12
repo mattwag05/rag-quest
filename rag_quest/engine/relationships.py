@@ -304,6 +304,41 @@ class RelationshipManager:
             lines.append(f"{faction_name}: {rep_display}")
 
         return "\n".join(lines)
+    
+    def change_disposition(self, npc_name: str, disposition: str) -> None:
+        """Change NPC disposition (backwards compatibility alias).
+        
+        Args:
+            npc_name: Name of the NPC
+            disposition: Disposition level as string
+        """
+        # Map disposition strings to trust values
+        disposition_map = {
+            "hostile": 10,
+            "unfriendly": 30,
+            "neutral": 50,
+            "friendly": 70,
+            "allied": 90,
+        }
+        
+        trust_value = disposition_map.get(disposition.lower(), 50)
+        change = trust_value - 50  # Center around neutral
+        self.modify_relationship(npc_name, change, f"Disposition changed to {disposition}")
+    
+    def create_faction(self, name: str, description: str, values: List[str] = None,
+                      members: List[str] = None) -> Faction:
+        """Create a new faction (backwards compatibility alias for add_faction).
+        
+        Args:
+            name: Faction name
+            description: Faction description
+            values: List of faction values
+            members: List of initial members
+        
+        Returns:
+            Created Faction object
+        """
+        return self.add_faction(name, description, values, members)
 
     def to_dict(self) -> dict:
         """Serialize relationship manager."""

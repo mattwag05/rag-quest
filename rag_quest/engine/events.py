@@ -26,18 +26,28 @@ class EventSeverity(Enum):
     MAJOR = "Major"
 
 
-@dataclass
 class WorldEvent:
     """Something happening in the world independent of the player."""
-    name: str
-    description: str
-    event_type: EventType
-    severity: EventSeverity
-    duration_turns: int
-    turns_remaining: int = 0
-    effects: Dict[str, int] = field(default_factory=dict)
-    is_active: bool = False
-    started_turn: int = 0
+    
+    def __init__(self, name: str = None, description: str = None, 
+                 event_type: EventType = None, severity: EventSeverity = None,
+                 duration_turns: int = None, turns_remaining: int = 0,
+                 effects: Dict[str, int] = None, is_active: bool = False,
+                 started_turn: int = 0, title: str = None):
+        """Initialize a WorldEvent.
+        
+        Supports both 'name' (new) and 'title' (old) parameter names.
+        """
+        # Handle backwards compatibility: title -> name
+        self.name = name or title or "Unnamed Event"
+        self.description = description or ""
+        self.event_type = event_type or EventType.SOCIAL
+        self.severity = severity or EventSeverity.MINOR
+        self.duration_turns = duration_turns or 1
+        self.turns_remaining = turns_remaining or self.duration_turns
+        self.effects = effects or {}
+        self.is_active = is_active
+        self.started_turn = started_turn
 
     def activate(self, current_turn: int) -> None:
         """Activate the event."""
@@ -73,8 +83,10 @@ class WorldEvent:
     def from_dict(cls, data: dict) -> "WorldEvent":
         """Deserialize event."""
         data = data.copy()
-        data["event_type"] = EventType(data["event_type"])
-        data["severity"] = EventSeverity(data["severity"])
+        if isinstance(data.get("event_type"), str):
+            data["event_type"] = EventType(data["event_type"])
+        if isinstance(data.get("severity"), str):
+            data["severity"] = EventSeverity(data["severity"])
         return cls(**data)
 
 
@@ -85,6 +97,26 @@ class EventManager:
         self.active_events: List[WorldEvent] = []
         self.event_history: List[WorldEvent] = []
         self.event_templates = self._init_event_templates()
+    
+    @staticmethod
+    def create_world_event(name: str = None, title: str = None, description: str = None,
+                          event_type: EventType = None, severity: EventSeverity = None,
+                          duration_turns: int = None, **kwargs) -> WorldEvent:
+        """Factory method to create a WorldEvent with backwards compatibility.
+        
+        Supports both 'name' (new) and 'title' (old) parameters.
+        """
+        # Handle backwards compatibility: title -> name
+        final_name = name or title or "Unnamed Event"
+        
+        return WorldEvent(
+            name=final_name,
+            description=description or "",
+            event_type=event_type or EventType.SOCIAL,
+            severity=severity or EventSeverity.MINOR,
+            duration_turns=duration_turns or 1,
+            **{k: v for k, v in kwargs.items() if k in ['turns_remaining', 'effects', 'is_active', 'started_turn']}
+        )
 
     def _init_event_templates(self) -> List[WorldEvent]:
         """Initialize built-in event templates."""
@@ -257,6 +289,10 @@ class EventManager:
             f"({event.turns_remaining} turns remaining)"
             for event in self.active_events if event.is_active
         ]
+    
+    def get_active_events(self) -> List[WorldEvent]:
+        """Get all active events. Alias for accessing active_events list."""
+        return [e for e in self.active_events if e.is_active]
 
     def to_dict(self) -> dict:
         """Serialize event manager."""

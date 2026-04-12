@@ -339,3 +339,20 @@ class DungeonGenerator:
 
         dungeon.current_room = dungeon.entrance
         return dungeon
+    
+    @staticmethod
+    def generate_level(level: int, difficulty: str = "normal") -> "Dungeon":
+        """Generate a single dungeon level (backwards compatibility alias).
+        
+        Args:
+            level: Dungeon level (used as depth)
+            difficulty: Difficulty level
+        
+        Returns:
+            Generated Dungeon
+        """
+        # Map difficulty strings to appropriate depth
+        depth_map = {"easy": 3, "normal": 5, "hard": 8, "deadly": 10}
+        depth = depth_map.get(difficulty.lower(), 5) + (level - 1)
+        
+        return DungeonGenerator.generate(depth=depth, difficulty=difficulty)

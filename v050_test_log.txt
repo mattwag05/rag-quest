@@ -14,7 +14,7 @@ RAG-Quest v0.5.0 End-to-End Playtest Log
 [Setup          ] Create world                             PASS
 [Setup          ] World serialization                      PASS
 [Engines        ] Inventory init                           PASS
-[Engines        ] Inventory serialization                  FAIL
+[Engines        ] Inventory serialization                  PASS
 [Engines        ] QuestLog init                            PASS
 [Engines        ] QuestLog serialization                   PASS
 [Engines        ] Party init                               PASS
@@ -47,23 +47,24 @@ RAG-Quest v0.5.0 End-to-End Playtest Log
 [Events         ] Get active events                        FAIL ('EventManager' object has no attribute 'get_active_events')
 [Achievements   ] Load achievements                        PASS (11 loaded)
 [Achievements   ] Check & get unlocked                     FAIL (AchievementManager.check_achievements() got an unexpected keyword argument 'player')
-[Dungeons       ] DungeonGenerator init                    FAIL (type object 'DifficultyLevel' has no attribute 'MEDIUM')
+[Dungeons       ] Generate easy                            FAIL ('DungeonGenerator' object has no attribute 'generate_level')
+[Dungeons       ] Generate normal                          FAIL ('DungeonGenerator' object has no attribute 'generate_level')
 [Saves          ] SaveManager init                         PASS
 [Saves          ] Save game                                FAIL (SaveManager.save_game() takes from 2 to 3 positional arguments but 5 were given)
 [Saves          ] List saves                               FAIL (SaveManager.list_saves() takes 1 positional argument but 2 were given)
 [Saves          ] Load game                                FAIL (SaveManager.load_game() takes 2 positional arguments but 3 were given)
 [Worlds         ] Export world                             FAIL (WorldExporter.export_world() got an unexpected keyword argument 'world')
 [Multiplayer    ] Create session                           FAIL (MultiplayerSession.__init__() got an unexpected keyword argument 'world_name')
-[Integration    ] Serialize full state                     PASS (4261 bytes)
+[Integration    ] Serialize full state                     PASS (4291 bytes)
 [Integration    ] Deserialize full state                   PASS
 
 ================================================================================
 SUMMARY
 ================================================================================
-Total: 55
-Passed: 39
+Total: 56
+Passed: 40
 Failed: 16
-Rate: 70%
+Rate: 71%
 
 Bugs (2):
   [P2] Relationships: Missing methods. Has: ['add_faction', 'add_npc', 'check_faction_standing', 'faction_reputation', 'factions', 'from_dict', 'get_available_interactions', 'get_disposition', 'get_or_create_relationship', 'get_relationship_summary', 'modify_faction_reputation', 'modify_relationship', 'npcs', 'relationship_summary', 'relationships', 'to_dict']
