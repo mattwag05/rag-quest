@@ -12,6 +12,8 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+## [0.7.1] — Narrator RAG Fix
+
 ### Fixed
 - **Critical:** narrator now actually pulls world lore from `WorldRAG` on
   every LLM call. The previous code (`narrator.py:208`) called
