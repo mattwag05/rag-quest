@@ -34,6 +34,8 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
+from ..engine.quests import QuestStatus as _QuestStatus
+
 if TYPE_CHECKING:
     from ..knowledge import WorldRAG
 
@@ -152,6 +154,45 @@ class ModuleRegistry:
         for m in self._modules.values():
             if not m.unlock_when_quests_completed and m.status == ModuleStatus.LOCKED:
                 m.status = ModuleStatus.AVAILABLE
+
+    def reevaluate(self, quest_log) -> list[Module]:
+        """Transition module statuses based on the current QuestLog.
+
+        Gating rules (monotonic — modules never go backwards):
+          * LOCKED → AVAILABLE when every quest title in
+            `unlock_when_quests_completed` is marked completed.
+          * AVAILABLE / ACTIVE → COMPLETED when `completion_quest` (if set)
+            is marked completed.
+
+        Quest references in the manifest match against `Quest.title`
+        case-insensitively. Returns the list of modules whose status changed
+        on this call, so callers can surface unlock/completion notifications
+        without polling.
+        """
+        completed_titles = {
+            q.title.lower()
+            for q in quest_log.quests
+            if q.status == _QuestStatus.COMPLETED
+        }
+
+        transitioned: list[Module] = []
+        for module in self._modules.values():
+            if module.status == ModuleStatus.COMPLETED:
+                continue
+            if (
+                module.completion_quest
+                and module.completion_quest.lower() in completed_titles
+            ):
+                module.status = ModuleStatus.COMPLETED
+                transitioned.append(module)
+                continue
+            if module.status == ModuleStatus.LOCKED and all(
+                q.lower() in completed_titles
+                for q in module.unlock_when_quests_completed
+            ):
+                module.status = ModuleStatus.AVAILABLE
+                transitioned.append(module)
+        return transitioned
 
     def to_dict(self) -> dict:
         return {"modules": [m.to_dict() for m in self._modules.values()]}

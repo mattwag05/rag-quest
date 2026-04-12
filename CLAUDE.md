@@ -403,9 +403,12 @@ statuses win over initial-state computation on reload — pass
 `Enum` (LOCKED / AVAILABLE / ACTIVE / COMPLETED). Malformed manifests raise
 `ModuleManifestError` (zero-traceback principle); `__main__.py` wraps the load
 in a Rich status spinner so first-boot ingestion doesn't look like a hang.
-`/modules` command lists declared modules by lifecycle status. Gating hook
-(post-turn re-evaluation) and `.rqworld` export integration are follow-up
-beads (`rag-quest-d4h`, `rag-quest-8qc`). Service
+`/modules` command lists declared modules by lifecycle status.
+`ModuleRegistry.reevaluate(quest_log)` runs after every turn in `run_game`:
+locked modules unlock when their `unlock_when_quests_completed` prereqs
+are all completed, and modules with a matching `completion_quest` flip to
+`COMPLETED`. Transitions are monotonic. Quest matching is case-insensitive
+on `Quest.title`. `.rqworld` export integration is follow-up (`rag-quest-8qc`). Service
 menus and save-format v3 bump land in follow-up beads (`rag-quest-cxp`,
 `rag-quest-vei`).
 

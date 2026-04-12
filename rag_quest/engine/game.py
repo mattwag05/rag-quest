@@ -15,6 +15,7 @@ from .. import ui
 from ..knowledge import WorldRAG
 from ..llm import BaseLLMProvider
 from ..saves import SaveManager
+from ..worlds.modules import ModuleStatus
 from .achievements import AchievementManager
 from .character import Character
 from .combat import CombatEncounter, CombatManager
@@ -269,6 +270,21 @@ def run_game(
                     )
             except Exception:
                 pass  # Timeline is additive — never block the game loop.
+
+            # v0.7: re-evaluate module gating — quest status may have changed.
+            try:
+                transitioned = game_state.world.module_registry.reevaluate(
+                    game_state.quest_log
+                )
+                for module in transitioned:
+                    if module.status == ModuleStatus.AVAILABLE:
+                        ui.print_info(
+                            f"[bold cyan]Module unlocked:[/bold cyan] {module.title}"
+                        )
+                    elif module.status == ModuleStatus.COMPLETED:
+                        ui.print_success(f"Module completed: {module.title}")
+            except Exception:
+                pass  # Module gating is additive — never block the game loop.
 
             # Check for new achievements
             if game_state.achievements:
@@ -791,8 +807,6 @@ def _cmd_base(parts: list, game_state: GameState) -> None:
 
 def _cmd_modules(parts: list, game_state: GameState) -> None:
     """List modules declared for this world, grouped by lifecycle status."""
-    from ..worlds.modules import ModuleStatus
-
     registry = game_state.world.module_registry
     if len(registry) == 0:
         console.print(

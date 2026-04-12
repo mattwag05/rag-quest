@@ -327,6 +327,163 @@ def test_registry_roundtrip_preserves_status():
 
 
 # ---------------------------------------------------------------------------
+# ModuleRegistry.reevaluate — quest-driven gating
+# ---------------------------------------------------------------------------
+
+
+def _quest_log_with(completed_titles=(), active_titles=()):
+    """Build a minimal QuestLog populated with quests in known states."""
+    from rag_quest.engine.quests import Quest, QuestLog, QuestStatus
+
+    log = QuestLog()
+    for title in completed_titles:
+        q = log.add_quest(title=title, description="")
+        q.status = QuestStatus.COMPLETED
+    for title in active_titles:
+        log.add_quest(title=title, description="")
+    return log
+
+
+def test_reevaluate_unlocks_locked_when_prereq_quests_complete():
+    reg = ModuleRegistry(
+        [
+            Module(
+                id="haunted",
+                title="Haunted Mill",
+                description="",
+                entry_location="Blackwater",
+                unlock_when_quests_completed=["Defeat the Goblin Chief"],
+            )
+        ]
+    )
+    assert reg.get("haunted").status == ModuleStatus.LOCKED
+
+    log = _quest_log_with(completed_titles=["Defeat the Goblin Chief"])
+    transitioned = reg.reevaluate(log)
+    assert [m.id for m in transitioned] == ["haunted"]
+    assert reg.get("haunted").status == ModuleStatus.AVAILABLE
+
+
+def test_reevaluate_requires_all_prereqs():
+    reg = ModuleRegistry(
+        [
+            Module(
+                id="final",
+                title="Final Showdown",
+                description="",
+                entry_location="X",
+                unlock_when_quests_completed=["Q1", "Q2"],
+            )
+        ]
+    )
+    # Only Q1 done — still locked.
+    log = _quest_log_with(completed_titles=["Q1"])
+    assert reg.reevaluate(log) == []
+    assert reg.get("final").status == ModuleStatus.LOCKED
+
+    # Now Q2 also done — unlocks.
+    log = _quest_log_with(completed_titles=["Q1", "Q2"])
+    assert len(reg.reevaluate(log)) == 1
+    assert reg.get("final").status == ModuleStatus.AVAILABLE
+
+
+def test_reevaluate_case_insensitive_quest_match():
+    reg = ModuleRegistry(
+        [
+            Module(
+                id="m",
+                title="M",
+                description="",
+                entry_location="X",
+                unlock_when_quests_completed=["defeat-goblin-chief"],
+            )
+        ]
+    )
+    log = _quest_log_with(completed_titles=["Defeat-Goblin-Chief"])
+    reg.reevaluate(log)
+    assert reg.get("m").status == ModuleStatus.AVAILABLE
+
+
+def test_reevaluate_marks_completed_when_completion_quest_done():
+    reg = ModuleRegistry(
+        [
+            Module(
+                id="goblin",
+                title="Goblin Cave",
+                description="",
+                entry_location="Stonebridge",
+                completion_quest="Slay the Chief",
+            )
+        ]
+    )
+    # Starts available (no prereqs).
+    assert reg.get("goblin").status == ModuleStatus.AVAILABLE
+
+    log = _quest_log_with(completed_titles=["Slay the Chief"])
+    transitioned = reg.reevaluate(log)
+    assert [m.id for m in transitioned] == ["goblin"]
+    assert reg.get("goblin").status == ModuleStatus.COMPLETED
+
+
+def test_reevaluate_is_monotonic_completed_stays_completed():
+    reg = ModuleRegistry(
+        [
+            Module(
+                id="goblin",
+                title="Goblin Cave",
+                description="",
+                entry_location="X",
+                completion_quest="Slay",
+                status=ModuleStatus.COMPLETED,
+            )
+        ]
+    )
+    log = _quest_log_with(active_titles=["Slay"])  # not completed anymore
+    assert reg.reevaluate(log) == []  # no change
+    assert reg.get("goblin").status == ModuleStatus.COMPLETED
+
+
+def test_reevaluate_no_change_returns_empty_list():
+    reg = ModuleRegistry(
+        [Module(id="a", title="A", description="", entry_location="X")]
+    )
+    log = _quest_log_with()
+    assert reg.reevaluate(log) == []
+    # Calling again is idempotent.
+    assert reg.reevaluate(log) == []
+
+
+def test_reevaluate_chains_unlock_and_completion_on_same_call():
+    """Completing quest Q triggers completion of module A AND unlocks module B
+    (which lists Q as its prereq). Both transitions happen in one call."""
+    reg = ModuleRegistry(
+        [
+            Module(
+                id="a",
+                title="A",
+                description="",
+                entry_location="X",
+                completion_quest="Q",
+                status=ModuleStatus.AVAILABLE,
+            ),
+            Module(
+                id="b",
+                title="B",
+                description="",
+                entry_location="Y",
+                unlock_when_quests_completed=["Q"],
+            ),
+        ]
+    )
+    log = _quest_log_with(completed_titles=["Q"])
+    transitioned = reg.reevaluate(log)
+    transitioned_ids = {m.id for m in transitioned}
+    assert transitioned_ids == {"a", "b"}
+    assert reg.get("a").status == ModuleStatus.COMPLETED
+    assert reg.get("b").status == ModuleStatus.AVAILABLE
+
+
+# ---------------------------------------------------------------------------
 # World integration
 # ---------------------------------------------------------------------------
 

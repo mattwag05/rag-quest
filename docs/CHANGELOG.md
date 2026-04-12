@@ -23,6 +23,15 @@ changelog" for the full convention.
   `StateChange.claim_base` rule. New `/base` command lists claimed bases;
   `/base claim [name]` is a deterministic escape hatch when regex detection
   doesn't catch the narrator's phrasing. Claims dedupe on `location_ref`.
+- **v0.7: Module gating via QuestLog** — `ModuleRegistry.reevaluate(quest_log)`
+  runs after every turn in the game loop and transitions module statuses
+  based on completed quests. Locked modules become `AVAILABLE` when their
+  `unlock_when_quests_completed` prereqs are all marked done; available/active
+  modules with a matching `completion_quest` become `COMPLETED` and unlock any
+  dependent modules in the same call. Transitions are monotonic (completed
+  modules stay completed). Quest references match `Quest.title`
+  case-insensitively. Game loop surfaces "Module unlocked" and "Module
+  completed" notifications via `ui.print_info` / `ui.print_success`.
 - **v0.7: `modules.yaml` loader + `ModuleRegistry`** — worlds can now declare
   hub-and-spoke adventure modules in a top-level `modules.yaml` manifest.
   New `rag_quest/worlds/modules.py` validates the schema (id, title,
