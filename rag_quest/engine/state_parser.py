@@ -144,6 +144,84 @@ class StateParser:
             r"(?:a|the)\s+(.+?)\s+(?:approach|greet)[s]?\s+you",
         ]
 
+        # Idioms that match pickup_patterns but are NOT inventory gains.
+        # Narrators use these constantly; leaving them unfiltered pollutes Inventory.
+        self.pickup_stopwords = {
+            "deep breath",
+            "breath",
+            "break",
+            "moment",
+            "seat",
+            "cover",
+            "aim",
+            "refuge",
+            "shelter",
+            "shape",
+            "note",
+            "care",
+            "charge",
+            "flight",
+            "heed",
+            "hold",
+            "stock",
+            "rest",
+            "watch",
+            "chance",
+            "interest",
+            "pride",
+            "offense",
+            "pity",
+            "time",
+            "stance",
+            "comfort",
+            "courage",
+            "place",
+            "position",
+        }
+
+        # Scenery / abstractions that match npc_patterns but aren't NPCs.
+        self.npc_stopwords = {
+            "sun",
+            "moon",
+            "sky",
+            "stars",
+            "star",
+            "wind",
+            "air",
+            "ground",
+            "floor",
+            "ceiling",
+            "light",
+            "shadow",
+            "shadows",
+            "darkness",
+            "path",
+            "road",
+            "door",
+            "doorway",
+            "room",
+            "hall",
+            "yourself",
+            "nothing",
+            "something",
+            "someone",
+            "anything",
+            "everything",
+            "wall",
+            "walls",
+            "window",
+            "sign",
+            "table",
+            "chair",
+        }
+
+        # Trailing preposition clauses (or dangling prepositions) that leak
+        # into greedy extractions. Matches "...at dawn" AND "...in" at EOL.
+        self._trailing_prep_pattern = re.compile(
+            r"\s+(?:at|in|on|with|by|from|of|under|over|near|beside|behind|before|after|into|onto)(?:\s+.+)?$",
+            re.IGNORECASE,
+        )
+
     @staticmethod
     def _strip_markdown(text: str) -> str:
         """Strip Markdown emphasis markers (**, __, *, _) and surrounding whitespace.
@@ -258,6 +336,8 @@ class StateParser:
                 # Clean up the location name
                 location = re.sub(r"[.,!?;]*$", "", location)
                 location = self._strip_markdown(location)
+                # Strip trailing prepositional phrases ("Woods at dawn" → "Woods")
+                location = self._trailing_prep_pattern.sub("", location).strip()
                 # Filter out overly long extractions
                 if location and len(location) < 50 and len(location.split()) <= 5:
                     return location
@@ -342,6 +422,20 @@ class StateParser:
                     item = re.sub(r"[.,!?;]*$", "", item)
                     item = self._strip_markdown(item)
 
+                    # Reject idioms that match pickup regex but aren't inventory.
+                    # Match against the first word or first two words — narrow
+                    # enough to keep "restorative potion" (starts with "rest")
+                    # while still catching "deep breath and ...".
+                    tokens = item.lower().split()
+                    if tokens:
+                        if tokens[0] in self.pickup_stopwords:
+                            continue
+                        if (
+                            len(tokens) >= 2
+                            and f"{tokens[0]} {tokens[1]}" in self.pickup_stopwords
+                        ):
+                            continue
+
                     # Avoid junk matches (too long or too vague)
                     if (
                         item
@@ -421,11 +515,21 @@ class StateParser:
                     r"^(?:a|an|the)\s+", "", npc_name, flags=re.IGNORECASE
                 )
                 npc_name = self._strip_markdown(npc_name)
+                # Strip trailing prepositional phrases ("wild fox in" → "wild fox")
+                npc_name = self._trailing_prep_pattern.sub("", npc_name).strip()
+
+                if not npc_name:
+                    continue
+
+                npc_lower = npc_name.lower()
+                # Reject scenery/abstractions: any token is a stopword.
+                if any(tok in self.npc_stopwords for tok in npc_lower.split()):
+                    continue
 
                 # Filter out common non-NPC words
-                if npc_name and len(npc_name) < 50 and len(npc_name.split()) <= 4:
+                if len(npc_name) < 50 and len(npc_name.split()) <= 4:
                     if not any(
-                        word in npc_name.lower()
+                        word in npc_lower
                         for word in ["your", "yourself", "the ground", "the air"]
                     ):
                         return npc_name

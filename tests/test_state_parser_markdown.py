@@ -48,3 +48,37 @@ def test_quest_extraction_strips_italic():
     )
     assert change.quest_offered is not None
     assert "*" not in change.quest_offered
+
+
+# ---------------------------------------------------------------------------
+# False-positive extractions (rag-quest-b2n)
+# ---------------------------------------------------------------------------
+
+
+def test_location_strips_trailing_prepositional_clause():
+    p = StateParser()
+    change = p.parse_narrator_response("You travel to Whispering Woods at dawn.", "go")
+    assert change.location == "Whispering Woods"
+
+
+def test_pickup_rejects_idioms():
+    """'take a deep breath' must not become an inventory gain."""
+    p = StateParser()
+    change = p.parse_narrator_response(
+        "You take a deep breath and steady yourself.", "rest"
+    )
+    assert change.items_gained == []
+
+
+def test_npc_rejects_scenery():
+    """'the morning sun' is scenery, not an NPC."""
+    p = StateParser()
+    change = p.parse_narrator_response("You see the morning sun rising.", "look")
+    assert change.npc_met is None
+
+
+def test_npc_strips_trailing_dangling_preposition():
+    """'wild fox in' → 'wild fox' (trailing 'in' from truncated match)."""
+    p = StateParser()
+    change = p.parse_narrator_response("You encounter a wild fox in the path.", "look")
+    assert change.npc_met == "wild fox"

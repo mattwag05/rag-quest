@@ -17,6 +17,11 @@ changelog" for the full convention.
   NPC names, item names, locations, and quest titles. Narrators that format proper nouns
   with bold/italic no longer leak `**Captain Mira**` into `World.npcs_met`, Inventory, or
   Timeline events (`rag_quest/engine/state_parser.py`).
+- State parser: reject false-positive regex extractions that polluted game state.
+  `"you take a deep breath"` no longer adds "deep breath" to inventory; `"the morning
+  sun rising"` no longer registers as an NPC; trailing prepositional phrases (`"Whispering
+  Woods at dawn"` → `"Whispering Woods"`, `"wild fox in"` → `"wild fox"`) are stripped
+  from location and NPC extractions.
 
 ## [0.6.0] — Campaign Memory
 
