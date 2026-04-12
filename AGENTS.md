@@ -1,4 +1,13 @@
-# AGENTS.md — LLM Provider Guide for RAG-Quest v0.5.3
+# AGENTS.md — LLM Provider Guide for RAG-Quest v0.6.0
+
+> **v0.6 note:** The AI Notetaker (`engine/notetaker.py`) reuses the same LLM provider via
+> a dedicated `NOTETAKER_SYSTEM` prompt and calls `complete()` with the same message
+> format. Auto-summary runs on every save event; set `notetaker.auto_summary=false` in
+> config to disable it for paid providers.
+
+---
+
+# AGENTS.md — original content
 
 This document describes RAG-Quest's LLM provider architecture, how each provider works, and how to add new providers.
 

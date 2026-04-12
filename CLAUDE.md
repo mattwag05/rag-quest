@@ -1,57 +1,35 @@
-# CLAUDE.md — RAG-Quest v0.5.3 AI Developer Guide
+# CLAUDE.md — RAG-Quest AI Developer Guide
 
-This document provides AI assistants (Claude, GPT, etc.) with a comprehensive understanding of RAG-Quest v0.5.3 architecture, conventions, and development practices.
+Guide for AI assistants working on RAG-Quest. Authoritative version lives in `rag_quest/__init__.py` — do not hardcode version strings elsewhere; import `rag_quest.__version__`.
 
 ## Project Overview
 
-**RAG-Quest** is an AI-powered D&D-style text RPG that uses LightRAG to eliminate hallucinations in narrative generation. Version 0.5.3 adds an interactive TUI tutorial, a downloadable user guide, and a 25-turn automated test suite, building on v0.5.2's polished UX.
+**RAG-Quest** is an AI-powered D&D-style text RPG that uses LightRAG to eliminate hallucinations in narrative generation.
 
 **Core Design Philosophy**: LightRAG does the heavy lifting. The LLM narrator is intentionally kept small (Gemma 4 E2B/E4B, 2-4B parameters) because it doesn't memorize the world. Instead, LightRAG's dual-level retrieval (entity matching + vector similarity) injects precise knowledge per query. This architecture enables RAG-Quest to run on consumer hardware while producing narrative quality comparable to much larger models.
 
-**Version**: v0.5.3 (Tutorial & User Guide)
+**Status**: Production-ready. All core systems verified and working.
 
-**Status**: Production-ready. All core systems verified and working. Full backwards compatibility with legacy code.
+Per-version history lives in [`docs/CHANGELOG.md`](docs/CHANGELOG.md). For anything not
+captured there, `git log --oneline` is the source of truth.
 
-**Key Achievement**: Interactive tutorial and comprehensive user guide make the game fully accessible to non-technical users.
+Forward-looking version plans live in [`docs/ROADMAP.md`](docs/ROADMAP.md). The editable
+"Future Roadmap" section holds pre-development v0.6+ slots — update it when scoping new
+features, not CHANGELOG.md (CHANGELOG is for shipped work).
 
-## What's New in v0.5.3
+### Updating the changelog
 
-### Interactive TUI Tutorial
-- **9-Step Guided Walkthrough**: Accessible via `/tutorial` command in-game
-- **Covers**: Exploration, NPCs, inventory, combat, commands, quests, saving, and pro tips
-- **Beginner-Friendly**: No prior knowledge needed, clear explanations at each step
+**When making user-visible changes, update `docs/CHANGELOG.md` in the same commit as the code.**
+Applies to: features, bug fixes, breaking changes, UX/CLI changes, new commands, provider
+behavior changes, save-format changes. Skip for: internal refactors, test-only changes,
+doc tweaks, formatting.
 
-### Downloadable User Guide
-- **Professional Word Document**: `docs/RAG-Quest_User_Guide.docx`
-- **8 Chapters + Appendix**: Welcome, Getting Started, Setup, Character Creation, Gameplay, Commands, Advanced Features, Multiplayer & Troubleshooting
-- **Non-Technical Audience**: Written for players with no command-line experience
-
-### Quality Assurance
-- **25-Turn Automated Test Suite**: `test_v053.py` with 100% pass rate
-- **Tutorial System Tested**: All 9 steps validated
-- **Full Regression Coverage**: All previous tests continue passing
-
-## What's in v0.5.2
-
-### UX Polish & Accessibility
-- **Friendly Setup Wizard**: Automatically detects Ollama, guides through configuration
-- **Command Shortcuts**: `/i`, `/s`, `/q`, `/p`, `/h` for rapid access
-- **Smart Error Handling**: No tracebacks, every error is actionable and clear
-- **Character Creation Confirmation**: Review before finalizing
-- **Input Validation**: Helpful retry messages, not harsh rejections
-- **Save Management**: Game recaps on load, metadata tracking
-
-### Commands Added in v0.5.2
-- `/new` — Start a new game without quitting
-- Better unknown command feedback with suggestions
-- `/config` for mid-game setting changes
-
-### UX Features
-- **Startup**: Ollama detection, ASCII welcome banner
-- **Character Selection**: Race/class with stat bonuses shown, confirmation screen
-- **Game Loop**: Clear status bar, subtle auto-save notifications
-- **Error Recovery**: Smart classification (Ollama, timeout, API, file errors)
-- **Terminal Compatibility**: Safe line widths (80-char), color contrast
+- Add entries under the `## [Unreleased]` heading (create it if missing), grouped as
+  `### Added` / `### Changed` / `### Fixed` / `### Removed`.
+- Write entries from the user's perspective — what changed for them, not what you edited.
+- When bumping `rag_quest.__version__`, rename `[Unreleased]` to the new version and start
+  a fresh `[Unreleased]` block above it.
+- One line per change; link to the relevant file or command when helpful.
 
 ## Technology Stack
 
@@ -67,7 +45,7 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 ```
 rag-quest/
 ├── rag_quest/                    # Main package
-│   ├── __init__.py              # Version: 0.5.3
+│   ├── __init__.py              # Single source of truth for __version__
 │   ├── __main__.py              # Entry point (python -m rag_quest)
 │   ├── startup.py               # Welcome screen & Ollama detection
 │   ├── config.py                # ConfigManager & setup wizard
@@ -96,10 +74,14 @@ rag-quest/
 │   │   ├── combat.py            # D&D combat with dice rolls
 │   │   ├── encounters.py        # Enemy generation & loot
 │   │   ├── narrator.py          # AI narrator & LLM integration
+│   │   ├── state_parser.py      # Extracts mechanical state changes from narrator text
 │   │   ├── tts.py               # Text-to-speech support
 │   │   ├── game.py              # Main game loop & commands
 │   │   ├── achievements.py      # 11 achievements
 │   │   ├── dungeon.py           # Procedural dungeon generation
+│   │   ├── timeline.py          # v0.6: TimelineEvent / Bookmark / Timeline container
+│   │   ├── notetaker.py         # v0.6: AI Notetaker — incremental JSON summary + canonize
+│   │   ├── encyclopedia.py      # v0.6: LoreEncyclopedia — browse-then-RAG-query
 │   │   └── saves.py             # Save/load & serialization
 │   ├── multiplayer/             # Local multiplayer
 │   │   ├── __init__.py
@@ -119,13 +101,13 @@ rag-quest/
 │   └── EXAMPLE_WORLD.md
 ├── docs/                        # Documentation
 │   ├── ARCHITECTURE.md
+│   ├── CHANGELOG.md             # Per-version history
+│   ├── QUICKSTART.md
+│   ├── CONTRIBUTING.md
 │   ├── ROADMAP.md
-│   ├── TEST_REPORT.md
 │   └── RAG-Quest_User_Guide.docx  # Downloadable user guide
 ├── pyproject.toml               # Project config
 ├── README.md                    # User-facing docs
-├── QUICKSTART.md                # Quick start guide
-├── CONTRIBUTING.md              # Contribution guidelines
 ├── AGENTS.md                    # LLM provider guide
 ├── LICENSE                      # MIT License
 └── CLAUDE.md                    # This file
@@ -259,8 +241,12 @@ def change_disposition(self, npc_name: str, delta: float):
 ```python
 def process_action(self, action: str, game_state: GameState) -> str:
     # Returns narrated response
-    # (Currently doesn't update game state; see Known Issues)
 ```
+
+**State Parser (`engine/state_parser.py`)** — Post-processes narrator output into a `StateChange`:
+location moves, damage taken / healed, items gained/lost, quests offered/completed, NPCs
+met/recruited, relationship deltas, world events. The game loop applies the `StateChange` to
+`GameState` after each turn so inventory/quest/location stay in sync with the narrative.
 
 ### LLM Providers (llm/)
 
@@ -282,6 +268,14 @@ class BaseLLMProvider(ABC):
 - **OpenRouterProvider** — OpenRouter.ai, 100+ models
 
 All now **synchronous** (were async before v0.5.0).
+
+**LLM Provider Gotchas** (ran into these, don't repeat them):
+- **Ollama message format** — Narrator must send `messages=[{"role": "user", "content": ...}]`,
+  not a bare `prompt=...`. Bare prompts return HTTP 400 from Ollama's `/api/chat` endpoint.
+- **Thinking models (Qwen 3.5, DeepSeek-R1)** — `OllamaProvider` strips `<think>...</think>`
+  blocks from the response before returning. Don't re-emit them in the UI.
+- **Version strings** — Always import from `rag_quest.__version__`. The ASCII banner, `--version`
+  output, and any user-visible version must come from the package, never hardcoded.
 
 ### Knowledge Layer (knowledge/)
 
@@ -363,6 +357,43 @@ def check_achievements(self, player: Character, game_state: GameState):
 def get_achievements(self) -> list[Achievement]:
     # Returns all achievements with progress
 ```
+
+### Campaign Memory (v0.6)
+
+Three additive subsystems that layer over `GameState`, `WorldRAG`, and `state_parser`. No
+existing code is restructured; memory features are strictly new-save-only (save_version 2).
+
+**Timeline (`engine/timeline.py`)** — `Timeline` container holds `TimelineEvent` and
+`Bookmark` lists. After each turn, the game loop calls
+`Timeline.record_from_state_change(turn, change, player_input, location)` which reads the
+`StateChange` produced by `StateParser.parse_narrator_response()` (now preserved on
+`Narrator.last_change`) and emits one or more structured events. Events rotate oldest-first
+at `max_events` (default 2000); bookmarks never rotate. `/bookmark [note]` grabs
+`Narrator.last_response` as full prose; `/bookmarks` lists saved highlights.
+
+**Notetaker (`engine/notetaker.py`, `prompts/notetaker.py`)** — Incremental summarizer.
+`Notetaker.refresh(current_turn, history, timeline_events)` sends dialogue + structured
+events since `last_summarized_turn` to the configured LLM with `NOTETAKER_SYSTEM` and
+parses JSON output into a `NoteEntry`. Storage is a JSON sidecar at
+`~/.local/share/rag-quest/notes/{world}.json`. `_save_game()` auto-refreshes on every save
+unless `notetaker.auto_summary` is set false in config. `/canonize N` promotes an entry
+into LightRAG via `WorldRAG.ingest_text(body, source="canonized")` — hard boundary means
+raw notes never silently touch retrieval.
+
+**Encyclopedia (`engine/encyclopedia.py`)** — Pure wrapper. `LoreEncyclopedia.list_entries()`
+reads from `World.visited_locations`, `World.npcs_met`,
+`RelationshipManager.{relationships,factions}`, and `Inventory.items`.
+`LoreEncyclopedia.detail(entry)` runs an on-demand `WorldRAG.query_world()` with an
+entity-shaped prompt, falling back to the GameState-side summary when RAG is unavailable.
+
+**Gotchas**:
+- `Narrator.last_change`, `last_response`, `last_player_input` are the contract Timeline /
+  Bookmark consumers rely on. Don't reset them on error paths — leave stale values rather
+  than wipe them.
+- Notetaker failures (LLM timeout, corrupt sidecar) are silenced in `_save_game()`. Never
+  let the notetaker block a save — campaign memory is additive, not load-bearing.
+- Canonization is one-way per entry (`entry.canonized = True`). `pending_for_canonization`
+  is the player-facing list.
 
 ### Dungeon Generation (dungeon.py)
 
@@ -454,47 +485,12 @@ console.print(Panel(text, title="Narrator", style="blue"))
 - Yellow: Warnings
 - Magenta: System messages
 
-## Error Handling Philosophy (v0.5.2)
+## Error Handling Philosophy
 
-**Zero tracebacks shown to users.** Every error path returns a friendly, actionable message.
-
-Error categories with example messages:
-
-**Ollama not running**:
-```
-It looks like Ollama isn't running. Please:
-1. Download Ollama from https://ollama.ai
-2. Open Ollama from your Applications folder
-3. Try again!
-```
-
-**Model not found**:
-```
-Model gemma4:e4b not found. To download it, run:
-ollama pull gemma4:e4b
-```
-
-**API key invalid**:
-```
-Your OpenAI API key doesn't look right. Check /config
-or environment variable OPENAI_API_KEY.
-```
-
-**Timeout**:
-```
-The AI took too long to respond. This usually means:
-- Your computer is slow (try 'fast' RAG profile)
-- The model is large (try gemma4:e2b)
-- The network is slow
-
-You can change settings with: /config
-```
-
-**File not found**:
-```
-Lore file not found: /path/to/file
-Make sure the file exists and try again.
-```
+**Zero tracebacks shown to users.** Every error path returns a friendly, actionable message
+classified by root cause: Ollama not running, model not found, API key invalid, timeout, file
+not found. When adding new error surfaces, follow the same pattern — name the cause, give the
+user one concrete next step, and never leak a stack trace.
 
 ## How to Run & Develop
 
@@ -503,8 +499,12 @@ Make sure the file exists and try again.
 ```bash
 git clone https://github.com/mattwag05/rag-quest.git
 cd rag-quest
-pip install -e ".[dev]"
+python3 -m venv .venv
+.venv/bin/pip install -e ".[dev]"
 ```
+
+Homebrew Python 3.12+ is externally managed — always use a project venv. Subsequent commands
+below assume the venv is activated (`source .venv/bin/activate`) or invoked via `.venv/bin/...`.
 
 ### Running
 
@@ -527,12 +527,15 @@ python -m rag_quest
 # Run all tests
 pytest -v
 
-# Run specific test
-pytest test_v051_core.py -v
+# Run a specific test file
+pytest path/to/test_file.py -v
 
 # With coverage
 pytest --cov=rag_quest --cov-report=html
 ```
+
+Historical per-version test scripts (`test_v05*.py`, `test_v04*.py`) were removed — don't
+reintroduce them. Write new tests under `tests/` (or alongside the module under test).
 
 ### Development Workflow
 
@@ -548,24 +551,25 @@ mypy rag_quest/
 python -m py_compile rag_quest/**/*.py
 ```
 
-## Known Issues & Limitations
+## Known Design Limitations
 
-### ✓ Fixed (v0.5.2)
-- Inventory serialization — Fixed, all data preserved
-- DifficultyLevel enum — Complete with all values
-- Zero tracebacks — All error paths return friendly messages
-- Command abbreviations — All implemented
-- Character creation confirmation — All implemented
+1. **State parser is heuristic** — `engine/state_parser.py` now extracts location changes,
+   damage/healing, item gains/losses, quest offers/completions, NPC encounters, and world
+   events from narrator text. It uses regex + keyword rules, so phrasings it doesn't
+   recognize silently produce no state change. When a gameplay bug traces back to "the
+   narrative said X but state didn't update," the parser patterns are the place to look.
 
-### Known Design Limitations
+2. **RAG Query Latency** — First query takes 30-60 seconds (LightRAG initialization).
+   Typical query 1-3 seconds.
 
-1. **Character Location Not Parsed** — Narrator doesn't extract location changes from responses. Would need regex patterns for "move to", "go to", etc.
+3. **PDF Ingestion Slow** — Large PDFs take minutes to ingest due to entity extraction.
+   Recommend 5-10 page files for testing.
 
-2. **Inventory/Quest Integration Limited** — Items and quests exist but limited integration with narrator feedback. Narrator doesn't always parse item gains or quest completion.
+### Save Format Versioning Convention
 
-3. **RAG Query Latency** — First query takes 30-60 seconds (LightRAG initialization). Typical query 1-3 seconds.
-
-4. **PDF Ingestion Slow** — Large PDFs take minutes to ingest due to entity extraction. Recommend 5-10 page files for testing.
+New state fields bump `save_version` and add safe defaults in `GameState.from_dict()`. Policy
+is clean-break: old saves load with empty new fields, no retroactive migration — new features
+populate only on new saves. Document the bump in `docs/CHANGELOG.md` under that version.
 
 ## File Locations
 
@@ -605,6 +609,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 ## Resources
 
+- **Feature ideation source**: [`docs/Extending RAG-Quest Using Features from Existing AI Dungeon Master Projects.md`](docs/Extending%20RAG-Quest%20Using%20Features%20from%20Existing%20AI%20Dungeon%20Master%20Projects.md) — competitive survey of AI DM projects with extractable feature ideas. Consult when scoping new roadmap entries.
 - **LightRAG**: https://github.com/hkuds/LightRAG
 - **Ollama**: https://ollama.ai
 - **Gemma**: https://blog.google/technology/developers/gemma-open-models/
@@ -613,7 +618,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 ---
 
-**Last Updated**: April 2026  
 **For**: Claude and other AI assistants contributing to RAG-Quest
 
 **Key Principle**: LightRAG does the heavy lifting. Keep the LLM lightweight and focused on narrative.

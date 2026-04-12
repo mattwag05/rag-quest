@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -11,23 +11,29 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Confirm
 
+from .. import ui
 from ..knowledge import WorldRAG
 from ..llm import BaseLLMProvider
 from ..saves import SaveManager
-from .. import ui
+from .achievements import AchievementManager
 from .character import Character
+from .combat import CombatEncounter, CombatManager
+from .dungeon import DungeonGenerator
+from .encounters import EncounterGenerator
+from .encyclopedia import CATEGORIES as LORE_CATEGORIES
+from .encyclopedia import LoreEncyclopedia
+from .events import EventManager
 from .inventory import Inventory
 from .narrator import Narrator
-from .quests import QuestLog
-from .world import World
-from .combat import CombatManager, CombatEncounter
-from .encounters import EncounterGenerator
-from .tts import TTSNarrator
+from .notetaker import Notetaker
 from .party import Party
+from .quests import QuestLog
 from .relationships import RelationshipManager
-from .events import EventManager
-from .achievements import AchievementManager
-from .dungeon import DungeonGenerator
+from .timeline import Bookmark, Timeline
+from .tts import TTSNarrator
+from .world import World
+
+SAVE_FORMAT_VERSION = 2
 
 
 console = Console()
@@ -52,10 +58,16 @@ class GameState:
     achievements: Optional[AchievementManager] = None
     turn_number: int = 0
     playtime_seconds: float = 0.0
+    # v0.6 Campaign Memory — additive, new-save-only. Old v1 saves load with
+    # empty timeline and notetaker cursor; notes/lore only populate from here on.
+    timeline: Timeline = field(default_factory=Timeline)
+    notetaker: Optional[Notetaker] = None
+    encyclopedia: Optional[LoreEncyclopedia] = None
 
     def to_dict(self) -> dict:
         """Serialize game state."""
         return {
+            "save_version": SAVE_FORMAT_VERSION,
             "character": self.character.to_dict(),
             "world": self.world.to_dict(),
             "inventory": self.inventory.to_dict(),
@@ -66,6 +78,10 @@ class GameState:
             "achievements": self.achievements.to_dict() if self.achievements else {},
             "turn_number": self.turn_number,
             "playtime_seconds": self.playtime_seconds,
+            # v0.6 memory layer — the notes sidecar lives at ~/.local/share/rag-quest/notes/
+            # so we only persist a pointer (world name) here.
+            "timeline": self.timeline.to_dict(),
+            "notes_world": self.notetaker.world_name if self.notetaker else None,
         }
 
     @classmethod
@@ -83,14 +99,38 @@ class GameState:
         inventory = Inventory.from_dict(data["inventory"])
         quest_log = QuestLog.from_dict(data["quest_log"])
         party = Party.from_dict(data.get("party", {"members": [], "max_size": 4}))
-        relationships = RelationshipManager.from_dict(data.get("relationships", {"relationships": {}, "factions": {}, "faction_reputation": {}}))
-        events = EventManager.from_dict(data.get("events", {"active_events": [], "event_history": []}))
-        achievements = AchievementManager.from_dict(data.get("achievements", {})) if data.get("achievements") else AchievementManager()
-        
+        relationships = RelationshipManager.from_dict(
+            data.get(
+                "relationships",
+                {"relationships": {}, "factions": {}, "faction_reputation": {}},
+            )
+        )
+        events = EventManager.from_dict(
+            data.get("events", {"active_events": [], "event_history": []})
+        )
+        achievements = (
+            AchievementManager.from_dict(data.get("achievements", {}))
+            if data.get("achievements")
+            else AchievementManager()
+        )
+
         combat_mgr = CombatManager(narrator)
         tts = TTSNarrator(enabled=tts_enabled) if tts_enabled else None
 
-        return cls(
+        # v0.6: safe-default hydration for save v2 fields. Old v1 saves omit these
+        # and load into empty containers — no retroactive migration.
+        try:
+            timeline = Timeline.from_dict(data.get("timeline"))
+        except Exception:
+            timeline = Timeline()
+
+        notes_world = data.get("notes_world") or world.name
+        try:
+            notetaker = Notetaker(world_name=notes_world, llm=llm)
+        except Exception:
+            notetaker = None
+
+        gs = cls(
             character=character,
             world=world,
             inventory=inventory,
@@ -106,7 +146,11 @@ class GameState:
             tts_narrator=tts,
             turn_number=data.get("turn_number", 0),
             playtime_seconds=data.get("playtime_seconds", 0.0),
+            timeline=timeline,
+            notetaker=notetaker,
         )
+        gs.encyclopedia = LoreEncyclopedia(gs)
+        return gs
 
 
 def run_game(
@@ -135,7 +179,9 @@ def run_game(
                 break
 
             if not player_input:
-                ui.print_info("[dim]Type an action like 'look around' or /help for commands[/dim]")
+                ui.print_info(
+                    "[dim]Type an action like 'look around' or /help for commands[/dim]"
+                )
                 continue
 
             # Handle special commands
@@ -146,42 +192,58 @@ def run_game(
 
             # Check for world events and advance turn
             game_state.turn_number += 1
-            new_event = game_state.events.check_for_events(game_state.turn_number, event_chance=0.08)
+            new_event = game_state.events.check_for_events(
+                game_state.turn_number, event_chance=0.08
+            )
             if new_event:
-                ui.print_world_event(f"[bold cyan]WORLD EVENT:[/bold cyan] {new_event.name}\n{new_event.description}")
-            
+                ui.print_world_event(
+                    f"[bold cyan]WORLD EVENT:[/bold cyan] {new_event.name}\n{new_event.description}"
+                )
+
             # Expire old events
             expired = game_state.events.expire_events()
             for event_name in expired:
                 ui.print_world_event(f"[cyan]Event ended:[/cyan] {event_name}")
-            
+
             # Check for party loyalty departures
             departing = game_state.party.check_loyalty_departures()
             for member_name in departing:
-                ui.print_warning(f"{member_name} has left the party due to low loyalty!")
+                ui.print_warning(
+                    f"{member_name} has left the party due to low loyalty!"
+                )
 
             # Process action through narrator with error recovery
             try:
-                with console.status("[bold green]The Dungeon Master considers your action...[/bold green]"):
+                with console.status(
+                    "[bold green]The Dungeon Master considers your action...[/bold green]"
+                ):
                     response = game_state.narrator.process_action(player_input)
                     errors_in_row = 0  # Reset error counter on success
             except Exception as e:
                 errors_in_row += 1
                 error_msg = str(e).lower()
-                
+
                 # Provide helpful, user-friendly error messages
                 if "timeout" in error_msg or "connection" in error_msg:
-                    ui.print_error("The LLM is taking too long. Try again or check your connection.")
+                    ui.print_error(
+                        "The LLM is taking too long. Try again or check your connection."
+                    )
                 elif "ollama" in error_msg or "llm" in error_msg:
-                    ui.print_error("Problem with the AI narrator. Make sure Ollama is running.")
+                    ui.print_error(
+                        "Problem with the AI narrator. Make sure Ollama is running."
+                    )
                 elif "rag" in error_msg or "knowledge" in error_msg:
-                    ui.print_error("Issue with the world knowledge system. Try a simpler action.")
+                    ui.print_error(
+                        "Issue with the world knowledge system. Try a simpler action."
+                    )
                 else:
                     ui.print_error(f"The Dungeon Master stumbles: {type(e).__name__}")
-                
+
                 # If too many errors in a row, suggest exiting
                 if errors_in_row >= max_errors_in_row:
-                    ui.print_error("Too many errors. Consider saving with /save and restarting RAG-Quest.")
+                    ui.print_error(
+                        "Too many errors. Consider saving with /save and restarting RAG-Quest."
+                    )
                     response = (
                         "The world seems unstable. You should find a safe place to rest "
                         "before continuing your adventure."
@@ -191,10 +253,25 @@ def run_game(
 
             # Display response
             ui.print_narrator_response(response)
-            
+
+            # v0.6: record a structured timeline entry from the just-applied StateChange.
+            try:
+                change = getattr(game_state.narrator, "last_change", None)
+                if change is not None:
+                    game_state.timeline.record_from_state_change(
+                        turn=game_state.turn_number,
+                        change=change,
+                        player_input=player_input,
+                        location=game_state.character.location or "",
+                    )
+            except Exception:
+                pass  # Timeline is additive — never block the game loop.
+
             # Check for new achievements
             if game_state.achievements:
-                new_achievements = game_state.achievements.check_achievements(game_state.to_dict())
+                new_achievements = game_state.achievements.check_achievements(
+                    game_state.to_dict()
+                )
                 for achievement in new_achievements:
                     ui.print_achievement_unlocked(achievement.name, achievement.icon)
 
@@ -212,20 +289,24 @@ def run_game(
     except KeyboardInterrupt:
         # Graceful exit with save prompt
         console.print("\n[yellow][bold]Exiting RAG-Quest[/bold][/yellow]")
-        if save_path and Confirm.ask("Save your progress before quitting?", default=True):
+        if save_path and Confirm.ask(
+            "Save your progress before quitting?", default=True
+        ):
             try:
                 _save_game(game_state, save_path)
                 console.print("[green]✓ Game saved![/green]")
             except Exception as e:
                 console.print(f"[yellow]Could not save: {e}[/yellow]")
-        console.print("[cyan]Thanks for playing, adventurer. See you next time![/cyan]\n")
+        console.print(
+            "[cyan]Thanks for playing, adventurer. See you next time![/cyan]\n"
+        )
     finally:
         # Cleanup
         try:
             game_state.world_rag.close()
         except Exception as e:
             pass
-        
+
         try:
             game_state.llm.close()
         except Exception as e:
@@ -254,12 +335,12 @@ def _handle_command(
 
     elif cmd == "/look":
         context_query = f"Detailed description of {game_state.character.location}"
-        description = game_state.world_rag.query_world(
-            context_query, param="hybrid"
-        )
+        description = game_state.world_rag.query_world(context_query, param="hybrid")
         console.print(
-            Panel(description or "You see nothing special here.", 
-                  title=game_state.character.location)
+            Panel(
+                description or "You see nothing special here.",
+                title=game_state.character.location,
+            )
         )
 
     elif cmd == "/map" or cmd == "/world":
@@ -273,9 +354,7 @@ def _handle_command(
             try:
                 _save_game(game_state, save_path)
                 ui.print_save_confirmation(
-                    save_path.name,
-                    game_state.character.name,
-                    game_state.world.name
+                    save_path.name, game_state.character.name, game_state.world.name
                 )
             except Exception as e:
                 ui.print_error(f"Could not save: {e}")
@@ -283,19 +362,22 @@ def _handle_command(
             ui.print_warning("No save location specified.")
 
     elif cmd == "/abilities":
-        abilities_str = "\n".join(game_state.character.get_abilities()) or "No abilities unlocked yet"
+        abilities_str = (
+            "\n".join(game_state.character.get_abilities())
+            or "No abilities unlocked yet"
+        )
         console.print(Panel(abilities_str, title="Abilities", border_style="yellow"))
-    
+
     elif cmd == "/stats":
         ui.print_character_status(game_state.character)
-    
+
     elif cmd == "/equipment":
         equipment = game_state.character.equipment
         eq_str = f"Weapon: {equipment.weapon or 'None'}\n"
         eq_str += f"Armor: {equipment.armor or 'None'}\n"
         eq_str += f"Accessory: {equipment.accessory or 'None'}"
         console.print(Panel(eq_str, title="Equipment", border_style="cyan"))
-    
+
     elif cmd == "/voice":
         if game_state.tts_narrator:
             game_state.tts_narrator.toggle()
@@ -303,21 +385,35 @@ def _handle_command(
             ui.print_success(f"Text-to-speech {state}!")
         else:
             ui.print_warning("TTS not available in this game.")
-    
+
     elif cmd == "/party" or cmd == "/p":
-        console.print(Panel(game_state.party.get_party_status(), title="Party Status", border_style="magenta"))
+        console.print(
+            Panel(
+                game_state.party.get_party_status(),
+                title="Party Status",
+                border_style="magenta",
+            )
+        )
 
     elif cmd == "/relationships" or cmd == "/rel":
-        console.print(Panel(game_state.relationships.relationship_summary(), title="Relationships", border_style="green"))
+        console.print(
+            Panel(
+                game_state.relationships.relationship_summary(),
+                title="Relationships",
+                border_style="green",
+            )
+        )
 
     elif cmd == "/factions" or cmd == "/f":
         if not game_state.relationships.factions:
             console.print("[yellow]No factions discovered yet.[/yellow]")
         else:
-            faction_text = "\n".join([
-                f"[{faction.color}]{faction.name}[/{faction.color}]: {faction.description}"
-                for faction in game_state.relationships.factions.values()
-            ])
+            faction_text = "\n".join(
+                [
+                    f"[{faction.color}]{faction.name}[/{faction.color}]: {faction.description}"
+                    for faction in game_state.relationships.factions.values()
+                ]
+            )
             console.print(Panel(faction_text, title="Factions", border_style="cyan"))
 
     elif cmd == "/recruit" and len(parts) > 1:
@@ -325,18 +421,21 @@ def _handle_command(
         rel = game_state.relationships.get_or_create_relationship(npc_name)
         if rel.can_recruit():
             from .party import PartyMember
+
             member = PartyMember(
                 name=npc_name,
                 race="Unknown",
                 character_class="Unknown",
-                backstory=f"Recruited from adventure"
+                backstory=f"Recruited from adventure",
             )
             if game_state.party.add_member(member):
                 console.print(f"[green]{npc_name} has joined your party![/green]")
             else:
                 console.print("[yellow]Your party is at maximum size.[/yellow]")
         else:
-            console.print(f"[red]{npc_name} is not interested in joining your party.[/red]")
+            console.print(
+                f"[red]{npc_name} is not interested in joining your party.[/red]"
+            )
 
     elif cmd == "/dismiss" and len(parts) > 1:
         npc_name = " ".join(parts[1:])
@@ -349,7 +448,9 @@ def _handle_command(
         events_list = game_state.events.get_active_event_descriptions()
         if events_list:
             events_text = "\n".join(events_list)
-            console.print(Panel(events_text, title="Active World Events", border_style="red"))
+            console.print(
+                Panel(events_text, title="Active World Events", border_style="red")
+            )
         else:
             console.print("[yellow]No active world events.[/yellow]")
 
@@ -357,8 +458,12 @@ def _handle_command(
         if game_state.achievements:
             unlocked = game_state.achievements.get_unlocked()
             if unlocked:
-                ach_text = "\n".join([f"{a.icon} {a.name}: {a.description}" for a in unlocked])
-                console.print(Panel(ach_text, title="Achievements", border_style="blue"))
+                ach_text = "\n".join(
+                    [f"{a.icon} {a.name}: {a.description}" for a in unlocked]
+                )
+                console.print(
+                    Panel(ach_text, title="Achievements", border_style="blue")
+                )
             else:
                 console.print("[yellow]No achievements unlocked yet.[/yellow]")
         else:
@@ -368,9 +473,13 @@ def _handle_command(
         # Start a procedural dungeon crawl
         dungeon = DungeonGenerator.generate(depth=5, difficulty="normal")
         room = dungeon.enter()
-        console.print(Panel(dungeon.get_map_ascii(), title="Dungeon Map", border_style="red"))
+        console.print(
+            Panel(dungeon.get_map_ascii(), title="Dungeon Map", border_style="red")
+        )
         if room:
-            console.print(f"\n[bold]You enter a {room.room_type.value}:[/bold] {room.description}")
+            console.print(
+                f"\n[bold]You enter a {room.room_type.value}:[/bold] {room.description}"
+            )
             if room.enemies:
                 console.print(f"[red]Enemies:[/red] {', '.join(room.enemies)}")
             if room.items:
@@ -379,6 +488,7 @@ def _handle_command(
     elif cmd == "/config" or cmd == "/settings":
         # In-game settings menu
         from ..config import ConfigManager
+
         config_manager = ConfigManager()
         config_manager.modify_settings_menu()
 
@@ -387,11 +497,16 @@ def _handle_command(
 
     elif cmd == "/tutorial":
         from ..tutorial import run_interactive_tutorial
+
         run_interactive_tutorial()
 
     elif cmd == "/new":
-        if ui.get_yes_no_confirmation("[yellow]Start a new game? Current progress will be saved.[/yellow]"):
-            ui.print_success("Restart your game by quitting and running RAG-Quest again!")
+        if ui.get_yes_no_confirmation(
+            "[yellow]Start a new game? Current progress will be saved.[/yellow]"
+        ):
+            ui.print_success(
+                "Restart your game by quitting and running RAG-Quest again!"
+            )
         return True
 
     elif cmd == "/quit" or cmd == "/exit":
@@ -400,10 +515,221 @@ def _handle_command(
                 _save_game(game_state, save_path)
         return False
 
+    # ------------------------------------------------------------------
+    # v0.6 Campaign Memory commands: /timeline, /bookmark, /bookmarks,
+    # /notes, /canonize, /lore
+    # ------------------------------------------------------------------
+    elif cmd == "/timeline" or cmd == "/t":
+        _cmd_timeline(parts, game_state)
+
+    elif cmd == "/bookmark" or cmd == "/bm":
+        _cmd_bookmark(parts, game_state)
+
+    elif cmd == "/bookmarks":
+        _cmd_list_bookmarks(game_state)
+
+    elif cmd == "/notes" or cmd == "/n":
+        _cmd_notes(parts, game_state)
+
+    elif cmd == "/canonize":
+        _cmd_canonize(parts, game_state)
+
+    elif cmd == "/lore" or cmd == "/l":
+        _cmd_lore(parts, game_state)
+
     else:
         ui.print_unknown_command(cmd)
 
     return True
+
+
+# =====================================================================
+# v0.6 Campaign Memory command handlers
+# =====================================================================
+
+
+def _cmd_timeline(parts: list, game_state: GameState) -> None:
+    """Render the timeline log with optional type filter."""
+    filter_type = parts[1].lower() if len(parts) > 1 else "all"
+    events = game_state.timeline.get_events(filter_type=filter_type, limit=50)
+    if not events:
+        console.print(
+            f"[yellow]No timeline events yet (filter: {filter_type}).[/yellow]"
+        )
+        return
+
+    from rich.table import Table
+
+    table = Table(
+        title=f"Campaign Timeline ({filter_type})",
+        border_style="blue",
+        show_lines=False,
+    )
+    table.add_column("Turn", style="dim", width=5)
+    table.add_column("Type", style="cyan", width=10)
+    table.add_column("Summary", style="white")
+    for ev in events:
+        table.add_row(str(ev.turn), ev.type, ev.summary)
+    console.print(table)
+
+
+def _cmd_bookmark(parts: list, game_state: GameState) -> None:
+    """Bookmark the current turn's full narrator prose."""
+    from datetime import datetime as _dt
+
+    note = " ".join(parts[1:]).strip() if len(parts) > 1 else ""
+    prose = getattr(game_state.narrator, "last_response", "") or ""
+    if not prose:
+        ui.print_warning("Nothing to bookmark yet — take at least one action first.")
+        return
+    bm = Bookmark(
+        turn=game_state.turn_number,
+        timestamp=_dt.now().isoformat(timespec="seconds"),
+        note=note,
+        player_input=getattr(game_state.narrator, "last_player_input", "") or "",
+        narrator_prose=prose,
+        location=game_state.character.location or "",
+    )
+    game_state.timeline.add_bookmark(bm)
+    tag = f": {note}" if note else ""
+    ui.print_success(f"★ Bookmarked turn {bm.turn}{tag}")
+
+
+def _cmd_list_bookmarks(game_state: GameState) -> None:
+    """List saved bookmarks."""
+    bookmarks = game_state.timeline.bookmarks
+    if not bookmarks:
+        console.print(
+            "[yellow]No bookmarks saved yet. Use /bookmark to save a highlight.[/yellow]"
+        )
+        return
+    for bm in bookmarks[-10:]:
+        header = f"[bold]Turn {bm.turn}[/bold] · {bm.location or 'unknown location'}"
+        if bm.note:
+            header += f" · [cyan]{bm.note}[/cyan]"
+        console.print(Panel(bm.narrator_prose, title=header, border_style="magenta"))
+
+
+def _cmd_notes(parts: list, game_state: GameState) -> None:
+    """Show the notetaker summary or trigger a manual refresh."""
+    if game_state.notetaker is None:
+        ui.print_warning("Notetaker not available in this session.")
+        return
+
+    if len(parts) > 1 and parts[1].lower() in ("refresh", "now", "update"):
+        ui.print_info("Refreshing notes…")
+        entry = game_state.notetaker.refresh(
+            current_turn=game_state.turn_number,
+            conversation_history=game_state.narrator.get_conversation_history(),
+            timeline_events=game_state.timeline.events,
+        )
+        if entry is None:
+            ui.print_warning("Nothing new since last refresh.")
+            return
+
+    text = game_state.notetaker.format_latest(count=3)
+    console.print(Panel(text, title="Campaign Notes", border_style="green"))
+
+
+def _cmd_canonize(parts: list, game_state: GameState) -> None:
+    """Promote pending notes into LightRAG."""
+    if game_state.notetaker is None:
+        ui.print_warning("Notetaker not available in this session.")
+        return
+    pending = game_state.notetaker.pending_for_canonization()
+    if not pending:
+        ui.print_info("No pending notes to canonize. Try /notes refresh first.")
+        return
+
+    from rich.table import Table
+
+    table = Table(title="Pending Notes (not yet in world lore)", border_style="yellow")
+    table.add_column("#", width=3)
+    table.add_column("Turns", width=10)
+    table.add_column("Summary")
+    for i, entry in enumerate(pending, 1):
+        table.add_row(str(i), entry.turn_range, entry.session_summary[:80])
+    console.print(table)
+
+    if len(parts) > 1:
+        target = parts[1]
+        if target.lower() == "all":
+            promoted = 0
+            for _ in range(len(pending)):
+                if game_state.notetaker.canonize_entry(0, game_state.world_rag):
+                    promoted += 1
+            ui.print_success(f"Canonized {promoted} note(s) into world lore.")
+            return
+        try:
+            idx = int(target) - 1
+        except ValueError:
+            ui.print_warning("Usage: /canonize [number|all]")
+            return
+        if game_state.notetaker.canonize_entry(idx, game_state.world_rag):
+            ui.print_success(f"Canonized note #{target} into world lore.")
+        else:
+            ui.print_warning("Could not canonize that entry.")
+    else:
+        console.print("[dim]Use /canonize N to promote one, or /canonize all.[/dim]")
+
+
+def _cmd_lore(parts: list, game_state: GameState) -> None:
+    """Browse the lore encyclopedia."""
+    if game_state.encyclopedia is None:
+        game_state.encyclopedia = LoreEncyclopedia(game_state)
+
+    enc = game_state.encyclopedia
+    sub = parts[1].lower() if len(parts) > 1 else None
+
+    if sub is None:
+        # Overview
+        from rich.table import Table
+
+        table = Table(title="Lore Encyclopedia", border_style="cyan")
+        table.add_column("Category")
+        table.add_column("Count", justify="right")
+        for cat, count in enc.categories_with_counts():
+            table.add_row(cat, str(count))
+        console.print(table)
+        console.print(
+            "[dim]Use /lore <category> to browse, or /lore <category> <name> for details.[/dim]"
+        )
+        return
+
+    if sub not in LORE_CATEGORIES:
+        ui.print_warning(
+            f"Unknown category '{sub}'. Valid: {', '.join(LORE_CATEGORIES)}"
+        )
+        return
+
+    if len(parts) >= 3:
+        query_name = " ".join(parts[2:]).lower()
+        entries = [e for e in enc.list_entries(sub) if query_name in e.name.lower()]
+        if not entries:
+            ui.print_warning(f"No {sub} entry matching '{query_name}'.")
+            return
+        entry = entries[0]
+        with console.status("[bold green]Consulting world lore…[/bold green]"):
+            detail = enc.detail(entry)
+        console.print(
+            Panel(detail, title=f"{entry.category}: {entry.name}", border_style="cyan")
+        )
+        return
+
+    # Category listing
+    entries = enc.list_entries(sub)
+    if not entries:
+        console.print(f"[yellow]No {sub} known yet.[/yellow]")
+        return
+    from rich.table import Table
+
+    table = Table(title=f"Lore — {sub}", border_style="cyan")
+    table.add_column("Name", style="bold")
+    table.add_column("Summary")
+    for entry in entries:
+        table.add_row(entry.name, entry.summary or "")
+    console.print(table)
+    console.print(f"[dim]Use /lore {sub} <name> for a detailed RAG lookup.[/dim]")
 
 
 def _print_banner(world: World) -> None:
@@ -458,7 +784,33 @@ def _print_game_over(game_state: GameState) -> None:
 
 
 def _save_game(game_state: GameState, save_path: Path) -> None:
-    """Save game state to file."""
+    """Save game state to file.
+
+    v0.6: triggers an incremental Notetaker refresh (if enabled) before writing,
+    so the JSON sidecar stays close to the save file the player just created.
+    """
+    # Auto-refresh notetaker summary on save events (unless disabled via config).
+    try:
+        if game_state.notetaker is not None:
+            from ..config import ConfigManager
+
+            auto_summary = True
+            try:
+                cfg = ConfigManager()
+                auto_summary = bool(cfg.get("notetaker.auto_summary", True))
+            except Exception:
+                pass
+            if auto_summary and game_state.notetaker.needs_refresh(
+                game_state.turn_number
+            ):
+                game_state.notetaker.refresh(
+                    current_turn=game_state.turn_number,
+                    conversation_history=game_state.narrator.get_conversation_history(),
+                    timeline_events=game_state.timeline.events,
+                )
+    except Exception:
+        pass  # Notetaker failures never block a save.
+
     save_path.parent.mkdir(parents=True, exist_ok=True)
     with open(save_path, "w") as f:
         json.dump(game_state.to_dict(), f, indent=2)

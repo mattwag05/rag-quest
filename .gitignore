@@ -129,19 +129,19 @@ lore/
 .config/
 .local/
 
-# Test artifacts and temporary files
-playthrough_*.txt
-playthrough_*.json
-playtest_*.py
-playtest_*.txt
-test_v0*.py
-test_*.txt
-test_*.py
-test_*.json
+# Test artifacts and temporary files (root-level only — tests/ dir is tracked)
+/playthrough_*.txt
+/playthrough_*.json
+/playtest_*.py
+/playtest_*.txt
+/test_v0*.py
+/test_*.txt
+/test_*.py
+/test_*.json
 GAME_TEST_RESULTS.md
 final_test.txt
 simple_test.py
-test_playthrough*.py
+/test_playthrough*.py
 v0*.txt
 playtest_run.txt
 
@@ -161,3 +161,6 @@ V052_BUG_FIX_SUMMARY.md
 # Beads / Dolt files (added by bd init)
 .dolt/
 .beads-credential-key
+
+# Claude Code machine-local config
+.mcp.json

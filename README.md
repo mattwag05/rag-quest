@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Version 0.5.3](https://img.shields.io/badge/version-0.5.3-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.5.3)
+[![Version 0.6.0](https://img.shields.io/badge/version-0.6.0-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.6.0)
 [![Status: Stable](https://img.shields.io/badge/status-stable-green.svg)](docs/TEST_REPORT.md)
 
 > **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone.**
@@ -42,8 +42,14 @@
 - **Local Multiplayer** — Hot-seat mode for turn-based gameplay on one machine
 - **Achievement System** — 11 achievements tracking exploration, combat, diplomacy, and progression
 
+### Campaign Memory (v0.6)
+- **AI Notetaker** — Incremental session summarizer runs on every save. `/notes` shows the latest chronicle; `/notes refresh` forces an update. Stored as a local JSON sidecar — never touches world lore unless you approve it.
+- **Canonize** — `/canonize` promotes player-approved notes into LightRAG with a `canonized` tag. Hard boundary between local notes and the canonical knowledge graph keeps AI hallucinations out of retrieval.
+- **Lore Encyclopedia** — `/lore` browses NPCs, locations, factions, and items you've encountered. Drill down with `/lore <category> <name>` to run an on-demand RAG query for rich detail.
+- **Timeline & Bookmarks** — `/timeline` shows a filtered chronological event log built from every turn's state changes. `/bookmark [note]` saves a highlight's full prose; `/bookmarks` lists them later.
+
 ### Accessibility & Polish
-- **Interactive Tutorial** — `/tutorial` launches a 9-step guided TUI walkthrough for new players
+- **Interactive Tutorial** — `/tutorial` launches a 10-step guided TUI walkthrough for new players
 - **Downloadable User Guide** — 8-chapter Word document covering all game systems
 - **Friendly Setup Wizard** — Automatically detects Ollama, guides you through configuration
 - **No Command-Line Experience Needed** — Welcoming interface, helpful prompts, no jargon
@@ -106,6 +112,11 @@ You walk into the dimly lit tavern. The smell of ale and roasted meat fills your
 | `/quests` | `/q` | View active quests and objectives |
 | `/party` | `/p` | See your companions |
 | `/relationships` | `/rel` | Check NPC trust and faction rep |
+| `/timeline` | `/t` | Chronological event log (filter by type) |
+| `/bookmark` | `/bm` | Save the current turn's prose as a highlight |
+| `/notes` | `/n` | View or refresh AI campaign summary |
+| `/canonize` | | Promote notes into permanent world lore |
+| `/lore` | `/l` | Browse lore encyclopedia with RAG detail |
 | `/achievements` | | View all achievements and progress |
 | `/factions` | | See faction standings |
 | `/dungeon` | | Generate and explore procedural dungeons |

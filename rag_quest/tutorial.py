@@ -1,11 +1,11 @@
 """Interactive TUI tutorial for new RAG-Quest players."""
 
+from rich.align import Align
 from rich.console import Console
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich.align import Align
-from rich.markdown import Markdown
 
 console = Console()
 
@@ -20,7 +20,7 @@ def print_tutorial_welcome() -> None:
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
-    
+
     intro = """
 This tutorial will teach you everything you need to know to start your 
 adventure in RAG-Quest, an AI-powered D&D-style text RPG.
@@ -36,14 +36,14 @@ Ready? Press Enter to continue...
 def step_1_basic_movement() -> None:
     """Teach basic movement and exploration."""
     console.clear()
-    
+
     title = """
     ╔═══════════════════════════════════════════════════════════╗
     ║                  STEP 1: EXPLORATION                      ║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
-    
+
     content = """
 The core of RAG-Quest is simple: **describe what you want to do**.
 
@@ -74,14 +74,14 @@ works much better than just "look".
 def step_2_talking_to_npcs() -> None:
     """Teach NPC interaction."""
     console.clear()
-    
+
     title = """
     ╔═══════════════════════════════════════════════════════════╗
     ║                  STEP 2: MEETING NPCs                     ║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
-    
+
     content = """
 NPCs (Non-Player Characters) are people in the world. Some give quests,
 some trade items, some become allies.
@@ -116,14 +116,14 @@ a new blade? I've got steel that's seen many battles."
 def step_3_inventory() -> None:
     """Teach inventory and item management."""
     console.clear()
-    
+
     title = """
     ╔═══════════════════════════════════════════════════════════╗
     ║                 STEP 3: MANAGING ITEMS                    ║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
-    
+
     content = """
 As you explore, you'll find items: weapons, armor, potions, treasure.
 You can carry a limited amount, so manage your inventory wisely.
@@ -162,14 +162,14 @@ This shows everything you're carrying, including weight/capacity.
 def step_4_combat() -> None:
     """Teach combat system."""
     console.clear()
-    
+
     title = """
     ╔═══════════════════════════════════════════════════════════╗
     ║                    STEP 4: COMBAT                         ║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
-    
+
     content = """
 Sometimes you'll encounter enemies. Combat is automatic but you can 
 describe your tactics to influence the outcome.
@@ -219,20 +219,22 @@ Found: Goblin Dagger, 25 Gold Coins
 def step_5_commands() -> None:
     """Teach in-game commands."""
     console.clear()
-    
+
     title = """
     ╔═══════════════════════════════════════════════════════════╗
     ║              STEP 5: USEFUL COMMANDS                      ║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
-    
+
     # Create command table
-    table = Table(title="Essential Commands", show_header=True, header_style="bold cyan")
+    table = Table(
+        title="Essential Commands", show_header=True, header_style="bold cyan"
+    )
     table.add_column("Command", style="yellow")
     table.add_column("Shortcut", style="green")
     table.add_column("What It Does", style="white")
-    
+
     table.add_row("/inventory", "/i", "Check items you're carrying")
     table.add_row("/stats", "/s", "View your character stats")
     table.add_row("/quests", "/q", "See active quests")
@@ -242,9 +244,9 @@ def step_5_commands() -> None:
     table.add_row("/save", "", "Manually save your game")
     table.add_row("/new", "", "Start a new adventure")
     table.add_row("/quit", "", "Exit the game")
-    
+
     console.print(table)
-    
+
     content = """
 [bold cyan]Types of Commands:[/bold cyan]
 
@@ -280,14 +282,14 @@ Commands are for checking status and accessing special features.
 def step_6_quests() -> None:
     """Teach quest system."""
     console.clear()
-    
+
     title = """
     ╔═══════════════════════════════════════════════════════════╗
     ║                   STEP 6: QUESTS                          ║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
-    
+
     content = """
 Quests are the backbone of your adventure. They give purpose, reward,
 and drive the story forward.
@@ -346,14 +348,14 @@ Type /q or /quests to see:
 def step_7_saving() -> None:
     """Teach save system."""
     console.clear()
-    
+
     title = """
     ╔═══════════════════════════════════════════════════════════╗
     ║              STEP 7: SAVING YOUR PROGRESS                 ║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
-    
+
     content = """
 Your progress is automatically saved frequently. But you can also save
 manually anytime you want.
@@ -398,14 +400,14 @@ Each world has its own save file with all your characters.
 def step_8_pro_tips() -> None:
     """Teach pro tips and best practices."""
     console.clear()
-    
+
     title = """
     ╔═══════════════════════════════════════════════════════════╗
     ║              STEP 8: PRO TIPS FOR SUCCESS                 ║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
-    
+
     content = """
 Here are pro tips to get the most out of RAG-Quest:
 
@@ -474,17 +476,63 @@ The world reacts to your decisions. Have fun and be creative!
     input("\nPress Enter to continue...\n")
 
 
-def step_9_ready() -> None:
+def step_9_campaign_memory() -> None:
+    """Teach the v0.6 Campaign Memory commands."""
+    console.clear()
+
+    title = """
+    ╔═══════════════════════════════════════════════════════════╗
+    ║             STEP 9: CAMPAIGN MEMORY                       ║
+    ╚═══════════════════════════════════════════════════════════╝
+    """
+    console.print(title, style="cyan")
+
+    content = """
+Long campaigns generate a lot of story. RAG-Quest v0.6 adds a
+[bold cyan]Campaign Memory[/bold cyan] layer so nothing gets lost.
+
+[bold yellow]Three memory panels:[/bold yellow]
+
+[bold]1. Timeline[/bold]   — every turn produces a short structured entry
+  • [cyan]/timeline[/cyan] or [cyan]/t[/cyan] — view the log (filter: combat/quest/npc/item/all)
+  • [cyan]/bookmark [note][/cyan] — save the current turn's full prose as a highlight
+  • [cyan]/bookmarks[/cyan] — browse saved highlights
+
+[bold]2. Notes[/bold]      — an AI chronicler summarizes recent turns on every save
+  • [cyan]/notes[/cyan] or [cyan]/n[/cyan] — show the latest summary
+  • [cyan]/notes refresh[/cyan] — force an immediate summary update
+  • Stored as local JSON — nothing touches your world lore without permission
+  • On paid LLM providers you can disable auto-summary in [cyan]/config[/cyan]
+
+[bold]3. Canonize[/bold]  — player-approved promotion into permanent lore
+  • [cyan]/canonize[/cyan] — list pending notes
+  • [cyan]/canonize 1[/cyan] or [cyan]/canonize all[/cyan] — promote into LightRAG
+  • Once canonized, notes show up in future RAG queries during narration
+
+[bold]4. Lore Encyclopedia[/bold]
+  • [cyan]/lore[/cyan] or [cyan]/l[/cyan] — category overview
+  • [cyan]/lore npcs[/cyan], [cyan]/lore locations[/cyan], [cyan]/lore factions[/cyan], [cyan]/lore items[/cyan]
+  • [cyan]/lore npcs Gandalf[/cyan] — runs a RAG query for rich detail
+
+[bold green]Mental model:[/bold green] JSON notes are yours to keep private. LightRAG only
+learns what you explicitly canonize. That hard boundary prevents AI
+hallucinations from silently polluting retrieval.
+    """
+    console.print(Panel(content, border_style="cyan", expand=False))
+    input("\nPress Enter to continue...\n")
+
+
+def step_10_ready() -> None:
     """Final encouragement and send-off."""
     console.clear()
-    
+
     title = """
     ╔═══════════════════════════════════════════════════════════╗
     ║            YOU'RE READY FOR YOUR ADVENTURE!               ║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
-    
+
     content = """
 Congratulations! You've learned the basics of RAG-Quest.
 
@@ -540,20 +588,25 @@ def run_full_tutorial() -> None:
         ("Quests", step_6_quests),
         ("Saving", step_7_saving),
         ("Pro Tips", step_8_pro_tips),
-        ("Ready", step_9_ready),
+        ("Campaign Memory", step_9_campaign_memory),
+        ("Ready", step_10_ready),
     ]
-    
+
     for i, (step_name, step_func) in enumerate(steps, 1):
         try:
             step_func()
         except KeyboardInterrupt:
-            console.print("\n[yellow]Tutorial interrupted. You can resume anytime with /tutorial[/yellow]")
+            console.print(
+                "\n[yellow]Tutorial interrupted. You can resume anytime with /tutorial[/yellow]"
+            )
             return
         except EOFError:
             # Handle piped input or EOF gracefully
-            console.print("\n[yellow]Tutorial ended. You can resume anytime with /tutorial[/yellow]")
+            console.print(
+                "\n[yellow]Tutorial ended. You can resume anytime with /tutorial[/yellow]"
+            )
             return
-    
+
     console.clear()
     console.print("""
 [green]╔════════════════════════════════════════════════════════════╗[/green]
