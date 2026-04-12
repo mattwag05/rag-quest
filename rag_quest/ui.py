@@ -9,19 +9,21 @@ from rich.rule import Rule
 from rich.align import Align
 from rich.layout import Layout
 
+from rag_quest import __version__
+
 console = Console()
 
 
 def print_welcome_screen() -> None:
     """Print the welcome screen with game title and menu."""
     console.clear()
-    
+
     # ASCII Art Title
-    title = """
+    title = f"""
     ╔═══════════════════════════════════════════════════════════╗
     ║                   RAG-QUEST                               ║
     ║        AI-Powered D&D with Knowledge Graphs               ║
-    ║                 Version 0.5.4                             ║
+    ║                 Version {__version__:<36s}║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")

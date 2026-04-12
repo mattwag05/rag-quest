@@ -5,15 +5,17 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
+from rag_quest import __version__
+
 console = Console()
 
 
 def print_welcome_screen() -> None:
     """Print the welcome screen with ASCII art and friendly message."""
     console.clear()
-    
+
     # ASCII Art Title
-    title_art = """
+    title_art = f"""
 ██████╗   █████╗  ██████╗       ██████╗ ██╗   ██╗███████╗███████╗████████╗
 ██╔══██╗ ██╔══██╗██╔════╝       ██╔═══██╗██║   ██║██╔════╝██╔════╝╚══██╔══╝
 ██████╔╝ ███████║██║  ███╗█████╗██║   ██║██║   ██║█████╗  ███████╗   ██║
@@ -23,7 +25,7 @@ def print_welcome_screen() -> None:
 
               Your AI Dungeon Master Awaits
            AI-Powered D&D with Knowledge Graphs
-                    Version 0.5.4
+                    Version {__version__}
     """
     
     console.print(title_art, style="cyan")

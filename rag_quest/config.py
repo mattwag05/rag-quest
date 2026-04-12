@@ -29,7 +29,7 @@ class ConfigManager:
     """Manages persistent configuration for RAG-Quest."""
     
     DEFAULT_CONFIG = {
-        "version": "0.5.1",
+        "version": "0.5.6",
         "llm": {
             "provider": "ollama",
             "model": "gemma4",
