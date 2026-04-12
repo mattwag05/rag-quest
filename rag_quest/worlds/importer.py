@@ -97,6 +97,75 @@ class WorldImporter:
         return parsed
 
     @staticmethod
+    def extract_campaign(
+        file_path: Path,
+        install_dir: Optional[Path] = None,
+    ) -> Optional[dict]:
+        """Restore a `.rqworld` package into the standard RAG-Quest dirs.
+
+        Layout of `install_dir` (defaults to `~/.local/share/rag-quest/`):
+
+          install_dir/worlds/<name>/   ← modules.yaml + lore/** (for RAG)
+          install_dir/saves/<name>.json ← save file (restored from save.json)
+
+        This is the matching restore path for
+        `WorldExporter.export_world(..., save_file=..., source_dir=...)`.
+        A player exports their campaign on one machine, mails the
+        `.rqworld`, drops it on another machine, and calls
+        `extract_campaign` — next `rag-quest` launch finds the world
+        directory and save file already in place.
+
+        Returns a dict with `worlds_dir`, `save_path`, and the parsed
+        metadata / world blocks. Returns None on I/O failure or missing
+        metadata. The world `name` field in `metadata.json` drives the
+        destination directory; invalid names fall back to
+        `"Imported World"`.
+        """
+        file_path = Path(file_path)
+        if not file_path.exists():
+            return None
+
+        parsed = WorldImporter.import_world(file_path)
+        if parsed is None:
+            return None
+
+        if install_dir is None:
+            install_dir = Path.home() / ".local/share/rag-quest"
+        install_dir = Path(install_dir)
+
+        world_name = parsed.get("metadata", {}).get("name") or "Imported World"
+        # Sanitize path component — no separators or parent-dir escapes.
+        safe_name = (
+            "".join(
+                c if c.isalnum() or c in (" ", "-", "_") else "_" for c in world_name
+            ).strip()
+            or "Imported World"
+        )
+
+        worlds_target = install_dir / "worlds" / safe_name
+        WorldImporter.extract_to(file_path, worlds_target)
+
+        save_target: Optional[Path] = None
+        if parsed.get("metadata", {}).get("has_save_file"):
+            save_source = worlds_target / "save.json"
+            if save_source.exists():
+                saves_dir = install_dir / "saves"
+                saves_dir.mkdir(parents=True, exist_ok=True)
+                save_target = saves_dir / f"{safe_name}.json"
+                save_target.write_bytes(save_source.read_bytes())
+                # Remove the extracted save.json from the world dir so the
+                # file lives in exactly one canonical place.
+                try:
+                    save_source.unlink()
+                except OSError:
+                    pass
+
+        parsed["worlds_dir"] = str(worlds_target)
+        parsed["save_path"] = str(save_target) if save_target else None
+        parsed["world_name"] = safe_name
+        return parsed
+
+    @staticmethod
     def validate_world(file_path: Path) -> bool:
         """Quick integrity check: zip opens, metadata parses, every bundled
         JSON is well-formed."""

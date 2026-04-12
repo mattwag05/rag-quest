@@ -419,16 +419,26 @@ are all completed, and modules with a matching `completion_quest` flip to
 `COMPLETED`. Transitions are monotonic. Quest matching is case-insensitive
 on `Quest.title`.
 
-**`.rqworld` packaging (v0.7)** — `WorldExporter.export_world(game_state,
-output_path, source_dir=...)` bundles `world.json` (which already carries
-bases + serialized module registry via `World.to_dict`) plus the source
-`modules.yaml` and every referenced lore file when `source_dir` is
-supplied. Both sides apply a Zip-Slip guard (reject lore paths that
+**`.rqworld` packaging (v0.7 / v0.8)** — `WorldExporter.export_world(game_state,
+output_path, source_dir=..., save_file=...)` bundles `world.json` (which
+already carries bases + serialized module registry via `World.to_dict`),
+the source `modules.yaml` with every referenced lore file when
+`source_dir` is set, and the player's save JSON as `save.json` when
+`save_file` is set (v0.8 cross-device save sync). Both sides apply a Zip-Slip guard (reject lore paths that
 escape `source_dir` on export; reject archive members that escape
 `target_dir` on extract). `WorldImporter.extract_to(file, target_dir)`
 unpacks the archive back to a world directory so the caller can run
-`load_modules(target_dir, world_rag)` to re-ingest lore. Metadata
-`version` field is `rag_quest.__version__` (not a hardcode).
+`load_modules(target_dir, world_rag)` to re-ingest lore.
+`WorldImporter.extract_campaign(file, install_dir=None)` is the v0.8
+save-sync restore path: it unpacks the world into
+`install_dir/worlds/<name>/` AND moves `save.json` to
+`install_dir/saves/<name>.json` (default `install_dir` is
+`~/.local/share/rag-quest/`). The world name from `metadata.json` is
+sanitized (non-alnum → `_`) so a malicious archive can't write outside
+the install dir. CLI subcommands `rag-quest export-campaign <name>
+[out.rqworld]` and `rag-quest import-campaign <file>` wrap the
+round-trip. Metadata `version` field is `rag_quest.__version__`
+(not a hardcode).
 Authors can validate a manifest before shipping with
 `rag-quest validate-module <world-dir>` — the subcommand calls
 `rag_quest.worlds.validate.validate_manifest()` which checks lore-file

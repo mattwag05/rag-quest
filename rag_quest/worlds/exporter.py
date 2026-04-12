@@ -21,6 +21,7 @@ class WorldExporter:
         description: str = "",
         tags: Optional[list[str]] = None,
         source_dir: Optional[Path] = None,
+        save_file: Optional[Path] = None,
         world: dict = None,
         character_name: str = None,
         output_path_old: Path = None,
@@ -37,12 +38,20 @@ class WorldExporter:
         - modules.yaml: source manifest (v0.7, when source_dir supplied)
         - lore/**: every lore_file referenced by modules.yaml (v0.7, when
           source_dir supplied)
+        - save.json: full GameState payload from the player's save file
+          (v0.8, when save_file supplied) — powers cross-device save sync
 
         The `source_dir` parameter is the on-disk world directory whose
         `modules.yaml` and lore files should be bundled. Without it the
         exporter still ships `world.json` (which carries the parsed
         `module_registry` runtime state) but an importer won't be able to
         re-ingest lore files into a fresh LightRAG index.
+
+        The `save_file` parameter points at an on-disk save JSON (typically
+        `~/.local/share/rag-quest/saves/<name>.json`). When set, the whole
+        file is copied verbatim into the archive as `save.json`. Pairs
+        with `WorldImporter.extract_campaign()` to move an in-progress
+        campaign between machines.
 
         Returns the path to the written `.rqworld`, or None on failure.
         """
@@ -92,6 +101,16 @@ class WorldExporter:
                         WorldExporter._bundle_modules_and_lore(zf, Path(source_dir))
                     )
 
+                has_save = False
+                if save_file is not None:
+                    save_path = Path(save_file)
+                    if save_path.exists():
+                        try:
+                            zf.write(save_path, arcname="save.json")
+                            has_save = True
+                        except OSError:
+                            has_save = False
+
                 metadata = {
                     "name": world_data.get("name", "Unknown World"),
                     "setting": world_data.get("setting", "Generic Fantasy"),
@@ -104,6 +123,7 @@ class WorldExporter:
                     "world_day_number": world_data.get("day_number", 1),
                     "has_modules_manifest": bundled_modules,
                     "bundled_lore_files": bundled_lore_count,
+                    "has_save_file": has_save,
                 }
                 zf.writestr("metadata.json", json.dumps(metadata, indent=2))
                 zf.writestr(

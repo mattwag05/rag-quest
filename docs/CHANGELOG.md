@@ -12,6 +12,20 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+### Added
+- **v0.8: Cross-device save sync** — `WorldExporter.export_world` gains
+  an optional `save_file` parameter that bundles the player's save JSON
+  (`~/.local/share/rag-quest/saves/<name>.json`) into the archive as
+  `save.json`. `WorldImporter.extract_campaign(file, install_dir)` is
+  the matching restore path: it unpacks world files into
+  `install_dir/worlds/<name>/` AND restores `save.json` to
+  `install_dir/saves/<name>.json`, sanitizing path-separator chars in
+  the world name so a malicious `metadata.name` can't escape the
+  install directory. New CLI subcommands `rag-quest export-campaign
+  <world-name> [out.rqworld]` and `rag-quest import-campaign
+  <file.rqworld>` wrap the round-trip so players can move a campaign
+  between machines without a cloud account.
+
 ### Changed
 - **Hardened `from_dict` deserializers against corrupted saves.** New
   `rag_quest/engine/_serialization.py` module exposes `safe_enum(cls,

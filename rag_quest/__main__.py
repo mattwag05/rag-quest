@@ -23,6 +23,10 @@ def main() -> None:
         sys.exit(_cmd_validate_module(positional[1:]))
     if positional and positional[0] == "new-module":
         sys.exit(_cmd_new_module(positional[1:]))
+    if positional and positional[0] == "export-campaign":
+        sys.exit(_cmd_export_campaign(positional[1:]))
+    if positional and positional[0] == "import-campaign":
+        sys.exit(_cmd_import_campaign(positional[1:]))
 
     try:
         _main()
@@ -127,6 +131,86 @@ def _cmd_new_module(args: list[str]) -> int:
     except (KeyboardInterrupt, EOFError):
         console.print("\n[yellow]Cancelled.[/yellow]")
         return 1
+    return 0
+
+
+def _cmd_export_campaign(args: list[str]) -> int:
+    """Subcommand: rag-quest export-campaign <world-name> [output.rqworld].
+
+    Bundles the player's save, world directory (modules.yaml + lore), and
+    world state into a single `.rqworld` file suitable for moving to
+    another machine. Exits 0 on success, 1 on missing save.
+    """
+    import json
+
+    from .worlds.exporter import WorldExporter
+
+    if not args:
+        ui.print_error("Usage: rag-quest export-campaign <world-name> [output.rqworld]")
+        return 1
+
+    world_name = args[0]
+    out_path = Path(args[1]) if len(args) > 1 else Path(f"{world_name}.rqworld")
+
+    install_dir = Path.home() / ".local/share/rag-quest"
+    save_path = install_dir / "saves" / f"{world_name}.json"
+    source_dir = install_dir / "worlds" / world_name
+
+    if not save_path.exists():
+        ui.print_error(f"No save file at {save_path}")
+        return 1
+
+    try:
+        game_state = json.loads(save_path.read_text())
+    except (OSError, json.JSONDecodeError) as e:
+        ui.print_error(f"Could not read save file: {e}")
+        return 1
+
+    result = WorldExporter.export_world(
+        game_state=game_state,
+        output_path=out_path,
+        author=game_state.get("character", {}).get("name", "Unknown"),
+        source_dir=source_dir if source_dir.exists() else None,
+        save_file=save_path,
+    )
+    if result is None:
+        ui.print_error("Export failed.")
+        return 1
+    ui.print_success(f"Exported campaign to {result}")
+    return 0
+
+
+def _cmd_import_campaign(args: list[str]) -> int:
+    """Subcommand: rag-quest import-campaign <file.rqworld>.
+
+    Restores the bundled save, world directory, and lore into the
+    standard RAG-Quest install dirs under `~/.local/share/rag-quest/`.
+    """
+    from .worlds.importer import WorldImporter
+
+    if not args:
+        ui.print_error("Usage: rag-quest import-campaign <file.rqworld>")
+        return 1
+
+    pack = Path(args[0])
+    if not pack.exists():
+        ui.print_error(f"File does not exist: {pack}")
+        return 1
+
+    result = WorldImporter.extract_campaign(pack)
+    if result is None:
+        ui.print_error(f"Could not extract {pack} — archive may be corrupt.")
+        return 1
+
+    world_name = result.get("world_name", "Imported World")
+    ui.print_success(f"Imported campaign '{world_name}'")
+    console.print(f"  world files: {result.get('worlds_dir')}")
+    if result.get("save_path"):
+        console.print(f"  save file:   {result['save_path']}")
+    else:
+        console.print(
+            "  [dim]no save.json in archive — you'll start a new character[/dim]"
+        )
     return 0
 
 
