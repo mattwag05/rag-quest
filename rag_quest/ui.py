@@ -21,7 +21,7 @@ def print_welcome_screen() -> None:
     ╔═══════════════════════════════════════════════════════════╗
     ║                   RAG-QUEST                               ║
     ║        AI-Powered D&D with Knowledge Graphs               ║
-    ║                 Version 0.5.2                             ║
+    ║                 Version 0.5.4                             ║
     ╚═══════════════════════════════════════════════════════════╝
     """
     console.print(title, style="cyan")
