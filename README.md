@@ -88,13 +88,52 @@ ollama pull gemma4:e2b  # 2B, CPU-friendly
 rag-quest
 ```
 
-You'll see an interactive setup menu:
-- Choose your LLM provider (OpenAI, OpenRouter, or Ollama)
-- Select a RAG profile (fast/balanced/deep)
-- Name your world and character
-- Optionally upload custom lore (PDF, markdown, text)
+On first run, you'll see an interactive **Setup Wizard**. Choose one of three start modes:
 
-### 3. Play
+**🌟 Mode 1: Fresh Adventure** — Start with a blank world
+- Name your world and character
+- Choose your race and class
+- Let the narrator create dynamic encounters
+- Default model: Gemma 4 (`gemma4:e4b` on Ollama)
+
+**⚡ Mode 2: Quick Start Template** — Begin with a pre-built world
+- Choose from 4 starter worlds (Classic Dungeon, Enchanted Forest, Port City, War-Torn Kingdom)
+- Customize character name/race/class
+- Jump straight into play with pre-configured lore
+
+**📚 Mode 3: Upload Lore** — Build a custom world from PDFs/markdown
+- Upload custom world documents (PDF, .md, .txt)
+- System ingests lore into the knowledge graph
+- Narrator draws from your custom world
+- Best for existing worldbuilders
+
+After setup, your configuration is saved to: **~/.config/rag-quest/config.json**
+
+### 3. Configure Settings (Mid-Game)
+
+Once playing, use the `/config` command to change settings without restarting:
+
+```
+> /config
+
+Current Configuration:
+  Provider: ollama
+  Model: gemma4:e4b
+  RAG Profile: balanced
+  
+Settings:
+  1. Change LLM Provider
+  2. Change Model
+  3. Change RAG Profile (fast/balanced/deep)
+  4. Auto-Save Interval
+  5. Back to Game
+
+Choose: > 
+```
+
+Your changes persist immediately to the config file.
+
+### 4. Play
 
 ```
 Welcome to Ebonvale Forest...
@@ -176,6 +215,28 @@ RAG_PROFILE=deep rag-quest
 | `/trade` | Trade items between players |
 | `/achievements` | View progress on all 11 achievements |
 | `/dungeon` | Enter a procedurally generated dungeon |
+
+## Character Creation
+
+During setup, you'll create your character with guided prompts:
+
+**Character Races** (with lore descriptions):
+- **Human** — Adaptable and ambitious, jack of all trades
+- **Elf** — Graceful and long-lived, masters of magic and archery
+- **Dwarf** — Hardy and honorable, builders and miners
+- **Tiefling** — Mystical and mysterious, outsiders with dark fates
+- **Orc** — Strong and fierce, misunderstood barbarians
+- **Halfling** — Small but brave, lucky adventurers
+
+**Character Classes** (with unique ability trees):
+- **Fighter** — Melee combat specialist, heavy armor mastery
+- **Ranger** — Bow mastery, tracking, wilderness survival
+- **Rogue** — Stealth, critical strikes, lockpicking
+- **Cleric** — Healing magic, buffs, support spellcasting
+- **Wizard** — Ranged magic, area effects, knowledge
+- **Barbarian** — Rage mechanics, two-handed weapons, tank
+
+Each class gets unique abilities that unlock as you level up (max level 10).
 
 ## Example Gameplay
 

@@ -136,10 +136,27 @@ playtest_*.py
 playtest_*.txt
 test_v0*.py
 test_*.txt
+test_*.py
+test_*.json
 GAME_TEST_RESULTS.md
 final_test.txt
 simple_test.py
 test_playthrough*.py
+v0*.txt
+playtest_run.txt
+
+# Development analysis and documentation (auto-generated)
+PLAYTEST_*.md
+PLAYTEST_*.txt
+PLAYTEST_*.json
+*_ANALYSIS.md
+*_FINDINGS.md
+*_SUMMARY.md
+PROJECT_INDEX.md
+BUG_ANALYSIS.md
+V050_PLAYTEST_FINDINGS.md
+V051_FIX_SUMMARY.md
+V052_BUG_FIX_SUMMARY.md
 
 # Beads / Dolt files (added by bd init)
 .dolt/

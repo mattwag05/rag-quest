@@ -365,6 +365,80 @@ rag-quest/
 
 ## Key Classes & Patterns
 
+### Configuration Management (config.py)
+
+**ConfigManager** — Persistent configuration system
+
+```python
+class ConfigManager:
+    def __init__(self):
+        # Loads config from ~/.config/rag-quest/config.json
+        # Falls back to environment variables
+        # Provides sensible defaults for first-run
+    
+    def get(self, key: str) -> Any:
+        # Retrieve config value (e.g., "llm.model", "rag.profile")
+        return self._config[key]
+    
+    def set(self, key: str, value: Any) -> None:
+        # Update config value and persist to file immediately
+        self._config[key] = value
+        self._save()
+    
+    def get_section(self, section: str) -> dict:
+        # Get entire config section (e.g., "llm" → all LLM settings)
+        return self._config.get(section, {})
+```
+
+**Design**:
+- **Persistent**: Saves to `~/.config/rag-quest/config.json` after each change
+- **Environment-aware**: Respects `LLM_PROVIDER`, `OLLAMA_MODEL`, etc. for non-interactive setup
+- **Defaults**: Built-in sensible defaults (provider=ollama, model=gemma4, profile=balanced)
+- **Three Start Modes**: Setup wizard guides users through Fresh Adventure, Quick Start, or Upload Lore
+- **Mid-Game Configuration**: `/config` command allows settings changes without restart
+
+**Config Structure**:
+```json
+{
+  "llm": {
+    "provider": "ollama",
+    "model": "gemma4:e4b",
+    "api_key": null,
+    "base_url": "http://localhost:11434"
+  },
+  "rag": {
+    "profile": "balanced"
+  },
+  "game": {
+    "auto_save_interval": 5
+  }
+}
+```
+
+**Usage**:
+```python
+# First run — interactive setup
+from rag_quest.config import ConfigManager, get_config, setup_first_run
+
+config = get_config()  # Returns ConfigManager
+
+# During gameplay — change settings
+config.set("llm.model", "gemma4:e2b")
+config.set("rag.profile", "deep")
+```
+
+**Setup Wizard** (`setup_first_run()` in config.py):
+1. Detect if config exists; if so, skip setup
+2. Check environment variables; use them if present
+3. Present interactive menu (if TTY)
+4. Ask for Three Start Modes:
+   - **Fresh Adventure**: Blank world, custom name/character
+   - **Quick Start**: Choose from 4 templates
+   - **Upload Lore**: Ingest custom PDF/markdown
+5. Ask for LLM provider and model
+6. Ask for RAG profile (fast/balanced/deep)
+7. Create config file and initialize world
+
 ### LLM Provider Architecture (llm/)
 
 **Base Class**: `BaseLLMProvider` (llm/base.py)

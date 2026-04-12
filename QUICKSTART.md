@@ -46,7 +46,34 @@ ollama serve
 rag-quest
 ```
 
-You'll see an interactive setup menu:
+On first run, you'll see the interactive **Setup Wizard** with three start modes:
+
+### Three Start Modes
+
+**🌟 Mode 1: Fresh Adventure**
+- Start with a blank world
+- Name your world and character
+- Choose race and class
+- Let the narrator create dynamic encounters
+- Default model: Gemma 4 (Free on Ollama)
+
+**⚡ Mode 2: Quick Start Template**
+- Choose from 4 pre-built starter worlds
+- (Classic Dungeon, Enchanted Forest, Port City, War-Torn Kingdom)
+- Customize character and jump in
+- Perfect for trying the game fast
+
+**📚 Mode 3: Upload Custom Lore**
+- Upload your own PDFs, markdown, or text files
+- Knowledge graph ingests your world
+- Narrator draws from your custom lore
+- Best for worldbuilders
+
+---
+
+Once you choose a mode, here's the interactive setup:
+
+### Interactive Setup Menu
 
 ```
 RAG-Quest: New Game Setup
@@ -182,13 +209,46 @@ Type naturally or use commands:
 | **Dungeon** | `/dungeon` — enter procedurally generated dungeon |
 | **Look** | `/look` or `/examine` |
 | **Map** | `/map` to see discovered locations |
+| **Config** | `/config` — change settings mid-game (LLM, model, RAG profile) |
 | **Save** | `/save` to save progress |
 | **Help** | `/help` for full command reference |
 | **Quit** | `/quit` to exit (prompts to save) |
 
-## Configuration (Advanced)
+## Configuration
 
-Skip interactive setup with environment variables:
+### Change Settings Mid-Game
+
+Once you're playing, use the `/config` command to adjust settings without restarting:
+
+```bash
+> /config
+
+Current Configuration:
+  ✓ Provider: ollama
+  ✓ Model: gemma4:e4b
+  ✓ RAG Profile: balanced
+  ✓ Auto-Save Interval: 5 turns
+
+Options:
+  1. Change LLM Provider
+  2. Change Model
+  3. Change RAG Profile (fast/balanced/deep)
+  4. Auto-Save Interval
+  5. Back to Game
+
+Choose: > 3
+
+RAG Profile? [fast/balanced/deep]
+  > deep
+
+✓ Configuration updated and saved to ~/.config/rag-quest/config.json
+```
+
+Your settings persist immediately and are saved to: **~/.config/rag-quest/config.json**
+
+### Skip Interactive Setup with Environment Variables (Advanced)
+
+For non-interactive environments, set these before running `rag-quest`:
 
 ```bash
 # LLM Setup
