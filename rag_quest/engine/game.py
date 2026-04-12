@@ -21,6 +21,9 @@ from .world import World
 from .combat import CombatManager, CombatEncounter
 from .encounters import EncounterGenerator
 from .tts import TTSNarrator
+from .party import Party
+from .relationships import RelationshipManager
+from .events import EventManager
 
 
 console = Console()
@@ -37,8 +40,12 @@ class GameState:
     narrator: Narrator
     world_rag: WorldRAG
     llm: BaseLLMProvider
+    party: Party
+    relationships: RelationshipManager
+    events: EventManager
     combat_manager: Optional[CombatManager] = None
     tts_narrator: Optional[TTSNarrator] = None
+    turn_number: int = 0
 
     def to_dict(self) -> dict:
         """Serialize game state."""
@@ -47,6 +54,10 @@ class GameState:
             "world": self.world.to_dict(),
             "inventory": self.inventory.to_dict(),
             "quest_log": self.quest_log.to_dict(),
+            "party": self.party.to_dict(),
+            "relationships": self.relationships.to_dict(),
+            "events": self.events.to_dict(),
+            "turn_number": self.turn_number,
         }
 
     @classmethod
@@ -63,6 +74,9 @@ class GameState:
         world = World.from_dict(data["world"])
         inventory = Inventory.from_dict(data["inventory"])
         quest_log = QuestLog.from_dict(data["quest_log"])
+        party = Party.from_dict(data.get("party", {"members": [], "max_size": 4}))
+        relationships = RelationshipManager.from_dict(data.get("relationships", {"relationships": {}, "factions": {}, "faction_reputation": {}}))
+        events = EventManager.from_dict(data.get("events", {"active_events": [], "event_history": []}))
         
         combat_mgr = CombatManager(narrator)
         tts = TTSNarrator(enabled=tts_enabled) if tts_enabled else None
@@ -75,8 +89,12 @@ class GameState:
             narrator=narrator,
             world_rag=world_rag,
             llm=llm,
+            party=party,
+            relationships=relationships,
+            events=events,
             combat_manager=combat_mgr,
             tts_narrator=tts,
+            turn_number=data.get("turn_number", 0),
         )
 
 
@@ -113,6 +131,22 @@ def run_game(
                 if not _handle_command(player_input, game_state, save_path):
                     break
                 continue
+
+            # Check for world events and advance turn
+            game_state.turn_number += 1
+            new_event = game_state.events.check_for_events(game_state.turn_number, event_chance=0.08)
+            if new_event:
+                ui.print_world_event(f"[bold cyan]WORLD EVENT:[/bold cyan] {new_event.name}\n{new_event.description}")
+            
+            # Expire old events
+            expired = game_state.events.expire_events()
+            for event_name in expired:
+                ui.print_world_event(f"[cyan]Event ended:[/cyan] {event_name}")
+            
+            # Check for party loyalty departures
+            departing = game_state.party.check_loyalty_departures()
+            for member_name in departing:
+                ui.print_warning(f"{member_name} has left the party due to low loyalty!")
 
             # Process action through narrator with error recovery
             with console.status("[bold green]The Dungeon Master considers your action...[/bold green]"):
@@ -226,6 +260,55 @@ def _handle_command(
         else:
             ui.print_warning("TTS not available in this game.")
     
+    elif cmd == "/party" or cmd == "/p":
+        console.print(Panel(game_state.party.get_party_status(), title="Party Status", border_style="magenta"))
+
+    elif cmd == "/relationships" or cmd == "/rel":
+        console.print(Panel(game_state.relationships.relationship_summary(), title="Relationships", border_style="green"))
+
+    elif cmd == "/factions" or cmd == "/f":
+        if not game_state.relationships.factions:
+            console.print("[yellow]No factions discovered yet.[/yellow]")
+        else:
+            faction_text = "\n".join([
+                f"[{faction.color}]{faction.name}[/{faction.color}]: {faction.description}"
+                for faction in game_state.relationships.factions.values()
+            ])
+            console.print(Panel(faction_text, title="Factions", border_style="cyan"))
+
+    elif cmd == "/recruit" and len(parts) > 1:
+        npc_name = " ".join(parts[1:])
+        rel = game_state.relationships.get_or_create_relationship(npc_name)
+        if rel.can_recruit():
+            from .party import PartyMember
+            member = PartyMember(
+                name=npc_name,
+                race="Unknown",
+                character_class="Unknown",
+                backstory=f"Recruited from adventure"
+            )
+            if game_state.party.add_member(member):
+                console.print(f"[green]{npc_name} has joined your party![/green]")
+            else:
+                console.print("[yellow]Your party is at maximum size.[/yellow]")
+        else:
+            console.print(f"[red]{npc_name} is not interested in joining your party.[/red]")
+
+    elif cmd == "/dismiss" and len(parts) > 1:
+        npc_name = " ".join(parts[1:])
+        if game_state.party.remove_member(npc_name):
+            console.print(f"[yellow]{npc_name} has left your party.[/yellow]")
+        else:
+            console.print(f"[red]{npc_name} is not in your party.[/red]")
+
+    elif cmd == "/events":
+        events_list = game_state.events.get_active_event_descriptions()
+        if events_list:
+            events_text = "\n".join(events_list)
+            console.print(Panel(events_text, title="Active World Events", border_style="red"))
+        else:
+            console.print("[yellow]No active world events.[/yellow]")
+
     elif cmd == "/help":
         ui.print_help()
 

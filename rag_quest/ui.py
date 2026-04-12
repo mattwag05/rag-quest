@@ -214,3 +214,30 @@ def get_yes_no_confirmation(prompt: str) -> bool:
         except EOFError:
             # Default to no if stdin is closed
             return False
+
+
+def print_world_event(message: str) -> None:
+    """Print a world event notification."""
+    console.print(Panel(message, title="[bold red]⚡ World Event[/bold red]", border_style="red"))
+
+
+def print_character_status(character) -> None:
+    """Print detailed character status."""
+    status_lines = [
+        f"[cyan]{character.name}[/cyan]",
+        f"Level: {character.level} | XP: {character.experience}",
+        f"Race: {character.race.value} | Class: {character.character_class.value}",
+        f"",
+        "Attributes:",
+        f"  STR: {character.strength:2d} | DEX: {character.dexterity:2d} | CON: {character.constitution:2d}",
+        f"  INT: {character.intelligence:2d} | WIS: {character.wisdom:2d} | CHA: {character.charisma:2d}",
+        f"",
+        f"HP: {character.current_hp}/{character.max_hp}",
+    ]
+    console.print(Panel("\n".join(status_lines), title="Character Status", border_style="cyan"))
+
+
+def print_world_context(world) -> None:
+    """Print world state and locations."""
+    context = world.get_context()
+    console.print(Panel(context, title="World Status", border_style="blue"))

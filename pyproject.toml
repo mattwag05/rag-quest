@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rag-quest"
-version = "0.3.0"
-description = "AI-powered D&D-style text RPG with LightRAG knowledge graph, combat system, and TTS narration"
+version = "0.4.0"
+description = "AI-powered D&D-style text RPG with parties, NPC relationships, quest chains, world events, and RAG-powered narrative"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [

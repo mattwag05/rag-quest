@@ -18,12 +18,17 @@ class StateChange:
     quest_offered: Optional[str] = None
     quest_completed: Optional[str] = None
     npc_met: Optional[str] = None
+    npc_recruited: Optional[str] = None
+    npc_relationship_change: Dict[str, int] = None
+    world_event_triggered: Optional[str] = None
     
     def __post_init__(self):
         if self.items_gained is None:
             self.items_gained = []
         if self.items_lost is None:
             self.items_lost = []
+        if self.npc_relationship_change is None:
+            self.npc_relationship_change = {}
 
 
 class StateParser:
@@ -51,7 +56,21 @@ class StateParser:
             r"(\d+)\s*(?:damage|hp|health|hit points)",
             r"take[s]?\s+(\d+)\s*(?:damage|hp|health|hit points)",
             r"(?:deal|inflict)[s]?\s+(\d+)\s*(?:damage|hp|health|hit points)",
-            r"(?:lose|lost)\s+(\d+)\s*(?:health|hp|hit points)",
+            r"(?:lose|lost)\s+(\d+)\s"
+        ]
+        
+        # Relationship and social keywords
+        self.relationship_keywords = {
+            'trust': 15, 'grateful': 20, 'ally': 25, 'friend': 20, 'help': 10,
+            'betray': -30, 'angry': -25, 'hostile': -20, 'insult': -15, 'refuse': -10,
+            'gift': 20, 'favor': 15, 'quest_complete': 15, 'recruit': 30,
+        }
+        
+        # Party recruitment patterns
+        self.recruitment_patterns = [
+            r"(\w+\s+\w+)?\s*joins?\s+(?:your\s+)?party",
+            r"(\w+\s+\w+)?\s*(?:agrees?|volunteers?)\s+to\s+join",
+            r"you\s+recruit\s+(\w+\s+\w+)?",
         ]
         
         # Healing patterns
