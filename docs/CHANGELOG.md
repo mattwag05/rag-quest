@@ -62,6 +62,15 @@ changelog" for the full convention.
   number of releases.
 
 ### Fixed
+- **Critical:** new characters no longer die on turn 1 when the narrator's
+  status line includes an HP readout. The state parser's damage regex
+  (`rag_quest/engine/state_parser.py`) matched `22/22 HP` as 22 points of
+  damage, and the combat-keyword gate used substring matching so `stable`
+  triggered combat via `stab`. Damage extraction now requires an
+  action-verb form (`take/suffer/receive N damage|hp`) or
+  `lose N hp/health/hit points`, and the combat gate is word-boundary
+  with a `hit points`/`hit dice` exclusion. Regression tests in
+  `tests/test_state_parser_damage.py`. (rag-quest-0gp)
 - Tightened the last three bare `except:` clauses in the repo
   (`engine/tts.py:186`, `engine/tts.py:195`, `knowledge/world_rag.py:187`)
   so they no longer swallow `KeyboardInterrupt` / `SystemExit` alongside

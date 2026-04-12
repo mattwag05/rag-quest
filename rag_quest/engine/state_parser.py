@@ -70,13 +70,32 @@ class StateParser:
             "skirmish",
         }
 
-        # Damage keywords and patterns
+        # Damage patterns: must be explicit *player-directed* damage events.
+        # The former catch-all r"(\d+)\s*(?:damage|hp|...)" false-positived on
+        # the narrator's own HP readouts ("**22/22 HP**") and killed new
+        # characters on turn 1 — see rag-quest-0gp. The `lose/lost` form
+        # requires an HP qualifier so "lost 5 coins" stops counting as damage.
         self.damage_patterns = [
-            r"(\d+)\s*(?:damage|hp|health|hit points)",
-            r"take[s]?\s+(\d+)\s*(?:damage|hp|health|hit points)",
-            r"(?:deal|inflict)[s]?\s+(\d+)\s*(?:damage|hp|health|hit points)",
-            r"(?:lose|lost)\s+(\d+)\s",
+            re.compile(
+                r"(?:take|takes|taking|suffer|suffers|suffering|receive|receives|receiving)"
+                r"\s+(\d+)\s*(?:damage|hp|health|hit\s+points)",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"(?:lose|lost|losing)\s+(\d+)\s+(?:hp|health|hit\s+points)",
+                re.IGNORECASE,
+            ),
         ]
+
+        # Word-boundary combat-keyword regex. Substring matching caused
+        # "stable" → "stab" false positives that triggered dice-roll damage
+        # on benign status text.
+        self._combat_regex = re.compile(
+            r"\b(?:"
+            + "|".join(re.escape(w) for w in self.combat_keywords)
+            + r")(?:s|es|ed|ing)?\b",
+            re.IGNORECASE,
+        )
 
         # Relationship and social keywords
         self.relationship_keywords = {
@@ -321,16 +340,14 @@ class StateParser:
         if location:
             change.location = location
 
-        # 2. Parse combat and damage
-        if any(word in response_lower for word in self.combat_keywords):
-            damage = self._extract_damage(response)
-            if damage > 0:
-                change.damage_taken = damage
-            else:
-                # If combat but no explicit damage, roll dice based on difficulty
-                change.damage_taken = self._calculate_combat_damage(
-                    player_input, response
-                )
+        # 2. Parse damage. Explicit damage phrases extract directly; the
+        # dice-roll fallback only runs when a real combat keyword is
+        # present (word-boundary match, with "hit points/dice" excluded).
+        damage = self._extract_damage(response)
+        if damage > 0:
+            change.damage_taken = damage
+        elif self._has_combat_keyword(response):
+            change.damage_taken = self._calculate_combat_damage(player_input, response)
 
         # 3. Parse healing
         healing = self._extract_healing(response)
@@ -376,13 +393,28 @@ class StateParser:
     def _extract_damage(self, response: str) -> int:
         """Extract explicit damage values from response."""
         for pattern in self.damage_patterns:
-            match = re.search(pattern, response, re.IGNORECASE)
+            match = pattern.search(response)
             if match:
                 try:
                     return int(match.group(1))
                 except (ValueError, IndexError):
                     continue
         return 0
+
+    def _has_combat_keyword(self, response: str) -> bool:
+        """True iff the response contains a real combat keyword.
+
+        Uses word-boundary matching (so "stable" no longer matches "stab")
+        and filters out "hit points" / "hit dice" so stat readouts don't
+        look like combat.
+        """
+        for m in self._combat_regex.finditer(response):
+            if m.group(0).lower().startswith("hit"):
+                trailing = response[m.end() :].lstrip().lower()
+                if trailing.startswith(("points", "point", "dice", "die")):
+                    continue
+            return True
+        return False
 
     def _calculate_combat_damage(self, player_input: str, response: str) -> int:
         """Calculate combat damage when none is explicitly mentioned."""
