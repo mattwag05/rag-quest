@@ -115,12 +115,17 @@ That's it! Just type natural language and press Enter. The AI understands:
 - Dialogue: "ask the NPC about the quest," "demand the treasure"
 - Exploration: "search the room," "climb the wall," "knock on the door"
 
+### New to the Game? Try the Tutorial!
+
+Type `/tutorial` at any time to start a guided 9-step walkthrough that teaches you exploration, NPCs, inventory, combat, commands, quests, saving, and pro tips. It takes about 5 minutes and is the fastest way to learn the game.
+
 ### Essential Commands
 
 Type these anytime during the game:
 
 | Command | What it does |
 |---------|-------------|
+| `/tutorial` | Start the interactive guided tutorial |
 | `/i` or `/inventory` | See what you're carrying |
 | `/s` or `/stats` | Check your health, level, attributes |
 | `/q` or `/quests` | View active quests and objectives |
@@ -188,6 +193,10 @@ RAG-Quest needs knowledge about your world to work well. During setup, choose "U
 - **Full documentation**: See [CLAUDE.md](CLAUDE.md) (for developers)
 - **GitHub issues**: https://github.com/mattwag05/rag-quest/issues
 - **Troubleshooting**: See section above
+
+## Need More Help?
+
+Download the full **RAG-Quest User Guide** (Word document) from the `docs/` folder in the repository. It covers everything in 8 detailed chapters.
 
 ## Next Releases
 

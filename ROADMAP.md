@@ -10,7 +10,33 @@ This philosophy shapes every version.
 
 ---
 
-## v0.5.2 (Current) — Polished UX for Non-Developers
+## v0.5.3 (Current) — Tutorial & User Guide
+
+**Status**: ✅ Complete — Interactive tutorial, downloadable user guide, automated testing
+
+### What's New in v0.5.3
+
+**Interactive TUI Tutorial**
+- ✅ 9-step guided tutorial accessible via `/tutorial` command
+- ✅ Covers exploration, NPCs, inventory, combat, commands, quests, saving, and tips
+- ✅ Works in-game — no external tools needed
+- ✅ Beginner-friendly with clear explanations at each step
+
+**Downloadable User Guide**
+- ✅ Professional Word document (docs/RAG-Quest_User_Guide.docx)
+- ✅ 8 chapters + appendix covering all game features
+- ✅ Written for non-technical users
+- ✅ Covers setup, character creation, gameplay, commands, advanced features
+
+**Quality Assurance**
+- ✅ 25-turn automated test suite (test_v053.py)
+- ✅ 100% pass rate across all game systems
+- ✅ Tutorial system fully tested
+- ✅ All previous tests continue passing
+
+---
+
+## v0.5.2 — Polished UX for Non-Developers
 
 **Status**: ✅ Complete — Production-ready, comprehensive UX polish, zero tracebacks
 

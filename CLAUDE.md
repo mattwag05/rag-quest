@@ -1,20 +1,37 @@
-# CLAUDE.md — RAG-Quest v0.5.2 AI Developer Guide
+# CLAUDE.md — RAG-Quest v0.5.3 AI Developer Guide
 
-This document provides AI assistants (Claude, GPT, etc.) with a comprehensive understanding of RAG-Quest v0.5.2 architecture, conventions, and development practices.
+This document provides AI assistants (Claude, GPT, etc.) with a comprehensive understanding of RAG-Quest v0.5.3 architecture, conventions, and development practices.
 
 ## Project Overview
 
-**RAG-Quest** is an AI-powered D&D-style text RPG that uses LightRAG to eliminate hallucinations in narrative generation. Version 0.5.2 represents a polished, production-ready experience for non-developers, with comprehensive UX improvements, zero tracebacks, and helpful error messages throughout.
+**RAG-Quest** is an AI-powered D&D-style text RPG that uses LightRAG to eliminate hallucinations in narrative generation. Version 0.5.3 adds an interactive TUI tutorial, a downloadable user guide, and a 25-turn automated test suite, building on v0.5.2's polished UX.
 
 **Core Design Philosophy**: LightRAG does the heavy lifting. The LLM narrator is intentionally kept small (Gemma 4 E2B/E4B, 2-4B parameters) because it doesn't memorize the world. Instead, LightRAG's dual-level retrieval (entity matching + vector similarity) injects precise knowledge per query. This architecture enables RAG-Quest to run on consumer hardware while producing narrative quality comparable to much larger models.
 
-**Version**: v0.5.2 (Polished UX for non-developers)
+**Version**: v0.5.3 (Tutorial & User Guide)
 
 **Status**: Production-ready. All core systems verified and working. Full backwards compatibility with legacy code.
 
-**Key Achievement**: Zero tracebacks shown to users. Every error has an actionable, friendly message.
+**Key Achievement**: Interactive tutorial and comprehensive user guide make the game fully accessible to non-technical users.
 
-## What's New in v0.5.2
+## What's New in v0.5.3
+
+### Interactive TUI Tutorial
+- **9-Step Guided Walkthrough**: Accessible via `/tutorial` command in-game
+- **Covers**: Exploration, NPCs, inventory, combat, commands, quests, saving, and pro tips
+- **Beginner-Friendly**: No prior knowledge needed, clear explanations at each step
+
+### Downloadable User Guide
+- **Professional Word Document**: `docs/RAG-Quest_User_Guide.docx`
+- **8 Chapters + Appendix**: Welcome, Getting Started, Setup, Character Creation, Gameplay, Commands, Advanced Features, Multiplayer & Troubleshooting
+- **Non-Technical Audience**: Written for players with no command-line experience
+
+### Quality Assurance
+- **25-Turn Automated Test Suite**: `test_v053.py` with 100% pass rate
+- **Tutorial System Tested**: All 9 steps validated
+- **Full Regression Coverage**: All previous tests continue passing
+
+## What's in v0.5.2
 
 ### UX Polish & Accessibility
 - **Friendly Setup Wizard**: Automatically detects Ollama, guides through configuration
@@ -24,7 +41,7 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 - **Input Validation**: Helpful retry messages, not harsh rejections
 - **Save Management**: Game recaps on load, metadata tracking
 
-### New Commands
+### Commands Added in v0.5.2
 - `/new` — Start a new game without quitting
 - Better unknown command feedback with suggestions
 - `/config` for mid-game setting changes
@@ -55,6 +72,7 @@ rag-quest/
 │   ├── startup.py               # Welcome screen & Ollama detection
 │   ├── config.py                # ConfigManager & setup wizard
 │   ├── ui.py                    # Terminal UI, help, commands
+│   ├── tutorial.py              # Interactive 9-step TUI tutorial
 │   ├── llm/                     # LLM provider implementations
 │   │   ├── __init__.py
 │   │   ├── base.py              # BaseLLMProvider
@@ -102,7 +120,8 @@ rag-quest/
 ├── docs/                        # Documentation
 │   ├── ARCHITECTURE.md
 │   ├── ROADMAP.md
-│   └── TEST_REPORT.md
+│   ├── TEST_REPORT.md
+│   └── RAG-Quest_User_Guide.docx  # Downloadable user guide
 ├── pyproject.toml               # Project config
 ├── README.md                    # User-facing docs
 ├── QUICKSTART.md                # Quick start guide

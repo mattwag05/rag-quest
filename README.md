@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Version 0.5.2](https://img.shields.io/badge/version-0.5.2-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.5.2)
+[![Version 0.5.3](https://img.shields.io/badge/version-0.5.3-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.5.3)
 [![Status: Stable](https://img.shields.io/badge/status-stable-green.svg)](docs/TEST_REPORT.md)
 
 > **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone.**
@@ -47,6 +47,8 @@
 - **No Command-Line Experience Needed** — Welcoming interface, helpful prompts, no jargon
 - **Command Shortcuts** — `/i` for inventory, `/s` for stats, `/q` for quests, `/p` for party, `/h` for help
 - **Smart Error Handling** — Actionable error messages, zero tracebacks, graceful recovery
+- **Interactive Tutorial** — Built-in `/tutorial` command walks new players through 9 guided steps
+- **User Guide** — Downloadable Word document covering all game features for non-technical users
 - **Text-to-Speech Narration** — Optional TTS with multiple voices (pyttsx3 offline, gTTS online)
 - **RAG Profiles** — Choose speed vs quality (fast/balanced/deep) based on your hardware
 
@@ -109,6 +111,7 @@ You walk into the dimly lit tavern. The smell of ale and roasted meat fills your
 | `/dungeon` | | Generate and explore procedural dungeons |
 | `/map` | | Show your world map |
 | `/help` | `/h` | Full command reference |
+| `/tutorial` | | Interactive 9-step guided tutorial |
 | `/config` | | Change LLM provider or RAG profile |
 | `/new` | | Start a new game |
 | `/save` | | Manually save your progress |
@@ -247,6 +250,7 @@ Make sure you've ingested lore (upload during setup). RAG needs knowledge to wor
 
 ## Roadmap
 
+- **v0.5.3** ✓ Complete — Interactive TUI tutorial, downloadable user guide, 25-turn automated test suite
 - **v0.5.2** ✓ Complete — Polished UX for non-developers, zero tracebacks, command shortcuts, friendly setup
 - **v0.6** — Web UI, cloud deployment, streaming responses
 - **v0.7** — iOS/SwiftUI app, offline package distribution

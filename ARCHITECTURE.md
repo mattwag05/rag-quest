@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — RAG-Quest System Design (v0.5.2)
+# ARCHITECTURE.md — RAG-Quest System Design (v0.5.3)
 
 This document describes RAG-Quest's system architecture, how all components integrate, and the design decisions that make it work.
 
@@ -93,6 +93,7 @@ def run_game():
 - `/p` — Party
 - `/rel` — Relationships
 - `/h` — Help
+- `/tutorial` — Interactive tutorial
 - `/config` — Settings
 - `/new` — New game
 - `/save` — Manual save
@@ -569,6 +570,7 @@ All handled in try/except blocks with user-friendly messages.
 
 **Test files**:
 - `test_v051_core.py` — Core systems (51+ tests)
+- `test_v053.py` — v0.5.3 features and 25-turn validation (25 tests)
 - `test_all_fixes.py` — API compatibility (41 tests)
 - Integration test playthroughs (35+ turns)
 
@@ -586,4 +588,4 @@ All handled in try/except blocks with user-friendly messages.
 ---
 
 **Last Updated**: April 2026  
-**Version**: 0.5.2
+**Version**: 0.5.3
