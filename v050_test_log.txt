@@ -1,0 +1,70 @@
+RAG-Quest v0.5.0 End-to-End Playtest Log
+================================================================================
+
+[Setup          ] Create character                         PASS
+[Setup          ] Character serialization                  PASS
+[Setup          ] Create Elf                               PASS
+[Setup          ] Create Dwarf                             PASS
+[Setup          ] Create Halfling                          PASS
+[Setup          ] Create Orc                               PASS
+[Setup          ] Create Rogue                             PASS
+[Setup          ] Create Mage                              PASS
+[Setup          ] Create Cleric                            PASS
+[Setup          ] Create Ranger                            PASS
+[Setup          ] Create world                             PASS
+[Setup          ] World serialization                      PASS
+[Engines        ] Inventory init                           PASS
+[Engines        ] Inventory serialization                  FAIL
+[Engines        ] QuestLog init                            PASS
+[Engines        ] QuestLog serialization                   PASS
+[Engines        ] Party init                               PASS
+[Engines        ] Party serialization                      PASS
+[Engines        ] RelationshipManager init                 PASS
+[Engines        ] RelationshipManager serialization        PASS
+[Engines        ] EventManager init                        PASS
+[Engines        ] EventManager serialization               PASS
+[Engines        ] AchievementManager init                  PASS
+[Engines        ] AchievementManager serialization         PASS
+[World          ] Add locations                            PASS
+[World          ] Advance time                             PASS
+[World          ] Track NPCs                               PASS
+[World          ] Get context                              PASS
+[Combat         ] Create enemy                             PASS
+[Combat         ] Create enemy                             FAIL ('Enemy' object has no attribute 'hp')
+[Progression    ] Set experience                           PASS
+[Progression    ] Get abilities                            PASS
+[Progression    ] Character attributes                     PASS
+[Party          ] Add members                              PASS
+[Party          ] Members loyalty                          PASS
+[Relationships  ] Add NPCs                                 PASS
+[Relationships  ] Disposition method exists                FAIL
+[Relationships  ] Faction method exists                    FAIL
+[Quests         ] Create and add quest                     FAIL (QuestReward.__init__() got an unexpected keyword argument 'experience')
+[Quests         ] Get active quests                        PASS
+[Events         ] Create Weather event                     FAIL (WorldEvent.__init__() got an unexpected keyword argument 'title')
+[Events         ] Create Combat event                      FAIL (WorldEvent.__init__() got an unexpected keyword argument 'title')
+[Events         ] Create Conflict event                    FAIL (WorldEvent.__init__() got an unexpected keyword argument 'title')
+[Events         ] Get active events                        FAIL ('EventManager' object has no attribute 'get_active_events')
+[Achievements   ] Load achievements                        PASS (11 loaded)
+[Achievements   ] Check & get unlocked                     FAIL (AchievementManager.check_achievements() got an unexpected keyword argument 'player')
+[Dungeons       ] DungeonGenerator init                    FAIL (type object 'DifficultyLevel' has no attribute 'MEDIUM')
+[Saves          ] SaveManager init                         PASS
+[Saves          ] Save game                                FAIL (SaveManager.save_game() takes from 2 to 3 positional arguments but 5 were given)
+[Saves          ] List saves                               FAIL (SaveManager.list_saves() takes 1 positional argument but 2 were given)
+[Saves          ] Load game                                FAIL (SaveManager.load_game() takes 2 positional arguments but 3 were given)
+[Worlds         ] Export world                             FAIL (WorldExporter.export_world() got an unexpected keyword argument 'world')
+[Multiplayer    ] Create session                           FAIL (MultiplayerSession.__init__() got an unexpected keyword argument 'world_name')
+[Integration    ] Serialize full state                     PASS (4261 bytes)
+[Integration    ] Deserialize full state                   PASS
+
+================================================================================
+SUMMARY
+================================================================================
+Total: 55
+Passed: 39
+Failed: 16
+Rate: 70%
+
+Bugs (2):
+  [P2] Relationships: Missing methods. Has: ['add_faction', 'add_npc', 'check_faction_standing', 'faction_reputation', 'factions', 'from_dict', 'get_available_interactions', 'get_disposition', 'get_or_create_relationship', 'get_relationship_summary', 'modify_faction_reputation', 'modify_relationship', 'npcs', 'relationship_summary', 'relationships', 'to_dict']
+  [P2] Quests: Quest API: QuestReward.__init__() got an unexpected keyword argument 'experience'
