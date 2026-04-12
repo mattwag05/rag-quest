@@ -39,6 +39,20 @@ changelog" for the full convention.
   between machines without a cloud account.
 
 ### Changed
+- **State parser: pre-compiled every regex on the per-turn hot path.**
+  Nine pattern lists (`healing_patterns`, `pickup_patterns`,
+  `drop_patterns`, `use_patterns`, `quest_offer_patterns`,
+  `quest_complete_patterns`, `npc_patterns`, `location_patterns`,
+  `recruitment_patterns`) on `StateParser` are now compiled once at
+  `__init__` (matching the existing `damage_patterns` /
+  `_combat_regex` / `claim_base_patterns` idiom) and call sites use
+  `pattern.search(response)` / `pattern.finditer(response)`. The four
+  `_strip_markdown` emphasis-stripper patterns plus the shared
+  trailing-punct and leading-article cleanup regexes are now
+  module-level compiled constants (`_MD_BOLD_STAR` / `_MD_BOLD_UNDER`
+  / `_MD_ITALIC_STAR` / `_MD_ITALIC_UNDER` / `_TRAILING_PUNCT` /
+  `_LEADING_ARTICLE`). No functional change — removes repeated
+  `re.compile` cache lookups on every extraction. (rag-quest-40q)
 - **Hardened `from_dict` deserializers against corrupted saves.** New
   `rag_quest/engine/_serialization.py` module exposes `safe_enum(cls,
   value, default)` (by-name-or-value enum lookup with safe fallback) and

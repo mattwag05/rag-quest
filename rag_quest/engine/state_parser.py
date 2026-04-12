@@ -5,6 +5,19 @@ import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+# Markdown emphasis strippers used by `_strip_markdown`. Compiled once so the
+# per-turn hot path (every extracted location/item/quest/NPC passes through
+# `_strip_markdown`) doesn't re-enter the `re` compile cache on every call.
+_MD_BOLD_STAR = re.compile(r"\*\*(.+?)\*\*")
+_MD_BOLD_UNDER = re.compile(r"__(.+?)__")
+_MD_ITALIC_STAR = re.compile(r"(?<!\w)\*(.+?)\*(?!\w)")
+_MD_ITALIC_UNDER = re.compile(r"(?<!\w)_(.+?)_(?!\w)")
+
+# Shared cleanup regexes used by every extractor method to strip trailing
+# punctuation and a leading article from a captured match.
+_TRAILING_PUNCT = re.compile(r"[.,!?;]*$")
+_LEADING_ARTICLE = re.compile(r"^(?:a|an|the)\s+", re.IGNORECASE)
+
 
 @dataclass
 class StateChange:
@@ -38,11 +51,14 @@ class StateParser:
     def __init__(self):
         # Common location keywords
         self.location_patterns = [
-            r"(?:arrive|enter|move|travel|walk|run|sail|journey|trek|head)\s+(?:to|at|in|into)\s+(.+?)(?:\.|,|!|\?|\n|$)",
-            r"(?:find|discover|stumble upon)\s+(?:a|the)?\s*(.+?)(?:\s+(?:location|place|area))?(?:\.|,|!|\?|\n|$)",
-            r"you\s+(?:are\s+)?(?:in|at|inside)\s+(?:a|the)?\s*(.+?)(?:\.|,|!|\?|\n|$)",
-            r"stride\s+into\s+(.+?)(?:,|\.|\n|$)",
-            r"step(?:s)?\s+into\s+(.+?)(?:,|\.|\n|$)",
+            re.compile(p, re.IGNORECASE)
+            for p in (
+                r"(?:arrive|enter|move|travel|walk|run|sail|journey|trek|head)\s+(?:to|at|in|into)\s+(.+?)(?:\.|,|!|\?|\n|$)",
+                r"(?:find|discover|stumble upon)\s+(?:a|the)?\s*(.+?)(?:\s+(?:location|place|area))?(?:\.|,|!|\?|\n|$)",
+                r"you\s+(?:are\s+)?(?:in|at|inside)\s+(?:a|the)?\s*(.+?)(?:\.|,|!|\?|\n|$)",
+                r"stride\s+into\s+(.+?)(?:,|\.|\n|$)",
+                r"step(?:s)?\s+into\s+(.+?)(?:,|\.|\n|$)",
+            )
         ]
 
         # Combat-related keywords
@@ -117,51 +133,75 @@ class StateParser:
 
         # Party recruitment patterns
         self.recruitment_patterns = [
-            r"(\w+\s+\w+)?\s*joins?\s+(?:your\s+)?party",
-            r"(\w+\s+\w+)?\s*(?:agrees?|volunteers?)\s+to\s+join",
-            r"you\s+recruit\s+(\w+\s+\w+)?",
+            re.compile(p, re.IGNORECASE)
+            for p in (
+                r"(\w+\s+\w+)?\s*joins?\s+(?:your\s+)?party",
+                r"(\w+\s+\w+)?\s*(?:agrees?|volunteers?)\s+to\s+join",
+                r"you\s+recruit\s+(\w+\s+\w+)?",
+            )
         ]
 
         # Healing patterns
         self.healing_patterns = [
-            r"(?:heal|restore)[s]?\s+(\d+)\s*(?:hp|health|hit points)",
-            r"(?:recover|regain)\s+(\d+)\s*(?:health|hp|hit points)",
-            r"potion\s+(?:heal[s]?|restore[s]?)\s+(\d+)",
+            re.compile(p, re.IGNORECASE)
+            for p in (
+                r"(?:heal|restore)[s]?\s+(\d+)\s*(?:hp|health|hit points)",
+                r"(?:recover|regain)\s+(\d+)\s*(?:health|hp|hit points)",
+                r"potion\s+(?:heal[s]?|restore[s]?)\s+(\d+)",
+            )
         ]
 
         # Inventory patterns
         self.pickup_patterns = [
-            r"(?:pick\s+up|grab|take|obtain|find|receive|gain|discover)\s+(?:a\s+)?(.+?)(?:\.|,|!|\?|\n|$)",
-            r"(?:you\s+)?(?:acquire|gain)\s+(?:a\s+)?(.+?)(?:\.|,|!|\?|\n|$)",
-            r"you\s+(?:also\s+)?(?:notice|see)\s+(?:a\s+)?(.+?)(?:\s+(?:on|in|at)|\sand\s|,|\.)",
+            re.compile(p, re.IGNORECASE)
+            for p in (
+                r"(?:pick\s+up|grab|take|obtain|find|receive|gain|discover)\s+(?:a\s+)?(.+?)(?:\.|,|!|\?|\n|$)",
+                r"(?:you\s+)?(?:acquire|gain)\s+(?:a\s+)?(.+?)(?:\.|,|!|\?|\n|$)",
+                r"you\s+(?:also\s+)?(?:notice|see)\s+(?:a\s+)?(.+?)(?:\s+(?:on|in|at)|\sand\s|,|\.)",
+            )
         ]
 
         self.drop_patterns = [
-            r"(?:drop|discard|leave|abandon)\s+(?:the\s+)?(.+?)(?:\.|,|!|\?|\n)",
+            re.compile(
+                r"(?:drop|discard|leave|abandon)\s+(?:the\s+)?(.+?)(?:\.|,|!|\?|\n)",
+                re.IGNORECASE,
+            ),
         ]
 
         self.use_patterns = [
-            r"(?:use|consume|drink|eat|activate|wield|equip)\s+(?:the\s+)?(.+?)(?:\.|,|!|\?|\n)",
+            re.compile(
+                r"(?:use|consume|drink|eat|activate|wield|equip)\s+(?:the\s+)?(.+?)(?:\.|,|!|\?|\n)",
+                re.IGNORECASE,
+            ),
         ]
 
         # Quest patterns
         self.quest_offer_patterns = [
-            r"(?:quest|mission|task|request)\s+(?:offered|given|started|begun):\s*(.+?)(?:\.|,|!|\?|\n|$)",
-            r"(?:a\s+)?(?:quest|mission|task)\s+for\s+you:\s*(.+?)(?:\"|\.|\?|,|\n|$)",
-            r"(.+?)\s+(?:ask|asks|request[s]?|offer[s]?)\s+(?:you|your\s+help|a\s+quest)(?:\.|\?|,|!|$)",
-            r"new\s+(?:quest|mission|objective):\s*(.+?)(?:\.|,|!|\?|\n|$)",
-            r"i\s+have\s+a\s+(?:quest|mission|task)\s+for\s+you:\s*(.+?)(?:\"|\.|\?|,|\n|$)",
+            re.compile(p, re.IGNORECASE)
+            for p in (
+                r"(?:quest|mission|task|request)\s+(?:offered|given|started|begun):\s*(.+?)(?:\.|,|!|\?|\n|$)",
+                r"(?:a\s+)?(?:quest|mission|task)\s+for\s+you:\s*(.+?)(?:\"|\.|\?|,|\n|$)",
+                r"(.+?)\s+(?:ask|asks|request[s]?|offer[s]?)\s+(?:you|your\s+help|a\s+quest)(?:\.|\?|,|!|$)",
+                r"new\s+(?:quest|mission|objective):\s*(.+?)(?:\.|,|!|\?|\n|$)",
+                r"i\s+have\s+a\s+(?:quest|mission|task)\s+for\s+you:\s*(.+?)(?:\"|\.|\?|,|\n|$)",
+            )
         ]
 
         self.quest_complete_patterns = [
-            r"(?:quest|mission|task)\s+(?:complete|finished|accomplished|succeeded):\s*(.+?)(?:\.|,|!|\?|\n)",
-            r"(?:you\s+)?(?:complete|finish|accomplish)\s+(?:the\s+)?(.+?)(?:\s+quest)?(?:\.|,|!|\?|\n)",
+            re.compile(p, re.IGNORECASE)
+            for p in (
+                r"(?:quest|mission|task)\s+(?:complete|finished|accomplished|succeeded):\s*(.+?)(?:\.|,|!|\?|\n)",
+                r"(?:you\s+)?(?:complete|finish|accomplish)\s+(?:the\s+)?(.+?)(?:\s+quest)?(?:\.|,|!|\?|\n)",
+            )
         ]
 
         # NPC meeting patterns
         self.npc_patterns = [
-            r"(?:you\s+)?(?:meet|encounter|find|see)\s+(.+?)(?:,|\s+the|!|\?|\.|\n)",
-            r"(?:a|the)\s+(.+?)\s+(?:approach|greet)[s]?\s+you",
+            re.compile(p, re.IGNORECASE)
+            for p in (
+                r"(?:you\s+)?(?:meet|encounter|find|see)\s+(.+?)(?:,|\s+the|!|\?|\.|\n)",
+                r"(?:a|the)\s+(.+?)\s+(?:approach|greet)[s]?\s+you",
+            )
         ]
 
         # Idioms that match pickup_patterns but are NOT inventory gains.
@@ -275,10 +315,10 @@ class StateParser:
         if not text:
             return text
         # Remove paired emphasis markers first (greedy, inside-out).
-        text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
-        text = re.sub(r"__(.+?)__", r"\1", text)
-        text = re.sub(r"(?<!\w)\*(.+?)\*(?!\w)", r"\1", text)
-        text = re.sub(r"(?<!\w)_(.+?)_(?!\w)", r"\1", text)
+        text = _MD_BOLD_STAR.sub(r"\1", text)
+        text = _MD_BOLD_UNDER.sub(r"\1", text)
+        text = _MD_ITALIC_STAR.sub(r"\1", text)
+        text = _MD_ITALIC_UNDER.sub(r"\1", text)
         # Strip any dangling markers left by mismatched formatting.
         text = text.replace("**", "").replace("__", "")
         text = text.strip(" *_\t")
@@ -377,11 +417,11 @@ class StateParser:
     def _extract_location(self, response: str) -> Optional[str]:
         """Extract location from response."""
         for pattern in self.location_patterns:
-            match = re.search(pattern, response, re.IGNORECASE)
+            match = pattern.search(response)
             if match:
                 location = match.group(1).strip()
                 # Clean up the location name
-                location = re.sub(r"[.,!?;]*$", "", location)
+                location = _TRAILING_PUNCT.sub("", location)
                 location = self._strip_markdown(location)
                 # Strip trailing prepositional phrases ("Woods at dawn" → "Woods")
                 location = self._trailing_prep_pattern.sub("", location).strip()
@@ -462,7 +502,7 @@ class StateParser:
     def _extract_healing(self, response: str) -> int:
         """Extract healing values from response."""
         for pattern in self.healing_patterns:
-            match = re.search(pattern, response, re.IGNORECASE)
+            match = pattern.search(response)
             if match:
                 try:
                     return int(match.group(1))
@@ -476,12 +516,12 @@ class StateParser:
 
         # Use the pickup patterns
         for pattern in self.pickup_patterns:
-            for match in re.finditer(pattern, response, re.IGNORECASE):
+            for match in pattern.finditer(response):
                 try:
                     item = match.group(1).strip()
                     # Clean up
-                    item = re.sub(r"^(?:a|an|the)\s+", "", item, flags=re.IGNORECASE)
-                    item = re.sub(r"[.,!?;]*$", "", item)
+                    item = _LEADING_ARTICLE.sub("", item)
+                    item = _TRAILING_PUNCT.sub("", item)
                     item = self._strip_markdown(item)
 
                     # Reject idioms that match pickup regex but aren't inventory.
@@ -516,12 +556,12 @@ class StateParser:
         items = []
 
         for pattern in self.drop_patterns:
-            for match in re.finditer(pattern, response, re.IGNORECASE):
+            for match in pattern.finditer(response):
                 try:
                     item = match.group(1).strip()
                     # Clean up
-                    item = re.sub(r"^(?:a|an|the)\s+", "", item, flags=re.IGNORECASE)
-                    item = re.sub(r"[.,!?;]*$", "", item)
+                    item = _LEADING_ARTICLE.sub("", item)
+                    item = _TRAILING_PUNCT.sub("", item)
                     item = self._strip_markdown(item)
 
                     if item and len(item) < 60 and len(item.split()) <= 6:
@@ -534,11 +574,11 @@ class StateParser:
     def _extract_quest_offered(self, response: str) -> Optional[str]:
         """Extract quest title from response."""
         for pattern in self.quest_offer_patterns:
-            match = re.search(pattern, response, re.IGNORECASE)
+            match = pattern.search(response)
             if match:
                 quest_title = match.group(1).strip()
                 # Clean up
-                quest_title = re.sub(r"[.,!?;]*$", "", quest_title)
+                quest_title = _TRAILING_PUNCT.sub("", quest_title)
                 quest_title = self._strip_markdown(quest_title)
                 if (
                     quest_title
@@ -551,11 +591,11 @@ class StateParser:
     def _extract_quest_completed(self, response: str) -> Optional[str]:
         """Extract completed quest title from response."""
         for pattern in self.quest_complete_patterns:
-            match = re.search(pattern, response, re.IGNORECASE)
+            match = pattern.search(response)
             if match:
                 quest_title = match.group(1).strip()
                 # Clean up
-                quest_title = re.sub(r"[.,!?;]*$", "", quest_title)
+                quest_title = _TRAILING_PUNCT.sub("", quest_title)
                 quest_title = self._strip_markdown(quest_title)
                 if (
                     quest_title
@@ -568,14 +608,12 @@ class StateParser:
     def _extract_npc(self, response: str) -> Optional[str]:
         """Extract NPC name from response."""
         for pattern in self.npc_patterns:
-            match = re.search(pattern, response, re.IGNORECASE)
+            match = pattern.search(response)
             if match:
                 npc_name = match.group(1).strip()
                 # Clean up
-                npc_name = re.sub(r"[.,!?;]*$", "", npc_name)
-                npc_name = re.sub(
-                    r"^(?:a|an|the)\s+", "", npc_name, flags=re.IGNORECASE
-                )
+                npc_name = _TRAILING_PUNCT.sub("", npc_name)
+                npc_name = _LEADING_ARTICLE.sub("", npc_name)
                 npc_name = self._strip_markdown(npc_name)
                 # Strip trailing prepositional phrases ("wild fox in" → "wild fox")
                 npc_name = self._trailing_prep_pattern.sub("", npc_name).strip()
