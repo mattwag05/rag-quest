@@ -46,6 +46,10 @@ class Narrator:
         self.last_change = None
         self.last_response: str = ""
         self.last_player_input: str = ""
+        # v0.7: transient system-prompt addendum consumed by `_call_llm`.
+        # `/base talk` sets this to a build_service_prompt_addendum() string
+        # for one turn, then clears it. Never persisted.
+        self.service_context: str = ""
 
     def process_action(self, player_input: str) -> str:
         """
@@ -178,6 +182,8 @@ class Narrator:
         try:
             # Build the prompt with game context
             system_prompt = NARRATOR_SYSTEM
+            if self.service_context:
+                system_prompt = f"{system_prompt}\n\n{self.service_context}"
 
             # Build context about current state
             char = self.character

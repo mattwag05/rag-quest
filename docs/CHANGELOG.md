@@ -12,7 +12,20 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+## [0.7.0] — Modular Adventures & Hub Bases
+
 ### Added
+- **v0.7: `/base` hybrid menu + service conversation routing** — stationed
+  NPCs can now be bound to a service role (smith, healer, innkeeper,
+  storage, stable, library) via `/base station <npc> as <service>`.
+  `/base here` renders a Rich panel grouping NPCs by service. `/base talk
+  <npc> <message>` runs a scoped conversation: the narrator gets a
+  deterministic `build_service_prompt_addendum()` system addendum naming
+  the NPC and their canonical role for one turn, then clears it — the
+  response still flows through the state-parser. `/base deposit` and
+  `/base withdraw` shift items between player `Inventory` and the base's
+  `storage` Inventory. New `Base.npc_service` dict maps stationed NPC
+  names to service strings; `Base.npcs_by_service()` groups them for UI.
 - **v0.7 foundation: `Base` entity** — new `rag_quest/engine/bases.py` with `Base`
   dataclass (name, location_ref, storage `Inventory`, stationed NPCs, services,
   upgrades) plus `World.bases: list[Base]` that round-trips through `to_dict` /

@@ -382,14 +382,23 @@ into LightRAG via `WorldRAG.ingest_text(body, source="canonized")` — hard boun
 raw notes never silently touch retrieval.
 
 **Hub Bases (v0.7, `engine/bases.py`)** — `Base` dataclass (name, location_ref,
-`storage: Inventory`, `stationed_npcs`, `services`, `upgrades`) lives on
-`World.bases: list[Base]` and serializes alongside the rest of world state.
+`storage: Inventory`, `stationed_npcs: list[str]`, `npc_service: dict[str, str]`,
+`services`, `upgrades`) lives on `World.bases: list[Base]` and serializes
+alongside the rest of world state.
 Claim flow: `StateChange.claim_base` fires when the narrator emits phrases like
 *"claim X as your stronghold"* or *"this shall be your hideout"*; the narrator's
 state-change handler calls `World.claim_base_at(location, name)`, which dedupes
 on `location_ref` and returns the new `Base` (or `None`). The `/base` command
 lists claimed bases; `/base claim [name]` is the deterministic escape hatch and
-calls the same `World` method directly.
+calls the same `World` method directly. Full menu (v0.7 /base hybrid menu):
+`/base here` renders a Rich panel grouping stationed NPCs by service role
+(from `Base.npc_service`). `/base station <npc> [as <service>]` binds an
+NPC to a role and auto-registers the service. `/base talk <npc> <message>`
+sets `Narrator.service_context` to a `build_service_prompt_addendum()`
+string for a single turn — the addendum names the base, NPC, and canonical
+`SERVICE_DESCRIPTIONS` entry, routes the response back through
+`state_parser` as usual, and clears on exit. `/base deposit` / `/base
+withdraw` move items between player `Inventory` and `Base.storage`.
 
 **Modular Adventures (v0.7, `worlds/modules.py`)** — Worlds can declare
 hub-and-spoke adventures in a top-level `modules.yaml` manifest. Schema: `id`,

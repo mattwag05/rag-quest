@@ -761,29 +761,88 @@ def _cmd_lore(parts: list, game_state: GameState) -> None:
 
 
 def _cmd_base(parts: list, game_state: GameState) -> None:
-    """List bases or claim a new one at the current location.
+    """Manage hub bases.
 
     Usage:
-      /base                — list all claimed bases
-      /base claim [name]   — claim the current location as a base
+      /base                         — list all claimed bases
+      /base claim [name]            — claim the current location as a base
+      /base here                    — open the menu for the base at current location
+      /base station <npc> [as <service>]
+                                    — station an NPC (optionally as smith/healer/...)
+      /base talk <npc> <message>    — one-shot scoped conversation with a stationed NPC
+      /base deposit <item> [qty]    — move an item from player inventory to base storage
+      /base withdraw <item> [qty]   — pull an item from base storage back to inventory
+      /base storage                 — show base storage contents
     """
     sub = parts[1].lower() if len(parts) > 1 else None
     world = game_state.world
+    current_location = (game_state.character.location or "").strip()
 
     if sub == "claim":
         supplied_name = " ".join(parts[2:]).strip() if len(parts) > 2 else ""
-        location = game_state.character.location or ""
-        base = world.claim_base_at(location, name=supplied_name)
+        base = world.claim_base_at(current_location, name=supplied_name)
         if base is not None:
             ui.print_success(
                 f"Claimed {base.name} at {base.location_ref} as your base."
             )
-        elif not location.strip():
+        elif not current_location:
             ui.print_warning("You have no known location to claim yet.")
         else:
-            ui.print_warning(f"A base already exists at {location}.")
+            ui.print_warning(f"A base already exists at {current_location}.")
         return
 
+    # All remaining subcommands operate on the base at the current location.
+    base_here = next(
+        (b for b in world.bases if b.location_ref == current_location), None
+    )
+
+    if sub == "here":
+        if base_here is None:
+            ui.print_warning(
+                f"No base at {current_location or 'your current location'}. "
+                "Use /base claim [name] first."
+            )
+            return
+        _render_base_menu(base_here)
+        return
+
+    if sub == "station":
+        if base_here is None:
+            ui.print_warning(
+                "No base at your current location — nothing to station at."
+            )
+            return
+        _cmd_base_station(parts[2:], base_here)
+        return
+
+    if sub == "talk":
+        if base_here is None:
+            ui.print_warning("No base at your current location.")
+            return
+        _cmd_base_talk(parts[2:], base_here, game_state)
+        return
+
+    if sub in ("deposit", "withdraw"):
+        if base_here is None:
+            ui.print_warning("No base at your current location.")
+            return
+        _cmd_base_storage_move(sub, parts[2:], base_here, game_state)
+        return
+
+    if sub == "storage":
+        if base_here is None:
+            ui.print_warning("No base at your current location.")
+            return
+        console.print(
+            Panel(
+                base_here.storage.list_items(),
+                title=f"{base_here.name} — Storage",
+                border_style="magenta",
+            )
+        )
+        return
+
+    # No subcommand: list all bases.
     if not world.bases:
         console.print(
             "[yellow]You have no bases yet. Use /base claim [name] at a location "
@@ -803,6 +862,164 @@ def _cmd_base(parts: list, game_state: GameState) -> None:
         storage_count = len(base.storage.items)
         table.add_row(base.name, base.location_ref, services, str(storage_count))
     console.print(table)
+
+
+def _render_base_menu(base) -> None:
+    """Rich panel listing stationed NPCs grouped by service + storage summary."""
+    from rich.table import Table
+
+    grouped = base.npcs_by_service()
+    if not grouped:
+        roster_text = (
+            "[dim]No NPCs stationed. Use /base station <npc> [as <service>].[/dim]"
+        )
+    else:
+        lines = []
+        for service in sorted(grouped.keys()):
+            label = service or "unassigned"
+            names = ", ".join(grouped[service])
+            lines.append(f"[bold cyan]{label}[/bold cyan]: {names}")
+        roster_text = "\n".join(lines)
+
+    storage_count = len(base.storage.items)
+    storage_weight = base.storage.get_total_weight()
+    services_text = ", ".join(base.services) if base.services else "none"
+    upgrades_text = (
+        ", ".join(f"{k}={v}" for k, v in base.upgrades.items())
+        if base.upgrades
+        else "none"
+    )
+
+    body = (
+        f"[bold]Location:[/bold] {base.location_ref}\n"
+        f"[bold]Services:[/bold] {services_text}\n"
+        f"[bold]Upgrades:[/bold] {upgrades_text}\n"
+        f"[bold]Storage:[/bold] {storage_count} item(s), "
+        f"{storage_weight:.1f} lbs\n\n"
+        f"[bold]Stationed NPCs[/bold]\n{roster_text}"
+    )
+    console.print(Panel(body, title=base.name, border_style="magenta"))
+
+
+def _cmd_base_station(args: list, base) -> None:
+    """/base station <npc> [as <service>]."""
+    if not args:
+        ui.print_warning("Usage: /base station <npc> [as <service>]")
+        return
+    if "as" in args:
+        idx = args.index("as")
+        npc_name = " ".join(args[:idx]).strip()
+        service = " ".join(args[idx + 1 :]).strip()
+    else:
+        npc_name = " ".join(args).strip()
+        service = ""
+    if not npc_name:
+        ui.print_warning("Usage: /base station <npc> [as <service>]")
+        return
+
+    added = base.station_npc(npc_name, service=service)
+    role = f" as {service}" if service else ""
+    if added:
+        ui.print_success(f"{npc_name} is now stationed at {base.name}{role}.")
+    elif service:
+        ui.print_success(f"{npc_name}'s role updated to {service}.")
+    else:
+        ui.print_warning(f"{npc_name} is already stationed at {base.name}.")
+
+
+def _cmd_base_talk(args: list, base, game_state: GameState) -> None:
+    """/base talk <npc> <message> — one-shot scoped conversation.
+
+    Sets `narrator.service_context` to the build_service_prompt_addendum()
+    string, runs a single `process_action`, then clears the addendum.
+    Responses feed back through the state_parser as usual.
+    """
+    from .bases import build_service_prompt_addendum
+
+    if len(args) < 2:
+        ui.print_warning("Usage: /base talk <npc> <message>")
+        return
+
+    # Find the longest prefix of args that matches a stationed NPC name.
+    npc_name = None
+    message = ""
+    for i in range(len(args), 0, -1):
+        candidate = " ".join(args[:i])
+        if candidate in base.stationed_npcs:
+            npc_name = candidate
+            message = " ".join(args[i:]).strip()
+            break
+    if npc_name is None:
+        # Fall back to single-token match.
+        npc_name = args[0]
+        if npc_name not in base.stationed_npcs:
+            ui.print_warning(
+                f"{npc_name} is not stationed at {base.name}. "
+                f"Try /base here to see who is."
+            )
+            return
+        message = " ".join(args[1:]).strip()
+
+    if not message:
+        ui.print_warning("Usage: /base talk <npc> <message>")
+        return
+
+    addendum = build_service_prompt_addendum(base, npc_name, message)
+    narrator = game_state.narrator
+    previous = getattr(narrator, "service_context", "")
+    narrator.service_context = addendum
+    try:
+        response = narrator.process_action(message)
+    finally:
+        narrator.service_context = previous
+    ui.print_narrator_response(response)
+
+
+def _cmd_base_storage_move(
+    direction: str, args: list, base, game_state: GameState
+) -> None:
+    """/base deposit <item> [qty] and /base withdraw <item> [qty]."""
+    if not args:
+        ui.print_warning(f"Usage: /base {direction} <item> [quantity]")
+        return
+    # Trailing integer is quantity; otherwise default to 1.
+    qty = 1
+    if args[-1].isdigit():
+        qty = int(args[-1])
+        item_name = " ".join(args[:-1]).strip()
+    else:
+        item_name = " ".join(args).strip()
+    if not item_name:
+        ui.print_warning(f"Usage: /base {direction} <item> [quantity]")
+        return
+
+    src, dst = (
+        (game_state.inventory, base.storage)
+        if direction == "deposit"
+        else (base.storage, game_state.inventory)
+    )
+
+    item = src.get_item(item_name)
+    if item is None:
+        ui.print_warning(
+            f"{item_name} not found in {'your inventory' if direction == 'deposit' else base.name + ' storage'}."
+        )
+        return
+    qty = min(qty, item.quantity)
+
+    ok = dst.add_item(
+        name=item.name,
+        description=item.description,
+        quantity=qty,
+        weight=item.weight,
+        rarity=item.rarity,
+    )
+    if not ok:
+        ui.print_warning(f"Destination is full — {item_name} didn't fit.")
+        return
+    src.remove_item(item.name, quantity=qty)
+    verb = "deposited" if direction == "deposit" else "withdrew"
+    ui.print_success(f"{verb.capitalize()} {qty}x {item.name}.")
 
 
 def _cmd_modules(parts: list, game_state: GameState) -> None:
