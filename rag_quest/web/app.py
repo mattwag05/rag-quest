@@ -85,7 +85,10 @@ class SessionStore:
 
 def _build_app() -> "FastAPI":
     _require_fastapi()
-    from fastapi import FastAPI, HTTPException
+    import json
+
+    from fastapi import FastAPI, HTTPException, Query
+    from fastapi.responses import StreamingResponse
     from pydantic import BaseModel
 
     instance = FastAPI(
@@ -166,6 +169,47 @@ def _build_app() -> "FastAPI":
             "state_change": change_dict,
             "state": game_state.to_dict(),
         }
+
+    @instance.get("/session/{session_id}/turn/stream")
+    def take_turn_stream(
+        session_id: str,
+        player_input: str = Query(..., alias="input"),
+    ) -> "StreamingResponse":
+        # GET + query-string so browser EventSource (which only speaks
+        # GET) can consume the stream directly. Validation fires BEFORE
+        # the generator starts so error responses stay synchronous HTTP
+        # codes instead of partial event streams.
+        store: SessionStore = instance.state.sessions
+        game_state = store.get(session_id)
+        if game_state is None:
+            raise HTTPException(
+                status_code=404, detail=f"No active session with id {session_id!r}"
+            )
+        if not player_input.strip():
+            raise HTTPException(status_code=400, detail="Input cannot be empty")
+
+        def _event_stream():
+            try:
+                for chunk in game_state.narrator.stream_action(player_input):
+                    if not chunk:
+                        continue
+                    yield f"data: {json.dumps({'type': 'chunk', 'text': chunk})}\n\n"
+            except Exception:
+                from .._debug import log_swallowed_exc
+
+                log_swallowed_exc("web.turn.stream")
+
+            game_state.turn_number += 1
+            change = game_state.narrator.last_change
+            change_dict = dataclasses.asdict(change) if change is not None else {}
+            done_payload = {
+                "type": "done",
+                "state_change": change_dict,
+                "state": game_state.to_dict(),
+            }
+            yield f"data: {json.dumps(done_payload)}\n\n"
+
+        return StreamingResponse(_event_stream(), media_type="text/event-stream")
 
     return instance
 

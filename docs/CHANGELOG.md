@@ -39,6 +39,26 @@ changelog" for the full convention.
   between machines without a cloud account.
 
 ### Added
+- **v0.8 web streaming turn endpoint** —
+  `GET /session/{session_id}/turn/stream?input=...` wraps
+  `Narrator.stream_action` in a FastAPI `StreamingResponse` with
+  `text/event-stream` media type. Uses GET + query string so browser
+  `EventSource` (which only speaks GET) can consume the stream
+  directly. Each streamed token becomes a
+  `data: {"type":"chunk","text":"..."}\n\n` SSE event; after the
+  generator exhausts, a terminal
+  `data: {"type":"done","state_change":{...},"state":{...}}\n\n`
+  event fires. Validation (404 unknown session, 400 empty input)
+  runs BEFORE the generator starts so error responses stay
+  synchronous HTTP status codes instead of partial streams.
+  Mid-stream failures in the underlying narrator are swallowed
+  via `log_swallowed_exc("web.turn.stream")` — clients can always
+  rely on the `done` event arriving with whatever state the
+  narrator ended up in, and `turn_number` increments regardless.
+  5 new tests in `tests/test_v08_web_stream.py` covering happy
+  path, 404, 400, mid-stream-failure resilience, and
+  empty-chunk filtering. (rag-quest-tqh)
+
 - **v0.8 web turn endpoint** — `POST /session/{session_id}/turn`
   with body `{"input": "..."}` drives a single player turn through
   the existing `Narrator.process_action` path. Returns
