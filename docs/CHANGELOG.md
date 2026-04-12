@@ -39,6 +39,26 @@ changelog" for the full convention.
   between machines without a cloud account.
 
 ### Added
+- **v0.8 web read endpoints** — new `rag_quest/web/sessions.py`
+  module encapsulates the "read save dict from disk → build provider
+  → build WorldRAG → build Narrator → hydrate GameState" chain behind
+  a single `load_session_from_slot(slot_id)` entry point, raising
+  `SessionLoadError` on any failure (missing slot, malformed config,
+  unknown provider, hydration error). Three new HTTP endpoints:
+  `GET /saves` lists every save slot via the existing
+  `SaveManager.list_saves()`; `POST /session/load` with body
+  `{"slot_id":"..."}` hydrates the slot and parks the `GameState` in
+  the module-level `SessionStore`, returning session metadata
+  (session_id, world, character, turn_number); `GET
+  /session/{session_id}/state` serializes the stored `GameState` via
+  `to_dict()`. Endpoint handlers lazy-import `rag_quest.web.sessions`
+  inside their function bodies so tests can monkeypatch the
+  hydration layer without touching real save files or LLM
+  providers. Re-loading the same slot closes the previous session's
+  `WorldRAG` and LLM first so shared resources are released cleanly
+  (matches the `run_game` finally-block pattern). 6 new tests in
+  `tests/test_v08_web_read.py`. (rag-quest-8y7)
+
 - **v0.8 web scaffold** — new `rag_quest/web/` subpackage holds a
   FastAPI app (`rag_quest.web.app.app`), an in-memory `SessionStore`
   that registers loaded-campaign triples (`GameState` / `Narrator`
