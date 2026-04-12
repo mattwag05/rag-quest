@@ -67,7 +67,7 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 ```
 rag-quest/
 ├── rag_quest/                    # Main package
-│   ├── __init__.py              # Version: 0.5.2
+│   ├── __init__.py              # Version: 0.5.3
 │   ├── __main__.py              # Entry point (python -m rag_quest)
 │   ├── startup.py               # Welcome screen & Ollama detection
 │   ├── config.py                # ConfigManager & setup wizard
