@@ -33,6 +33,12 @@ class OllamaProvider(BaseLLMProvider):
             "model": self.config.model,
             "messages": messages,
             "stream": False,
+            # Disable "thinking" mode for reasoning models (Qwen 3.5,
+            # DeepSeek-R1, QwQ, etc.).  When think=True these models
+            # spend the entire token budget on internal chain-of-thought
+            # and return empty content.  For game narration we want
+            # direct output, not hidden reasoning.
+            "think": False,
             "options": {
                 "temperature": temp,
                 "num_predict": tokens,
@@ -45,8 +51,19 @@ class OllamaProvider(BaseLLMProvider):
         )
         response.raise_for_status()
         data = response.json()
-        # Ollama API returns message directly, not in choices array
-        return data["message"]["content"]
+
+        content = data["message"]["content"]
+
+        # Safety net: if content is still empty and thinking was present
+        # (model ignored think=False), fall back to the thinking text.
+        if not content.strip() and data["message"].get("thinking"):
+            thinking = data["message"]["thinking"]
+            # Extract last substantive paragraph from thinking output
+            paragraphs = [p.strip() for p in thinking.split("\n\n") if p.strip()]
+            if paragraphs:
+                content = paragraphs[-1]
+
+        return content
 
     def close(self):
         """Close the HTTP client."""
