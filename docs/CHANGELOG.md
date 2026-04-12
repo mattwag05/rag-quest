@@ -23,6 +23,14 @@ changelog" for the full convention.
   `StateChange.claim_base` rule. New `/base` command lists claimed bases;
   `/base claim [name]` is a deterministic escape hatch when regex detection
   doesn't catch the narrator's phrasing. Claims dedupe on `location_ref`.
+- **v0.7: `rag-quest validate-module <path>` CLI** — non-interactive subcommand
+  that loads a `modules.yaml` manifest, checks all referenced lore files
+  exist, warns on unlock prereqs that no declared module completes (likely
+  narrative quests — possibly typos), and detects prerequisite cycles in the
+  implicit completion-quest → unlock dependency graph. Exits 0 on clean,
+  1 on any fatal error. Warnings never fail the check. Wraps a new
+  `rag_quest.worlds.validate.validate_manifest()` helper so author tooling
+  can call the checker programmatically without spawning a subprocess.
 - **v0.7: Module gating via QuestLog** — `ModuleRegistry.reevaluate(quest_log)`
   runs after every turn in the game loop and transitions module statuses
   based on completed quests. Locked modules become `AVAILABLE` when their

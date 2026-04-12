@@ -17,6 +17,11 @@ console = Console()
 
 def main() -> None:
     """Main entry point."""
+    # Subcommand dispatch. First positional non-flag arg is the subcommand.
+    positional = [a for a in sys.argv[1:] if not a.startswith("-")]
+    if positional and positional[0] == "validate-module":
+        sys.exit(_cmd_validate_module(positional[1:]))
+
     try:
         _main()
     except KeyboardInterrupt:
@@ -48,6 +53,49 @@ def main() -> None:
 
             traceback.print_exc()
         sys.exit(1)
+
+
+def _cmd_validate_module(args: list[str]) -> int:
+    """Subcommand: rag-quest validate-module <dir-or-modules.yaml>.
+
+    Returns a process exit code — 0 if the manifest is clean, 1 on any
+    fatal error. Warnings do not fail the check.
+    """
+    from .worlds.modules import MANIFEST_FILENAME
+    from .worlds.validate import validate_manifest
+
+    if not args:
+        ui.print_error(
+            f"Usage: rag-quest validate-module <world-dir or path to {MANIFEST_FILENAME}>"
+        )
+        return 1
+
+    target = Path(args[0])
+    if target.is_file() and target.name == MANIFEST_FILENAME:
+        world_dir = target.parent
+    elif target.is_dir():
+        world_dir = target
+    else:
+        ui.print_error(f"Not a directory or {MANIFEST_FILENAME}: {target}")
+        return 1
+
+    result = validate_manifest(world_dir)
+
+    module_count = len(result.registry) if result.registry is not None else 0
+    console.print(
+        f"[bold]Validating {world_dir / MANIFEST_FILENAME}[/bold] "
+        f"({module_count} module(s))"
+    )
+
+    for warning in result.warnings:
+        ui.print_warning(warning)
+    for error in result.errors:
+        ui.print_error(error)
+
+    if result.ok:
+        ui.print_success(f"Manifest is clean — {module_count} module(s) validated.")
+        return 0
+    return 1
 
 
 def _print_welcome_screen() -> None:

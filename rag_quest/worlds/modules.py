@@ -34,8 +34,6 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from ..engine.quests import QuestStatus as _QuestStatus
-
 if TYPE_CHECKING:
     from ..knowledge import WorldRAG
 
@@ -169,10 +167,14 @@ class ModuleRegistry:
         on this call, so callers can surface unlock/completion notifications
         without polling.
         """
+        # Lazy import: engine.quests pulls in engine/__init__.py → game.py →
+        # worlds.modules, causing a cycle if hoisted to the top of this file.
+        from ..engine.quests import QuestStatus
+
         completed_titles = {
             q.title.lower()
             for q in quest_log.quests
-            if q.status == _QuestStatus.COMPLETED
+            if q.status == QuestStatus.COMPLETED
         }
 
         transitioned: list[Module] = []

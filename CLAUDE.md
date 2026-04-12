@@ -408,7 +408,19 @@ in a Rich status spinner so first-boot ingestion doesn't look like a hang.
 locked modules unlock when their `unlock_when_quests_completed` prereqs
 are all completed, and modules with a matching `completion_quest` flip to
 `COMPLETED`. Transitions are monotonic. Quest matching is case-insensitive
-on `Quest.title`. `.rqworld` export integration is follow-up (`rag-quest-8qc`). Service
+on `Quest.title`. `.rqworld` export integration is follow-up (`rag-quest-8qc`).
+Authors can validate a manifest before shipping with
+`rag-quest validate-module <world-dir>` — the subcommand calls
+`rag_quest.worlds.validate.validate_manifest()` which checks lore-file
+existence, warns on orphan unlock references, and detects prerequisite
+cycles in the completion-quest → unlock dependency graph. Exits 1 on any
+fatal error so CI can gate on it.
+
+**Import-graph trap** — `rag_quest.worlds.modules` lazy-imports
+`engine.quests.QuestStatus` inside `ModuleRegistry.reevaluate` rather than
+at module top. Hoisting creates a cycle: `engine/__init__.py → game.py
+→ worlds.modules → engine.quests → engine/__init__.py`. Leave the lazy
+import in place. Service
 menus and save-format v3 bump land in follow-up beads (`rag-quest-cxp`,
 `rag-quest-vei`).
 
