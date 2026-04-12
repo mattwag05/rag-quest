@@ -4,171 +4,197 @@ Welcome! This guide takes you from zero to adventuring in about 5 minutes. **No 
 
 ## What You'll Need
 
-1. A Mac or Linux computer
+1. A Mac, Linux, or Windows computer
 2. About 30 minutes for the first time (mostly downloading)
-3. Internet connection (for downloading, play is offline)
+3. Internet connection (for downloading; gameplay is offline)
 
 That's it! No coding skills required.
 
-## Step 1: Install Ollama (Free AI Brain)
+## Step 1: Install Ollama (The Free AI Brain)
 
-Ollama is the AI that runs locally on your computer. Think of it as the dungeon master.
+Ollama is the AI engine that runs locally on your computer. It's your dungeon master.
 
+### Mac Users:
 1. Go to **https://ollama.ai**
-2. Click **Download** and choose your operating system (Mac/Linux/Windows)
-3. Install it like any other program (click the installer, drag to Applications, etc.)
-4. Open Ollama from your Applications folder
-5. Let it finish installing (you'll see a progress bar)
+2. Click **Download** and choose **Mac**
+3. Wait for download to complete
+4. Open the `.dmg` file and drag Ollama to Applications
+5. Open Applications and double-click Ollama
+6. You should see the Ollama icon in your menu bar (top right) — you're done!
 
-**You're done!** Ollama is now running in the background.
+### Linux Users:
+```bash
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama serve &
+```
 
-## Step 2: Download the Ollama Model (The Narrator)
+### Windows Users:
+1. Go to **https://ollama.ai**
+2. Click **Download** and choose **Windows**
+3. Run the installer and follow prompts
+4. Open Ollama from your Start menu
+5. Done!
 
-Open your **Terminal** (Mac) or **Command Prompt** (Windows/Linux) and paste this:
+## Step 2: Download the AI Narrator Model
+
+This step downloads the language model that will be your narrator. It's about 5-6GB.
+
+Open **Terminal** (Mac/Linux) or **Command Prompt** (Windows) and paste this:
 
 ```bash
 ollama pull gemma4:e4b
 ```
 
-This downloads the AI model that will be your narrator. It's about 5-6GB, so grab a coffee—this takes 5-10 minutes depending on your internet speed.
+Wait for it to finish. You'll see a progress bar showing the download. This takes 5-10 minutes depending on your internet speed. Grab a coffee!
 
-**If you have a very slow connection or old computer**, use the smaller model instead:
+**Note**: If you have a very slow connection or old computer, use the smaller model instead:
 ```bash
 ollama pull gemma4:e2b
 ```
 
 ## Step 3: Install RAG-Quest
 
-Choose one of these options:
+Choose the option that matches your system:
 
 ### Option A: Homebrew (Mac) — Easiest
 ```bash
 brew install mattwag05/tap/rag-quest
-```
-
-### Option B: pip (Mac/Linux/Windows)
-```bash
-pip3 install rag-quest
-```
-
-### Option C: From Source (Most Control)
-```bash
-git clone https://github.com/mattwag05/rag-quest.git
-cd rag-quest
-pip3 install -e .
-```
-
-## Step 4: Play!
-
-Open Terminal and type:
-```bash
 rag-quest
 ```
 
-Press Enter and watch the magic happen. You'll see a friendly welcome screen, then a **Setup Wizard** that guides you through the rest.
-
-### The Setup Wizard (Don't Worry, It's Simple!)
-
-When you run `rag-quest`, you'll be asked to pick a start mode:
-
-**🌟 Fresh Adventure** (Recommended for first time)
-- Start with a brand new world
-- Name your character and world
-- Pick a race (Human, Elf, Dwarf, etc.) and class (Warrior, Mage, Rogue, etc.)
-- The narrator creates the adventure for you
-
-**⚡ Quick Start** (Fastest way to play)
-- Choose a pre-built world (Classic Dungeon, Enchanted Forest, etc.)
-- Customize your character
-- Start playing immediately
-
-**📚 Custom Lore** (For world builders)
-- Upload your own PDF, Word document, or text file
-- The game learns from your world
-- More advanced, skip for now
-
-Pick "Fresh Adventure" if you're not sure. The wizard will ask you a few simple questions, then you'll be ready to play!
-
-## Step 5: Start Playing!
-
-Once you're in the game, just type what you want to do:
-
-```
-You are standing in a dark forest.
-
-What do you do? > Go north
+### Option B: pip (Mac/Linux/Windows) — Universal
+```bash
+pip install git+https://github.com/mattwag05/rag-quest.git
+python -m rag_quest
 ```
 
-The AI narrator will tell you what happens next. Combat, treasure, NPCs—it all unfolds as you play.
+### Option C: From Source (Mac/Linux/Windows) — For Developers
+```bash
+git clone https://github.com/mattwag05/rag-quest.git
+cd rag-quest
+pip install -e .
+python -m rag_quest
+```
 
-### Useful Commands
+## Step 4: Welcome Screen
 
-Once you're playing, try these:
+When you run RAG-Quest for the first time, you'll see:
 
-- `/help` — Shows all commands and tips
-- `/save` — Save your game manually
-- `/load` — Load a previous save
-- `/inventory` — See what you're carrying
-- `/status` — Check your health and abilities
-- `/party` — See your party members
-- `/quests` — See active quests
-- `/achievements` — See badges you've unlocked
-- `/settings` — Change game settings
+1. **Welcome Banner** — ASCII art and version info
+2. **Three Start Modes** — Pick one:
+   - **Fresh Adventure** — Blank world, create your character
+   - **Quick Start** — Choose from 4 templates (dungeons, forests, cities)
+   - **Upload Lore** — Bring your own world description (optional, advanced)
 
-Type `/help` during the game to see everything.
+3. **Character Creation**:
+   - Choose your race (Human, Elf, Dwarf, Orc, Halfling)
+   - Choose your class (Fighter, Rogue, Mage, Cleric, Ranger)
+   - Enter your character name
+   - Confirm your selections
+
+4. **Game Configuration**:
+   - LLM Provider — Ollama is recommended and auto-detected
+   - RAG Profile — "balanced" is recommended for most systems
+   - World Settings — Name your world, set the tone (fantasy, horror, sci-fi, etc.)
+
+5. **Adventure Begins!** — You're in the game!
+
+## Step 5: Playing the Game
+
+You're now in the game! The AI describes a scene, and you type what you want to do:
+
+```
+You stand at the entrance of a dark forest. Twisted trees loom overhead.
+What do you do?
+
+> Walk into the forest and look for signs of life
+```
+
+That's it! Just type natural language and press Enter. The AI understands:
+- Actions: "swing my sword," "cast a spell," "run away"
+- Dialogue: "ask the NPC about the quest," "demand the treasure"
+- Exploration: "search the room," "climb the wall," "knock on the door"
+
+### Essential Commands
+
+Type these anytime during the game:
+
+| Command | What it does |
+|---------|-------------|
+| `/i` or `/inventory` | See what you're carrying |
+| `/s` or `/stats` | Check your health, level, attributes |
+| `/q` or `/quests` | View active quests and objectives |
+| `/p` or `/party` | See your companions |
+| `/h` or `/help` | Full command reference |
+| `/config` | Change LLM or settings |
+| `/save` | Save your game manually |
+| `/new` | Start a new game |
+| `/exit` | Quit (you'll be asked to save) |
+
+### Game Concepts
+
+**Combat**: Encounter an enemy? You'll enter combat automatically. Dice rolls, attacks, damage — all handled for you. Just type your action (attack, cast spell, defend, flee).
+
+**Quests**: NPCs offer quests with objectives. Complete them for experience and loot.
+
+**Leveling Up**: Gain experience from combat and quests. Level up to unlock new abilities and increase your stats.
+
+**Inventory**: Pick up items and equipment. Your gear affects your stats and combat abilities.
+
+**Multiplayer**: Start a local game and pass the controller between players on the same machine.
 
 ## Troubleshooting
 
-### "Command not found: rag-quest"
-Make sure the installation finished. Try:
-```bash
-pip3 install rag-quest --force-reinstall
-```
+### "Ollama isn't running"
+- **Mac**: Look for the Ollama icon in your menu bar (top right)
+- **Linux**: Run `ollama serve &` in Terminal
+- **Windows**: Open Ollama from your Start menu
+- If it's not there, download from https://ollama.ai again
 
-### "Cannot connect to Ollama"
-Ollama needs to be running. Open Ollama from your Applications folder and make sure the icon is in the menu bar at the top of your screen.
-
-### "Model download failed"
-Your internet might have hiccupped. Try the pull command again:
+### "Model not found" error
+Run this command again:
 ```bash
 ollama pull gemma4:e4b
 ```
 
-### "Game is running very slowly"
-You might be using the model that's too heavy for your computer. Try the smaller model:
+If you're on a slow connection or old computer:
 ```bash
 ollama pull gemma4:e2b
-rag-quest  # Game will automatically use the smaller model
 ```
 
-### Still stuck?
-Open an issue on GitHub: **https://github.com/mattwag05/rag-quest/issues**
+### "Connection refused" when starting RAG-Quest
+Ollama crashed or wasn't running when you started the game. Restart Ollama and try again.
 
-Include what you tried and the error message you got. We'll help!
+### Slow responses during gameplay
+The game is CPU/GPU bound. Slow hardware + large models = slow responses. Try:
+1. Use the smaller model: `ollama pull gemma4:e2b`
+2. Use the "fast" RAG profile: `/config` → choose "fast"
+3. Close other apps to free up memory
 
-## Tips for a Great First Adventure
-
-1. **Be creative** — The game responds to anything you type. Describe what you want to do in detail.
-2. **Save often** — Use `/save` to create checkpoints. You can load them later.
-3. **Try new things** — Talking to NPCs, exploring, trying weird combinations—the game handles it all.
-4. **Don't worry about "right answers"** — There's no one way to play. Your story is unique.
-5. **Check your stats** — Type `/status` to see your health, abilities, and inventory.
+### Narrative quality is poor
+RAG-Quest needs knowledge about your world to work well. During setup, choose "Upload Lore" and provide a description of your world. The more context you give, the better the storytelling.
 
 ## Next Steps
 
-Once you're comfortable playing:
+- Read the full command list: `/help` (in-game)
+- Explore the world: Travel, meet NPCs, find quests
+- Level up your character: Gain XP through combat and quests
+- Try multiplayer: Invite a friend for hot-seat gameplay
+- Read [ARCHITECTURE.md](ARCHITECTURE.md) to understand how RAG-Quest works
 
-- **Upload custom lore** — Next game, try Mode 3 to make the world truly yours
-- **Try multiplayer** — Play with friends in hot-seat mode (everyone takes turns on same computer)
-- **Export your world** — Share your world with others via `.rqworld` files
-- **Read the full docs** — GitHub README has advanced features and command reference
+## Getting Help
 
-## Still Have Questions?
+- **In-game help**: Type `/help`
+- **Full documentation**: See [CLAUDE.md](CLAUDE.md) (for developers)
+- **GitHub issues**: https://github.com/mattwag05/rag-quest/issues
+- **Troubleshooting**: See section above
 
-- **README.md** — Feature overview and detailed documentation
-- **`/help` command** — In-game help for all commands
-- **GitHub Issues** — Report bugs or request features
+## Next Releases
+
+- **v0.6**: Web UI, cloud deployment
+- **v0.7**: iOS app, offline packages
+- **v0.8**: Voice I/O, Apple Intelligence
 
 ---
 
-**Welcome to RAG-Quest, adventurer.** Your legend awaits!
+Have fun! Your adventure awaits.

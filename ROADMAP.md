@@ -4,246 +4,307 @@ A phased roadmap for RAG-Quest, an AI-powered D&D-style text RPG with LightRAG k
 
 ## Design Philosophy
 
-**Core Principle**: LightRAG does the heavy lifting. The LLM acting as dungeon master is kept lightweight (Gemma 4 E2B/E4B—2-4B parameters, ≤8K context window) because it doesn't need to memorize the world. LightRAG's dual-level retrieval (entity + vector matching) injects precisely the relevant knowledge per query. This enables RAG-Quest to run entirely on consumer hardware with local models via Ollama.
+**Core Principle**: LightRAG does the heavy lifting. The LLM narrator is kept lightweight (Gemma 4 E2B/E4B—2-4B parameters, ≤8K context) because it doesn't memorize the world. LightRAG's dual-level retrieval (entity + vector matching) injects precisely the relevant knowledge per query. This enables RAG-Quest to run entirely on consumer hardware with local models via Ollama.
 
-This philosophy shapes every version and feature below.
+This philosophy shapes every version.
 
 ---
 
-## v0.5.1 (Current) - Polished for Everyone
+## v0.5.2 (Current) — Polished UX for Non-Developers
 
-**Status**: ✅ Complete — UX polish for non-developers, full backwards compatibility
+**Status**: ✅ Complete — Production-ready, comprehensive UX polish, zero tracebacks
 
-### What's New in v0.5.1
+### What's New in v0.5.2
 
-**Friendly Setup**
+**Comprehensive UX Polish**
+- ✅ Friendly setup wizard with three start modes
+- ✅ Automatic Ollama detection with setup guidance
+- ✅ Character creation confirmation screen
+- ✅ Input validation with helpful retry messages
+- ✅ Smart save management with game recaps on load
+
+**Error Handling**
+- ✅ Zero tracebacks shown to users
+- ✅ Every error has an actionable, friendly message
+- ✅ Smart error classification (Ollama, timeout, API, file errors)
+- ✅ Graceful recovery and helpful suggestions
+
+**Command System**
+- ✅ Command shortcuts: `/i`, `/s`, `/q`, `/p`, `/h`
+- ✅ New `/new` command to start game without quitting
+- ✅ New `/config` command for mid-game settings changes
+- ✅ Better unknown command feedback with suggestions
+
+**Terminal UX**
+- ✅ Better status bar formatting and clarity
+- ✅ Improved narrator response panels with Rich formatting
+- ✅ Subtle "✓ Progress saved" notification on auto-save
+- ✅ Game recap when loading save (character, level, world, days)
+- ✅ Safe line widths (80-char compatible)
+- ✅ Color contrast for accessibility
+
+**Help System**
+- ✅ Comprehensive `/help` with command reference table
+- ✅ Command shortcuts displayed prominently
+- ✅ Pro tips and game features highlighted
+- ✅ Troubleshooting guidance for stuck players
+- ✅ Examples of natural language actions
+
+**Quality Assurance**
+- ✅ All syntax validated (py_compile)
+- ✅ No tracebacks in error paths
+- ✅ Backwards compatible with all previous saves
+- ✅ All 12 core game systems verified working
+
+---
+
+## v0.5.1 — Polish for Everyone
+
+**Status**: ✅ Complete — UX enhancements, smart saves, friendly errors
+
+### Highlights
+
+**Setup & Configuration**
 - ✅ Automatic Ollama detection
-- ✅ Clear, jargon-free setup wizard
+- ✅ Clear setup wizard without jargon
 - ✅ No command-line knowledge required
+- ✅ Provider descriptions explaining each option
+- ✅ Links to external services (Ollama, OpenAI, OpenRouter)
 
-**Comprehensive Help System**
-- ✅ `/help` shows all commands with examples
-- ✅ Command-specific help with `/help <command>`
-- ✅ Pro tips built into setup wizard
-
-**Graceful Error Handling**
+**Error Recovery**
 - ✅ User-friendly error messages instead of tracebacks
 - ✅ Helpful suggestions for fixing common issues
 - ✅ Automatic recovery from transient failures
+- ✅ Smart error classification
 
-**Smart Save Management**
-- ✅ Auto-save on every turn
-- ✅ Ctrl+C always offers to save before exit
-- ✅ Save backup and disaster recovery
+**Save Management**
+- ✅ Auto-save every 5 actions
+- ✅ Ctrl+C offers save before exit
+- ✅ Save metadata tracking
+- ✅ Clear save confirmation messages
 
-**Visual Rewards**
-- ✅ Achievement notifications with fanfare
-- ✅ Level-up celebrations with stat bonuses
-- ✅ Treasure reveal animations
-- ✅ Boss victory celebrations
+**Visual Improvements**
+- ✅ Better status bar formatting
+- ✅ Improved narrator response panels
+- ✅ Achievement notifications with clear formatting
+- ✅ Level-up celebrations
 
 ---
 
-## v0.5.0 - Multiplayer, Saves & World Sharing
+## v0.5.0 — Multiplayer, Saves & World Sharing
 
-**Status**: ✅ Complete — All features implemented, tested, and verified
+**Status**: ✅ Complete — All major features implemented
 
-### What's New in v0.5.0
+### Highlights
 
 **Persistent Save System**
-- ✅ Multi-slot saves with metadata tracking (5+ independent slots)
-- ✅ Auto-save rotation (keeps 3 most recent auto-saves)
-- ✅ Export/import saves as `.rqsave` files
-- ✅ Save format migration between versions
-- ✅ SaveManager with centralized orchestration
+- ✅ Multi-slot saves (5+ independent slots)
+- ✅ Auto-save rotation (keeps 3 most recent)
+- ✅ Export/import as `.rqsave` files
+- ✅ Format migration between versions
+- ✅ Centralized SaveManager
 
-**World Sharing & Templates**
+**World Sharing**
 - ✅ Export worlds as `.rqworld` packages
-- ✅ Import community-created worlds
-- ✅ 4 built-in starter worlds (Classic Dungeon, Enchanted Forest, Port City, War-Torn Kingdom)
+- ✅ Import community worlds
+- ✅ 4 built-in starter templates
 - ✅ World validation and integrity checking
-- ✅ Modular export/import system
 
-**Local Multiplayer (Hot-Seat)**
-- ✅ Turn-based multiplayer on same machine
-- ✅ Shared world state across all players
-- ✅ Item trading between players with negotiation
-- ✅ Cooperative and PvP combat options
-- ✅ MultiplayerSession with state synchronization
+**Local Multiplayer**
+- ✅ Hot-seat mode for turn-based play
+- ✅ Shared world state
+- ✅ Item trading between players
+- ✅ Cooperative and PvP combat
 
 **Achievement System**
-- ✅ 11 built-in achievements (Explorer, Warrior, Diplomat, Scholar, etc.)
-- ✅ Automatic detection triggered on game events
-- ✅ Progress tracking for multi-step achievements
-- ✅ Real-time achievement notifications
-- ✅ AchievementEngine for centralized management
+- ✅ 11 achievements (Explorer, Warrior, Diplomat, Scholar, Treasure Hunter, Dragon Slayer, Indestructible, Hoarder, Wealthy, Legendary, Well-Connected)
+- ✅ Automatic detection and notifications
+- ✅ Progress tracking
+- ✅ Real-time notifications
 
-**Procedural Dungeon Generation**
-- ✅ Random dungeon generation with 5-15 rooms per level
+**Procedural Dungeons**
+- ✅ Random level generation (5-15 rooms per level)
 - ✅ ASCII maps that reveal as you explore
-- ✅ Room types: corridors, chambers, traps, treasures, boss rooms
+- ✅ Room types: corridors, chambers, traps, treasure, boss
 - ✅ Difficulty-scaled enemies and loot
-- ✅ DungeonGenerator with seeding support
-
-**New Commands**
-- ✅ `/saves` — List all save slots and metadata
-- ✅ `/export` — Export current game to `.rqsave`
-- ✅ `/import` — Import save file or world template
-- ✅ `/multiplayer` — Start local multiplayer session
-- ✅ `/trade` — Trade items between players
-- ✅ `/achievements` — View achievement progress
-- ✅ `/dungeon` — Enter procedurally generated dungeon
-
-### Verification
-- All save/load operations working with format migration
-- World export/import with validation functional
-- Multiplayer state sync and trading verified
-- All 11 achievements triggered and tracked correctly
-- Procedural dungeon generation producing valid ASCII maps
-- All new commands implemented and functional
-
-### Code Quality
-- New packages: `saves/`, `worlds/`, `multiplayer/`
-- New engine modules: `achievements.py`, `dungeon.py`
-- Full type signatures and comprehensive error handling
-- Backwards compatible with v0.4 save formats
 
 ---
 
-## v0.4.1 - API Integration Fixes
+## v0.4.1 — API Integration Fixes
 
-**Status**: ✅ Complete — All 6 critical API bugs fixed and verified
+**Status**: ✅ Complete — All 6 critical API bugs fixed
 
 ### Bugs Fixed
-- ✅ Inventory.list_items() returning formatted strings
-- ✅ Party constructor accepting optional leader keyword
-- ✅ RelationshipManager.add_npc() method added
-- ✅ QuestLog.add_quest() accepting Quest objects
-- ✅ EventType.CONFLICT added to enum
-- ✅ Character.get_available_abilities() method added
-
-### Inherited from v0.4.0
-- Multi-character parties with companion AI
-- NPC relationship system with faction reputation
-- Multi-step quest chains with branching paths
-- Dynamic world events affecting gameplay
+- ✅ Inventory.list_items() returns formatted string correctly
+- ✅ Party constructor accepts optional leader argument
+- ✅ RelationshipManager.add_npc() method implemented
+- ✅ QuestLog.add_quest() accepts Quest objects
+- ✅ EventType enum has CONFLICT and all standard types
+- ✅ Character.get_available_abilities() method implemented
 
 ---
 
-## v0.4.0 - Social Dynamics, Parties & World Events
+## v0.4.0 — Character Progression, Combat & Narration
 
-**Status**: ✅ Complete — All features implemented and tested
+**Status**: ✅ Complete — Full D&D mechanics and real LLM narration
 
-### Features
-- ✅ Multi-character parties (up to 4 members)
-- ✅ Companion AI with personality-driven behaviors
-- ✅ NPC relationship system (trust, disposition, reputation)
-- ✅ Faction reputation with faction-wide tracking
-- ✅ Multi-step quest chains with branching paths
-- ✅ Dynamic world events (10+ event types)
-- ✅ Event consequences persisting in world state
-- ✅ Loyalty system affecting companion behavior
+### Highlights
 
-### Commands Added
-- `/party` — View party roster and status
-- `/relationships` — See trust and disposition metrics
-- `/factions` — View faction reputation
-- `/recruit` — Invite NPC to party
-- `/dismiss` — Remove companion from party
-- `/events` — View active world events
+**D&D Combat System**
+- ✅ Dice rolling (d4-d20)
+- ✅ Initiative and attack rolls vs AC
+- ✅ Damage calculation with critical hits
+- ✅ Turn-based combat flow
 
----
+**Character Progression**
+- ✅ 6 attributes (STR/DEX/CON/INT/WIS/CHA)
+- ✅ 5 races with stat bonuses
+- ✅ 5 classes with unique abilities
+- ✅ XP and leveling to level 10
+- ✅ Class abilities unlocking
 
-## v0.3.0 - Combat, Progression & TTS
+**Real LLM Narration**
+- ✅ Actual LLM calls for dynamic narration
+- ✅ Context injection (game state, RAG knowledge)
+- ✅ Conversation history management
+- ✅ Synchronous (not async) for clean game loop
 
-**Status**: ✅ Complete — All combat and progression systems working
+**Encounters & Loot**
+- ✅ Location-based enemy tables
+- ✅ Difficulty scaling
+- ✅ Boss encounters with 5x XP
+- ✅ Loot tables with equipment
 
-### Features
-- ✅ D&D combat with dice rolls (d4-d20), initiative, critical hits
-- ✅ Character progression with 6 attributes and leveling to 10
-- ✅ Equipment system with weapon, armor, and accessory slots
-- ✅ Class abilities and progression-gated skills
-- ✅ Encounter generation with scaling difficulty
-- ✅ Loot tables and boss encounters (5x XP rewards)
-- ✅ Text-to-speech narration (pyttsx3 and gTTS)
-- ✅ Real LLM narrator with context injection
-
-### Commands Added
-- `/abilities` — List class abilities and unlocks
-- `/equipment` — View equipped items
-- `/voice` — Change TTS voice and settings
+**Audio & Voice**
+- ✅ TTS narration (pyttsx3 offline, gTTS online)
+- ✅ Voice selection and configuration
+- ✅ Toggle TTS with `/voice` command
 
 ---
 
-## v0.2.0 - MVP Release
+## v0.3.0 — Quest System, Parties & Relationships
 
-**Status**: ✅ Complete — Fully playable core game
+**Status**: ✅ Complete — Deep story mechanics
 
-### Features
-- ✅ Character creation and progression
-- ✅ Location tracking and movement
-- ✅ Combat system with HP and damage
-- ✅ Inventory system with item discovery
-- ✅ Quest system with NPC offers and tracking
-- ✅ LightRAG knowledge graph integration
-- ✅ Multi-provider LLM support (Ollama, OpenRouter, OpenAI)
-- ✅ Three RAG profiles (fast, balanced, deep)
-- ✅ Auto-save and error recovery
-- ✅ Comprehensive documentation
+### Highlights
 
-### Commands
-- `/inventory` — View and manage items
-- `/quests` — View active quests
-- `/look` — Examine current location
-- `/map` — View world map
-- `/status` — View character stats
-- `/save` — Manual save
-- `/help` — Command reference
+**Quest System**
+- ✅ NPC quest offers
+- ✅ Branching objectives
+- ✅ Quest completion tracking
+- ✅ Experience and item rewards
 
----
+**Multi-Character Parties**
+- ✅ Recruit companions
+- ✅ Party management
+- ✅ Companion AI behavior
+- ✅ Cooperative combat
 
-## v0.6+ Vision — Advanced Features & Expansion
+**NPC Relationships**
+- ✅ Trust and disposition tracking
+- ✅ Faction reputation system
+- ✅ NPC memory (who you've met)
+- ✅ Relationship-based quest triggers
 
-### v0.6 (Planned for 2026-Q3)
-- **Cloud Save Sync** — Synchronize saves across devices
-- **Asynchronous Multiplayer** — Play with friends online (turns-based)
-- **Advanced Crafting** — Craft items from raw materials
-- **Spell System** — Learn and cast spells with cooldowns
-- **Mod Support** — Community-created content and scripts
-
-### v0.7+ (2026-2027)
-- **PvP Leaderboards** — Ranked multiplayer seasons
-- **Mobile Companion App** — Manage party and inventory on phone
-- **Native iOS/Android Clients** — Full mobile game
-- **Biome System** — Regional themes with unique encounters
-- **Seasonal Content** — Limited-time events and rewards
-
-### Long-Term Vision (2027+)
-- **Cross-Platform Play** — Web, mobile, desktop unified
-- **Community Hub** — Share worlds, achievements, playthroughs
-- **Advanced Procedural Generation** — Biome themes, region connectivity
-- **Story Campaigns** — Campaign-length narrative arcs
-- **Game Editor** — Build custom worlds with UI tools
-- **API & Integrations** — Streaming, Discord bots, external tools
+**World Events**
+- ✅ Dynamic events with consequences
+- ✅ Time advancement
+- ✅ Location discovery
+- ✅ Recent event tracking for narrative context
 
 ---
 
-## Architecture Pillars
+## v0.2.0 — Core Inventory & Equipment
 
-1. **LightRAG at the Core** — Knowledge graphs, not token memory
-2. **Consumer Hardware** — 2-4B models on Ollama/local GPU
-3. **Privacy First** — No mandatory cloud connectivity
-4. **Extensibility** — Plugin systems, custom content, mod support
-5. **Community Driven** — World sharing, achievements, leaderboards
-6. **Quality Narrative** — Small models + excellent RAG = great stories
+**Status**: ✅ Complete — Item management and gear
+
+### Highlights
+
+- ✅ Item management with weight tracking
+- ✅ Equipment slots (weapon, armor, accessory)
+- ✅ Stat bonuses from equipment
+- ✅ Inventory commands (`/inventory`, `/equipment`)
+- ✅ Item discovery and drops
+
+---
+
+## v0.1.0 — Foundation
+
+**Status**: ✅ Complete — Core game loop and world state
+
+### Highlights
+
+- ✅ Game loop with turn-based input
+- ✅ Character creation (name, race, class)
+- ✅ World state management
+- ✅ Basic narration
+- ✅ Command system
+- ✅ LLM provider framework
+
+---
+
+## Future Roadmap
+
+### v0.6 — Web UI & Streaming
+
+**Planned**:
+- Web interface for browser-based play
+- Streaming responses (see narration as it's generated)
+- Cloud deployment option
+- Save sync across devices
+- Status: Pre-development
+
+### v0.7 — iOS App & Offline Distribution
+
+**Planned**:
+- SwiftUI iOS app
+- Offline model distribution
+- Apple ecosystem integration
+- Touch UI for mobile
+- Status: Pre-development
+
+### v0.8 — Voice & Apple Intelligence
+
+**Planned**:
+- Voice input (speak your actions)
+- Voice output (AI reads narration)
+- Apple Intelligence integration (on-device processing)
+- Natural language improvements
+- Status: Pre-development
+
+### v1.0 — Stable Release
+
+**Planned**:
+- Stable API for third-party extensions
+- Community mod support
+- Advanced RAG features (custom entity types, relationships)
+- Performance optimizations
+- Status: Post-v0.8
+
+---
+
+## Key Principles
+
+1. **LightRAG is the Foundation** — The knowledge graph is the "long-term memory," not the LLM
+2. **Lightweight Narrator** — Keep the LLM small; let RAG provide context
+3. **Local First** — Ollama + Gemma 4 should be the default experience
+4. **No Hallucinations** — RAG grounding ensures narrative consistency
+5. **Consumer Hardware** — Everything should run on a Mac or modest GPU
+6. **Zero Friction** — Setup should be friendly and automatic
+7. **Full Backwards Compatibility** — All saves and worlds should migrate cleanly
 
 ---
 
 ## Release Cadence
 
-- **Major Versions** (v0.X.0): 6-8 months between releases
-- **Minor Versions** (v0.X.Y): Bug fixes and small features, as needed
-- **Playtest Cycle**: Extensive testing before each major release
-- **Community Feedback**: Active issue tracking and feature requests via beads
+- Major versions (v0.x.0): 1-2 months between releases
+- Bug fixes (v0.x.1): As needed
+- Documentation: Continuous
 
-For contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
+## Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+**Last Updated**: April 2026

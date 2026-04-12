@@ -1,644 +1,441 @@
-# AGENTS.md - LLM Provider Integration Guide
+# AGENTS.md — LLM Provider Guide for RAG-Quest v0.5.2
 
-This document describes how RAG-Quest integrates different LLM providers and how the AI narrator agent works within the game engine.
+This document describes RAG-Quest's LLM provider architecture, how each provider works, and how to add new providers.
 
-## Overview
+## Architecture Overview
 
-RAG-Quest uses a **provider-agnostic** architecture that treats OpenAI, OpenRouter, and Ollama as first-class citizens. The system abstracts provider-specific APIs behind a common interface, allowing seamless switching between models and providers.
-
-**The Architectural Philosophy**: The LLM is not expected to be a large or sophisticated model. LightRAG's knowledge graph retrieval injects all necessary context per query. A 2-4B parameter model (Ollama Gemma 4 E2B or E4B) paired with strong RAG context performs as well as much larger models running blind. This enables consumer-hardware deployment and dramatically reduces costs.
-
-**v0.4.0 Release (2026-04-11)**: All LLM providers verified working with enhanced social narrator. Narrator now includes party context, NPC relationship history, faction reputation, and world events when generating dynamic responses. Synchronous architecture stable for complex multi-character gameplay. All three providers tested with party and social mechanics. Recommended setup: Ollama Gemma 4 E4B on GPU or E2B on CPU.
-
-## LLM Provider Architecture
-
-### Provider Abstraction Layer
-
-All providers implement `BaseLLMProvider` (llm/base.py):
+All LLM providers inherit from **BaseLLMProvider** and implement a synchronous `complete()` method:
 
 ```python
 class BaseLLMProvider(ABC):
-    """Base class for all LLM providers."""
-    
-    def __init__(self, config: dict):
-        """Initialize with config dict containing:
-        - model: model name/ID
-        - api_key: API key or None
-        - base_url: custom endpoint (optional)
-        - temperature: default temperature
-        - max_tokens: default max tokens
-        """
-        self.config = config
-    
-    @abstractmethod
-    def complete(
-        self,
-        messages: list[dict],
-        temperature: float = None,
-        max_tokens: int = None,
-        **kwargs  # Accepts extra kwargs from LightRAG without error
-    ) -> str:
-        """Generate a completion.
-        
-        Args:
-            messages: List of {'role': 'system'|'user'|'assistant', 'content': str}
-            temperature: Override default temperature (0-2 range)
-            max_tokens: Override default max tokens
-            **kwargs: Extra parameters from LightRAG (e.g., hashing_kv)
-        
-        Returns:
-            Generated text response (synchronous)
-        
-        Raises:
-            ValueError: Invalid API key or model
-            ConnectionError: API unreachable
-            RuntimeError: Other API errors
-        """
-        pass
-    
-    def lightrag_complete_func(self) -> callable:
-        """Return a callable that LightRAG can use.
-        
-        LightRAG expects: fn(prompt) -> str (synchronous)
-        This method adapts our provider interface to that expectation.
-        
-        Returns:
-            Callable: (prompt: str) -> str
-        """
-        pass
+    def complete(self,
+                messages: list[dict],
+                temperature: float = None,
+                max_tokens: int = None,
+                **kwargs) -> str:
+        """Call LLM synchronously and return response text."""
 ```
 
-### Provider Implementations
+**Key Design Decision**: All providers are **synchronous** (not async), even though they make HTTP calls. This is intentional for a turn-based game—no async complexity needed.
 
-#### 1. OpenAI Provider
+**Lightweight Narrator**: The game is designed so the LLM can be small (Gemma 4 E2B/E4B, 2-4B parameters). LightRAG provides the knowledge; the LLM provides the narration.
 
-**File**: `llm/openai_provider.py`
+## Recommended Setup
 
-```python
-class OpenAIProvider(BaseLLMProvider):
-    """Direct OpenAI API integration (synchronous)."""
-    
-    # Expected config:
-    # {
-    #     'model': 'gpt-4-turbo' or 'gpt-3.5-turbo',
-    #     'api_key': 'sk-...',
-    #     'temperature': 0.85,
-    #     'max_tokens': 1024
-    # }
-    
-    def complete(self, messages, temperature=None, max_tokens=None, **kwargs):
-        # 1. Build JSON payload
-        # 2. POST to https://api.openai.com/v1/chat/completions
-        # 3. Parse response
-        # 4. Return content of first choice
-        pass
-```
+**For Consumer Hardware** (laptops, desktops):
+- **Provider**: Ollama (local, private, free)
+- **Model**: Gemma 4 E4B (4B parameters, GPU-friendly)
+- **RAG Profile**: balanced
+- **Expected latency**: 2-10 seconds per response
 
-**Features**:
-- Latest models: GPT-4 Turbo, GPT-4, GPT-3.5-turbo
-- Synchronous HTTP via httpx.Client
-- Supports system prompts, function calling (not used)
-- Requires valid OpenAI API key
+**For CPU-Only Systems**:
+- **Model**: Gemma 4 E2B (2B parameters, CPU-friendly)
+- **RAG Profile**: fast
+- **Expected latency**: 10-60 seconds per response
 
-**Cost**: ~$0.05-0.30 per complex game turn (depending on model)
+**For Quality** (if you have GPU or want cloud):
+- **Provider**: OpenAI (GPT-4 or GPT-3.5-turbo)
+- **RAG Profile**: deep
+- **Expected latency**: 1-3 seconds per response (faster API)
 
-**Latency**: 1-10 seconds per request
+**For Flexibility** (100+ models):
+- **Provider**: OpenRouter (pay-per-use cloud)
+- **Any model**: Your choice from 100+ models
 
-**Tips**:
-- GPT-4 is most consistent for narrative (higher cost)
-- GPT-3.5-turbo is cheaper but less coherent
-- Set temperature 0.8-0.9 for creative narration
-- **Note**: Even GPT-3.5 works well with good RAG context
+## Provider Implementations
 
-#### 2. OpenRouter Provider
+### 1. Ollama (Recommended for Local Play)
 
-**File**: `llm/openrouter_provider.py`
+**File**: `rag_quest/llm/ollama_provider.py`
 
-```python
-class OpenRouterProvider(BaseLLMProvider):
-    """OpenRouter.ai multi-model integration (synchronous)."""
-    
-    # Expected config:
-    # {
-    #     'model': 'anthropic/claude-sonnet-4' | 'openai/gpt-4' | 'meta-llama/llama-2-70b',
-    #     'api_key': 'sk-or-...',
-    #     'temperature': 0.85,
-    #     'max_tokens': 1024
-    # }
-    
-    def complete(self, messages, temperature=None, max_tokens=None, **kwargs):
-        # 1. Build JSON payload with model parameter
-        # 2. POST to https://openrouter.ai/api/v1/chat/completions
-        # 3. Handle response (compatible with OpenAI format)
-        # 4. Return content
-        pass
-```
-
-**Features**:
-- 100+ models available (Claude, GPT, Llama, Mistral, etc.)
-- Single API for multiple providers
-- Automatic fallback (optional)
-- Pricing varies per model
-- Request logging available
-
-**Recommended Models**:
-- `anthropic/claude-sonnet-4` - Excellent narrative coherence
-- `openai/gpt-4-turbo` - Strong performance
-- `meta-llama/llama-2-70b` - Good open-source alternative
-- `mistralai/mistral-7b` - Fast, lighter, excellent with RAG
-
-**Cost**: Varies; Claude ~$0.15 per turn, Llama ~$0.01 per turn, Mistral ~$0.005 per turn
-
-**Latency**: 1-15 seconds depending on provider load
-
-**Tips**:
-- Different models have different personalities
-- Sonnet is best for consistent narration
-- Llama and Mistral are fast and cheap—excellent for testing
-- Check OpenRouter.ai/status for provider uptime
-- **Key insight**: Llama-7B with RAG often rivals Claude quality
-
-#### 3. Ollama Provider
-
-**File**: `llm/ollama_provider.py`
-
-```python
-class OllamaProvider(BaseLLMProvider):
-    """Local Ollama inference engine (synchronous)."""
-    
-    # Expected config:
-    # {
-    #     'model': 'gemma4-e2b' | 'gemma4-e4b' | 'mistral' | 'llama2' | 'neural-chat',
-    #     'base_url': 'http://localhost:11434',
-    #     'temperature': 0.85,
-    #     'max_tokens': 1024
-    # }
-    
-    def complete(self, messages, temperature=None, max_tokens=None, **kwargs):
-        # 1. Build JSON payload
-        # 2. POST to base_url/api/chat
-        # 3. Handle streaming response (accumulate lines)
-        # 4. Return accumulated response
-        pass
-```
-
-**Features**:
-- Runs completely locally (no API keys needed)
-- Requires Ollama daemon running (`ollama serve`)
-- Models: Llama 2, Mistral, Neural Chat, Orca, Zephyr, Gemma4, etc.
-- No rate limits, no costs (just CPU/GPU)
-- Streaming response support
-- **Perfect for consumer hardware when paired with RAG**
-
-**Recommended Models**:
-- `gemma4-e2b` - **Recommended for CPU (2B, fast, excellent quality)**
-- `gemma4-e4b` - **Recommended for GPU (4B, best quality, still fast)**
-- `mistral` - Good alternative, fast and capable
-- `neural-chat` - Good for narrative/dialogue
-- `llama2` - Good general purpose
-- `zephyr` - Newer, good reasoning
+**What it does**: Calls a local Ollama instance running on your computer.
 
 **Setup**:
 ```bash
-# Install Ollama from ollama.ai
-# Start the server
+# Download and install Ollama
+brew install ollama  # or download from https://ollama.ai
+
+# Pull the model
+ollama pull gemma4:e4b
+
+# Start Ollama (runs in background)
 ollama serve
-
-# In another terminal, pull recommended models
-ollama pull gemma4-e2b    # 2B, perfect for CPU
-ollama pull gemma4-e4b    # 4B, best quality
-ollama pull mistral       # Alternative
 ```
 
-**Performance** (on Mac with Apple Silicon):
-- GPU (Metal): 2-10 seconds per response
-- CPU-only: 10-60 seconds per response
-- Depends heavily on model size and hardware
+**Configuration**:
+```python
+from rag_quest.llm.ollama_provider import OllamaProvider
 
-**Tips**:
-- Use Gemma 4 E2B (2B for CPU) or E4B (4B for GPU)—often sufficient with RAG
-- GPU recommended for playable experience (E4B is perfect for GPU)
-- Cold start is slower (~30s); subsequent queries faster
-- Great for development/testing without API costs
-- **Philosophy**: A 2-4B Gemma 4 model with RAG beats much larger models without RAG
-- **Note**: Ollama response format differs from OpenAI—uses `data["message"]["content"]` not `data["choices"][0]["message"]["content"]`
+provider = OllamaProvider({
+    "model": "gemma4:e4b",
+    "base_url": "http://localhost:11434",
+})
 
-### Synchronous Architecture (Updated 2026-04-11)
+response = provider.complete(messages=[
+    {"role": "system", "content": "You are a dungeon master..."},
+    {"role": "user", "content": "I attack the goblin."},
+])
+```
 
-All LLM providers are now **synchronous**. Key changes from async:
+**Environment Variables**:
+```bash
+export OLLAMA_MODEL=gemma4:e4b
+export OLLAMA_BASE_URL=http://localhost:11434
+```
+
+**Advantages**:
+- Completely local and private
+- Free
+- No internet required for gameplay
+- Works offline
+- Fast on GPU (2-10 sec with M1/M2 Mac)
+
+**Disadvantages**:
+- Requires download (~6 GB for Gemma 4)
+- Slower on CPU-only systems (10-60 sec)
+- Limited model selection (Ollama's library)
+
+**Supported Models**:
+- Gemma 4 (E2B, E4B) — Recommended
+- Mistral 7B
+- Llama 2
+- Any model available via `ollama pull`
+
+**API Integration**:
+- Endpoint: `POST {base_url}/api/generate`
+- Request format: `{"model": "...", "prompt": "...", "temperature": ..., "num_predict": ...}`
+- Response: Streaming JSON with `response` field containing generated text
+
+**Known Issues**: None currently.
+
+### 2. OpenAI (Highest Quality)
+
+**File**: `rag_quest/llm/openai_provider.py`
+
+**What it does**: Calls OpenAI's API (GPT-4, GPT-3.5-turbo).
+
+**Setup**:
+```bash
+# Get API key from https://platform.openai.com/api-keys
+export OPENAI_API_KEY=sk-...
+```
+
+**Configuration**:
+```python
+from rag_quest.llm.openai_provider import OpenAIProvider
+
+provider = OpenAIProvider({
+    "api_key": "sk-...",
+    "model": "gpt-3.5-turbo",  # or gpt-4 for higher quality
+})
+
+response = provider.complete(messages=[...])
+```
+
+**Environment Variables**:
+```bash
+export OPENAI_API_KEY=sk-...
+export OPENAI_MODEL=gpt-3.5-turbo  # or gpt-4
+```
+
+**Available Models**:
+- `gpt-4` — Most capable, most expensive
+- `gpt-3.5-turbo` — Good balance of quality and cost
+
+**Advantages**:
+- Highest narrative quality
+- Fastest responses (1-3 sec)
+- No local setup needed
+- Works from anywhere
+
+**Disadvantages**:
+- Requires paid API key (pay-per-use)
+- Internet required
+- Response quality varies by model cost
+- Privacy: prompts sent to OpenAI
+
+**API Integration**:
+- Endpoint: `https://api.openai.com/v1/chat/completions`
+- Uses standard OpenAI chat format
+- Streaming support available
+
+**Cost**: Roughly $0.01-$0.20 per response depending on model and response length.
+
+### 3. OpenRouter (Maximum Flexibility)
+
+**File**: `rag_quest/llm/openrouter_provider.py`
+
+**What it does**: Calls OpenRouter.ai, which provides access to 100+ models.
+
+**Setup**:
+```bash
+# Get API key from https://openrouter.ai
+export OPENROUTER_API_KEY=sk-or-...
+```
+
+**Configuration**:
+```python
+from rag_quest.llm.openrouter_provider import OpenRouterProvider
+
+provider = OpenRouterProvider({
+    "api_key": "sk-or-...",
+    "model": "mistralai/mistral-7b-instruct",  # or any OpenRouter model
+})
+
+response = provider.complete(messages=[...])
+```
+
+**Available Models** (partial list):
+- `gpt-4-turbo-preview` — OpenAI
+- `claude-3-opus` — Anthropic
+- `mistralai/mistral-7b-instruct` — Mistral
+- `meta-llama/llama-2-70b-chat` — Meta
+- `nousresearch/nous-hermes-2-mixtral-8x7b` — Nous Research
+- And 90+ more...
+
+**Advantages**:
+- 100+ model choices
+- Compare models with single API key
+- No vendor lock-in
+- Pay-per-use (cheap for testing)
+- Good for research/experimentation
+
+**Disadvantages**:
+- Requires API key (and payment)
+- Internet required
+- Slightly slower than direct provider APIs
+- Response quality varies by model
+
+**API Integration**:
+- Endpoint: `https://openrouter.ai/api/v1/chat/completions`
+- Uses OpenAI-compatible format (easy switching)
+
+**Cost**: Varies by model, roughly $0.01-$0.50 per response.
+
+## How Providers Are Used in the Game
+
+The narrator calls the provider's `complete()` method during gameplay:
 
 ```python
-# Before (async):
-async def complete(self, messages, ...):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(...)
-        return response.json()
-
-# After (sync):
-def complete(self, messages, ...):
-    with httpx.Client() as client:
-        response = client.post(...)
-        return response.json()
-```
-
-**Why Sync?**: Turn-based text RPG doesn't need async. Synchronous code is:
-- Cleaner and easier to reason about
-- Eliminates callback complexity
-- No event loop management needed
-- Simpler error handling
-- Same performance for turn-based interaction
-
-**LightRAG Integration**: LightRAG still requires async internally. `WorldRAG` uses a `ThreadPoolExecutor` to run async LightRAG operations from sync code via a `_run_async()` helper method.
-
-### Adding a New Provider
-
-To add support for a new LLM provider (e.g., Anthropic direct, Hugging Face, etc.):
-
-1. **Create the provider file**:
-   ```
-   rag_quest/llm/my_provider.py
-   ```
-
-2. **Implement BaseLLMProvider**:
-   ```python
-   from .base import BaseLLMProvider
-   
-   class MyProvider(BaseLLMProvider):
-       def complete(self, messages, temperature=None, max_tokens=None, **kwargs) -> str:
-           # Implementation here
-           pass
-       
-       def lightrag_complete_func(self):
-           # Return sync callable for LightRAG
-           def sync_complete(prompt: str, **kwargs) -> str:
-               return self.complete([{"role": "user", "content": prompt}])
-           return sync_complete
-   ```
-
-3. **Add to config setup** in `config.py`:
-   ```python
-   def setup_first_run():
-       # Add to provider selection:
-       # "my_provider": "My Provider Name"
-   ```
-
-4. **Register in llm/__init__.py**:
-   ```python
-   from .my_provider import MyProvider
-   ```
-
-5. **Document in README.md** and this file
-
-## The Narrator Agent
-
-### Overview
-
-The Narrator is the AI "Dungeon Master" that generates story responses. It's not a separate agent running independently, but rather an orchestrator that uses the LLM provider to generate narrative content based on game context.
-
-**Key Class**: `Narrator` in `engine/narrator.py`
-
-**Design Philosophy**: The Narrator is intentionally simple. LightRAG does the complexity work (knowledge graph retrieval, entity matching, context relevance). The Narrator just orchestrates: query RAG, build messages, call LLM, parse response.
-
-### Narrator Flow (v0.3+)
-
-The narrator implements a sophisticated pipeline for generating contextual, consistent responses with real LLM narration:
-
-```
-┌─────────────────────────────────────────────────────┐
-│  Player Action: "I search the desk for clues"       │
-└────────────────┬────────────────────────────────────┘
-                 │
-        ┌────────▼─────────┐
-        │  RAG Query        │
-        │ (knowledge graph) │ ← This does the heavy lifting
-        └────────┬──────────┘
-                 │
-   ┌─────────────────────────────────────┐
-   │ "I found these relevant facts:       │
-   │  - Desk in study contains books      │
-   │  - Secret compartments common here"  │
-   └─────────────────────────────────────┘
-                 │
-        ┌────────▼──────────────┐
-        │  Build Message List   │
-        │  - System prompt      │
-        │  - World state        │
-        │  - Character stats    │
-        │  - RAG context        │
-        │  - History (last 6)   │
-        │  - Current action     │
-        └────────┬──────────────┘
-                 │
-        ┌────────▼──────────────────┐
-        │  Real LLM Complete        │
-        │  (actual narrator call)   │ ← Gemma 4 E2B/E4B or larger
-        │  30s timeout + retry      │
-        └────────┬──────────────────┘
-                 │
-   ┌─────────────────────────────────────┐
-   │ Generated Response (dynamic):        │
-   │ "You carefully examine the desk.    │
-   │  Inside a hidden compartment, you   │
-   │  find old journals and a key..."    │
-   └─────────────────────────────────────┘
-                 │
-        ┌────────▼────────────────┐
-        │  Parse for State Changes│
-        │  - Location changes     │
-        │  - Item discovery       │
-        │  - NPC encounters       │
-        └────────┬────────────────┘
-                 │
-        ┌────────▼──────────────┐
-        │  TTS Narration (opt)  │
-        │  - pyttsx3 or gTTS   │
-        │  - Voice selection    │
-        │  - Audio playback     │
-        └────────┬──────────────┘
-                 │
-        ┌────────▼──────────────┐
-        │  Record to RAG        │
-        │  - New facts          │
-        │  - Events             │
-        │  - Discovery log      │
-        └────────┬──────────────┘
-                 │
-        ┌────────▼──────────────┐
-        │  Update Game State    │
-        │  - Apply changes      │
-        │  - Update inventory   │
-        │  - Track XP/level     │
-        │  - Add to history     │
-        │  - Auto-save          │
-        └────────┬──────────────┘
-                 │
-        ┌────────▼──────────────┐
-        │  Display Response     │
-        │  (text + audio)       │
-        └───────────────────────┘
-```
-
-### Key Methods
-
-#### `process_action(action: str) -> tuple[str, GameState]`
-
-Main entry point. Processes player input and returns narrative response.
-
-```python
-def process_action(self, action: str) -> tuple[str, GameState]:
-    # 1. Query RAG for context
-    context = self.world_rag.query_world(
-        question=action,
-        context=self.game_state.world.get_context()
-    )
+# In narrator.py
+def process_action(self, action: str, game_state: GameState) -> str:
+    # 1. Query RAG for world context
+    world_context = self.world_rag.query_world(action)
     
-    # 2. Build message list
-    messages = self._build_messages(action, context)
-    
-    # 3. Call LLM (can be lightweight model, now synchronous)
-    response = self.llm_provider.complete(
-        messages,
-        temperature=0.85,
-        max_tokens=1024
-    )
-    
-    # 4. Parse state changes (STUB - needs implementation)
-    self._parse_and_apply_changes(response)
-    
-    # 5. Record to RAG
-    self.world_rag.record_event(f"{self.game_state.character.name} {action}")
-    
-    return response, self.game_state
-```
-
-#### `_build_messages(action: str, context: str) -> list[dict]`
-
-Constructs the message list sent to the LLM.
-
-```python
-def _build_messages(self, action: str, context: str) -> list[dict]:
-    return [
+    # 2. Build messages
+    messages = [
         {
             "role": "system",
-            "content": templates.NARRATOR_SYSTEM
+            "content": NARRATOR_SYSTEM + world_context,
         },
-        {
-            "role": "system",
-            "content": f"World: {self.game_state.world.name}, "
-                      f"Setting: {self.game_state.world.setting}, "
-                      f"Tone: {self.game_state.world.tone}"
-        },
-        {
-            "role": "system",
-            "content": f"Character: {self.game_state.character.name}, "
-                      f"Race: {self.game_state.character.race}, "
-                      f"Class: {self.game_state.character.character_class.value}, "
-                      f"Location: {self.game_state.character.location}, "
-                      f"HP: {self.game_state.character.hp}"
-        },
-        {
-            "role": "system",
-            "content": f"Relevant World Knowledge:\n{context}"
-        },
-        # Add conversation history (last 6 messages)
-        *self.conversation_history[-6:],
         {
             "role": "user",
-            "content": action
-        }
+            "content": action,
+        },
     ]
+    
+    # 3. Call LLM provider (synchronous)
+    response = self.llm_provider.complete(messages)
+    
+    # 4. Record event to RAG
+    self.world_rag.record_event(response)
+    
+    return response
 ```
 
-#### `_parse_and_apply_changes(response: str) -> None`
+**Key Point**: The LLM is called with **game state + RAG context + player action**. The RAG knowledge graph ensures consistency, so even a small model produces coherent narratives.
 
-Detects and applies state changes mentioned in the response.
+## Adding a New Provider
 
-**Current Status**: Stub implementation. Needs work to:
-- Detect location changes: `move to|go to|enter|arrive|travel|journey`
-- Detect NPC meetings: `meet|encounter|find|see|talk to`
-- Detect item discovery: `find|discover|gain|pick up|receive|obtain`
-- Update game state accordingly
+To add a new LLM provider (e.g., Anthropic Claude, Cohere, etc.):
 
-This is one of the P2 priority issues.
-
-### System Prompts
-
-The narrator uses carefully crafted system prompts to shape AI behavior.
-
-**NARRATOR_SYSTEM** (prompts/templates.py):
-
-Key characteristics:
-- Emphasizes D&D-style narration
-- Requests third-person perspective
-- Instructs AI to ground narrative in provided context
-- Encourages creative but consistent world-building
-- Sets expectations for response length
-
-**Example prompt structure**:
-```
-You are an experienced Dungeon Master narrating an AI-powered D&D-style adventure...
-
-Instructions:
-1. Use third-person perspective
-2. Ground the narrative in the provided world knowledge
-3. Generate vivid, contextual descriptions
-4. Describe the immediate consequences of the player's action
-5. Hint at nearby opportunities or challenges
-6. Respect established lore and character state
-7. Maintain consistent tone and setting
-...
-```
-
-### Temperature & Model Selection
-
-Different models and temperatures serve different purposes:
-
-| Provider | Model | Params | Temp | Use Case | Cost | Speed |
-|----------|-------|--------|------|----------|------|-------|
-| Ollama | neural-chat | 7B | 0.85 | Excellent local | Free | 5-15s |
-| Ollama | mistral | 7B | 0.85 | Great + fast | Free | 3-8s |
-| Ollama | gemma4 | 9B | 0.85 | Good quality | Free | 8-15s |
-| OpenRouter | Llama-2 | 70B | 0.85 | Great + cheap | $0.01 | Fast |
-| OpenRouter | Mistral | 7B | 0.85 | Great + very cheap | $0.005 | Fast |
-| OpenRouter | Claude-Sonnet-4 | N/A | 0.85 | Excellent | $0.15 | Med |
-| OpenAI | GPT-3.5 | N/A | 0.85 | Good balance | $0.05 | Fast |
-| OpenAI | GPT-4 | N/A | 0.85 | Best quality | $0.30 | Slow |
-
-**Temperature Notes**:
-- 0.85 is ideal for balancing creativity and consistency
-- Lower (0.5-0.7) = more predictable, less creative
-- Higher (0.9-1.0) = more creative, less consistent
-
-**Key Insight**: With RAG context, a 7B model often rivals a 70B model. A 3-7B local model with good RAG frequently outperforms a 100B model without RAG.
-
-### Troubleshooting Narrator Issues
-
-**Problem**: Responses are repetitive or dull
-
-**Solution**:
-- Check conversation history isn't too long
-- Increase temperature slightly (to 0.9)
-- Improve lore ingestion for better RAG context
-- Try different model (Claude more creative than GPT-3.5)
-
-**Problem**: Responses contradict previous story
-
-**Solution**:
-- Improve lore document clarity
-- Check RAG query is specific enough
-- Verify system prompt is being used
-- Consider updating character/world context
-
-**Problem**: LLM takes too long to respond
-
-**Solution**:
-- For Ollama: Use smaller model (7B) or GPU
-- For OpenAI: Use GPT-3.5 instead of GPT-4
-- For OpenRouter: Try Llama 7B instead of 70B
-- Reduce max_tokens parameter
-
-**Problem**: Response isn't grounding in RAG context
-
-**Solution**:
-- Check RAG query result in debug mode
-- Verify context is being included in messages
-- Try more specific action description
-- Check lore file quality
-
-**Problem**: "Got an unexpected keyword argument 'hashing_kv'"
-
-**Solution**:
-- This error occurs when LightRAG passes extra kwargs
-- Ensure all LLM providers have `**kwargs` in their `complete()` signature
-- All providers should accept and ignore unknown parameters
-
-## Integration with LightRAG
-
-### LightRAG Completion Function
-
-LightRAG needs a callable with signature: `fn(prompt: str, **kwargs) -> str`
-
-RAG-Quest adapts the provider interface via:
+### 1. Create the Provider Class
 
 ```python
-def lightrag_complete_func(self):
-    """Create a sync wrapper for LightRAG.
+# rag_quest/llm/my_provider.py
+
+from .base import BaseLLMProvider
+
+class MyProvider(BaseLLMProvider):
+    def __init__(self, config: dict):
+        self.api_key = config.get("api_key")
+        self.model = config.get("model", "default-model")
+        self.base_url = config.get("base_url", "https://api.my-provider.com")
     
-    LightRAG requires a synchronous function that accepts
-    arbitrary kwargs. Our providers are already sync, so
-    we just wrap them minimally.
-    """
-    def sync_complete(prompt: str, **kwargs) -> str:
-        response = self.complete(
-            messages=[{"role": "user", "content": prompt}],
-            temperature=kwargs.get('temperature', 0.7),
-            max_tokens=kwargs.get('max_tokens', 1024),
-            **kwargs  # Pass through any other kwargs
+    def complete(self,
+                messages: list[dict],
+                temperature: float = None,
+                max_tokens: int = None,
+                **kwargs) -> str:
+        """Call MyProvider API synchronously."""
+        import httpx
+        
+        client = httpx.Client()
+        response = client.post(
+            f"{self.base_url}/chat/completions",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={
+                "model": self.model,
+                "messages": messages,
+                "temperature": temperature or 0.7,
+                "max_tokens": max_tokens or 500,
+            },
         )
-        return response
+        
+        if response.status_code != 200:
+            raise RuntimeError(f"API error: {response.text}")
+        
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
     
-    return sync_complete
+    def lightrag_complete_func(self):
+        """Return async function for LightRAG compatibility."""
+        # LightRAG expects an async function
+        async def async_complete(prompt: str, **kwargs) -> str:
+            return self.complete([{"role": "user", "content": prompt}], **kwargs)
+        return async_complete
 ```
 
-### RAG Query Process
+### 2. Register in config.py
 
-When narrator calls `world_rag.query_world(question, context)`:
+```python
+# In setup_first_run() or get_config_section():
+providers = {
+    "ollama": ("rag_quest.llm.ollama_provider", "OllamaProvider"),
+    "openai": ("rag_quest.llm.openai_provider", "OpenAIProvider"),
+    "openrouter": ("rag_quest.llm.openrouter_provider", "OpenRouterProvider"),
+    "my_provider": ("rag_quest.llm.my_provider", "MyProvider"),  # Add here
+}
+```
 
-1. LightRAG receives the question
-2. LightRAG uses provider's `lightrag_complete_func()` for analysis
-3. Provider processes the question (via LLM)
-4. RAG performs hybrid entity + theme matching
-5. Relevant facts returned to narrator
-6. Narrator includes facts in system message
+### 3. Update Setup Wizard (optional)
 
-## Multi-Provider Recommendations
+```python
+# In config.py, add to provider descriptions:
+provider_info = {
+    "ollama": "Free, local, no API key needed",
+    "openai": "Highest quality (paid API)",
+    "openrouter": "100+ models (paid API)",
+    "my_provider": "My custom provider",  # Add description
+}
+```
 
-### Development (Low Cost)
-- **Provider**: OpenRouter or Ollama
-- **Model**: Llama-2-7B or Mistral-7B or neural-chat
-- **Cost**: Free (Ollama) or $0.005-0.01 per turn
-- **Speed**: Fast
-- **Quality**: Excellent (with RAG)
+### 4. Document in AGENTS.md
 
-### Testing (Balanced)
-- **Provider**: OpenRouter
-- **Model**: Claude-Sonnet-4 or Llama-70b
-- **Cost**: $0.15 or $0.01 per turn
-- **Speed**: 2-5 seconds
-- **Quality**: Excellent
+Add section for your new provider with:
+- File location
+- Setup instructions
+- Available models
+- Advantages/disadvantages
+- Cost (if paid)
 
-### Production (Best Quality)
-- **Provider**: OpenAI
-- **Model**: GPT-4-Turbo
-- **Cost**: $0.30 per turn
-- **Speed**: 3-10 seconds
-- **Quality**: Excellent
+## Provider Comparison
 
-### Hobby Play (Local) - Recommended
-- **Provider**: Ollama
-- **Model**: Gemma 4 E2B (CPU) or E4B (GPU)
-- **Cost**: Free
-- **Speed**: 2-20 seconds (depends on hardware and model)
-- **Quality**: Excellent (with RAG)
+| Provider | Quality | Cost | Setup | Speed | Privacy |
+|----------|---------|------|-------|-------|---------|
+| Ollama Gemma 4 | Good | Free | Moderate | Medium | Excellent |
+| Ollama Mistral | Good | Free | Moderate | Medium | Excellent |
+| OpenAI GPT-4 | Excellent | Paid | Easy | Fast | Poor |
+| OpenAI GPT-3.5 | Good | Paid | Easy | Fast | Poor |
+| OpenRouter | Variable | Paid | Easy | Medium | Poor |
 
-## Provider Comparison Matrix
+## Debugging Provider Issues
 
-| Aspect | OpenAI | OpenRouter | Ollama |
-|--------|--------|-----------|--------|
-| Setup Complexity | Easy | Easy | Medium |
-| Models Available | 5 | 100+ | 30+ |
-| Cost | Higher | Varies | Free |
-| Speed | 1-10s | 1-15s | 5-60s |
-| Quality | Excellent | Excellent | Good-Excellent |
-| Offline Support | No | No | Yes |
-| API Key Required | Yes | Yes | No |
-| Rate Limits | Yes | Generous | No |
-| Streaming | Yes | Yes | Yes |
-| **RAG Friendly** | Yes | Yes | **Ideal** |
-| **Sync/Async** | Sync | Sync | Sync |
+### "Connection refused"
+
+**Ollama not running**:
+```bash
+# Start Ollama
+ollama serve
+# or on Mac: open -a Ollama
+```
+
+**OpenAI/OpenRouter API unreachable**:
+```bash
+# Check internet connection
+curl https://api.openai.com
+```
+
+### "Model not found"
+
+**Ollama**:
+```bash
+# Pull the model
+ollama pull gemma4:e4b
+
+# List available
+ollama list
+```
+
+**OpenAI**:
+- Check API key at https://platform.openai.com/api-keys
+- Verify model name (e.g., `gpt-3.5-turbo`)
+
+**OpenRouter**:
+- Check model slug at https://openrouter.ai/models
+- Common mistake: model name vs model slug (e.g., `mistralai/mistral-7b-instruct`)
+
+### "API key invalid"
+
+- Copy/paste key exactly (no spaces)
+- Verify via `/config` or environment variable
+- Check key has required permissions (API access, not just dashboard)
+
+### "Rate limited"
+
+- OpenAI: Wait a few seconds, check billing
+- OpenRouter: Check rate limits at https://openrouter.ai/keys
+- Ollama: No rate limits (local)
+
+### "Slow responses"
+
+- **Ollama on CPU**: Expected to be slow (10-60 sec). Switch to GPU or use E2B model.
+- **OpenAI**: Unusual, check network. Expected <3 sec.
+- **OpenRouter**: Check model (some models are slow). Try a different model.
+
+## Provider Best Practices
+
+1. **Always use try/except** for HTTP calls—APIs fail
+2. **Default temperature to 0.7** for good balance of creativity and consistency
+3. **Limit max_tokens** to prevent runaway responses
+4. **Validate config** in `__init__()` (raise if missing required keys)
+5. **Accept **kwargs** from LightRAG without error
+6. **Document** your provider's models and costs
+
+## Performance Tuning
+
+### Temperature & max_tokens
+
+```python
+# More creative/varied responses
+response = provider.complete(messages, temperature=1.0, max_tokens=500)
+
+# More consistent/focused
+response = provider.complete(messages, temperature=0.3, max_tokens=300)
+```
+
+### For Faster Responses
+
+1. Use OpenAI (cloud) instead of local Ollama
+2. Use smaller model (E2B instead of E4B)
+3. Use "fast" RAG profile (less context injected)
+4. Increase temperature (fewer recomputes)
+
+### For Better Responses
+
+1. Use GPT-4 instead of GPT-3.5
+2. Use "deep" RAG profile (more context)
+3. Use lower temperature (more consistency)
+4. Increase max_tokens (more space to think)
+
+## Resources
+
+- **Ollama Models**: https://ollama.ai/library
+- **OpenAI Models**: https://platform.openai.com/docs/models
+- **OpenRouter Models**: https://openrouter.ai/models
+- **Gemma**: https://blog.google/technology/developers/gemma-open-models/
 
 ---
 
-**Last Updated**: April 11, 2026
-
-**Core Philosophy**: LightRAG does the knowledge work. The LLM is just the narrator. Keep it lightweight.
+**Last Updated**: April 2026  
+**For**: Developers adding providers or configuring RAG-Quest

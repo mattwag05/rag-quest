@@ -1,592 +1,589 @@
-# RAG-Quest Architecture Documentation
+# ARCHITECTURE.md — RAG-Quest System Design (v0.5.2)
 
-This document describes the internal architecture of RAG-Quest, including design decisions, data flows, and extension points.
+This document describes RAG-Quest's system architecture, how all components integrate, and the design decisions that make it work.
 
-## System Overview
-
-RAG-Quest is a modular text RPG engine with three main layers:
-
-1. **Presentation Layer** (Terminal UI)
-2. **Game Engine Layer** (State & Logic)
-3. **Knowledge Layer** (LightRAG)
+## Core Architecture: LightRAG + Lightweight LLM
 
 ```
-┌─────────────────────────────────────────┐
-│         Terminal UI (Rich)              │
-│  - Game loop & command handling         │
-│  - Player input & response display      │
-└────────────────┬────────────────────────┘
-                 │
-┌────────────────▼────────────────────────┐
-│      Game Engine (engine/)              │
-│  - Character, World, Inventory          │
-│  - Lightweight Narrator (LLM agent)     │
-│  - State management & serialization     │
-└────────────────┬────────────────────────┘
-                 │
-        ┌────────┴────────┐
-        │                 │
-┌───────▼─────────┐  ┌───▼──────────────────┐
-│  LLM Providers  │  │  LightRAG (Heavy     │
-│  (llm/)         │  │   Lifting)           │
-│  - OpenAI       │  │  (knowledge/)        │
-│  - OpenRouter   │  │  - Dual-level query  │
-│  - Ollama       │  │  - Knowledge graph   │
-│    (~3B-7B      │  │  - Lore storage      │
-│     lightweight)│  └──────────────────────┘
-└─────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    Game Loop (game.py)                   │
+│  Synchronous turn-based input/output, no async          │
+└─────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────┐
+│              Narrator (narrator.py)                      │
+│  Orchestrates LLM calls with RAG context                │
+└─────────────────────────────────────────────────────────┘
+                   ↙              ↘
+        ┌──────────────┐    ┌──────────────┐
+        │  WorldRAG    │    │  LLM Provider│
+        │(knowledge.py)│    │(llm/\*)      │
+        │              │    │              │
+        │ - Entity+    │    │ - Ollama     │
+        │   vector     │    │ - OpenAI     │
+        │   search     │    │ - OpenRouter │
+        │ - Event      │    │              │
+        │   recording  │    │ Lightweight: │
+        │              │    │ Gemma 4 E2B/E4B
+        └──────────────┘    └──────────────┘
+             ↓                      ↓
+    [RAG Knowledge Graph]  [LLM API or Local]
+    ~/.local/share/        Produces narrative
+    rag-quest/worlds/      responses
 ```
 
-**Design Principle**: LightRAG's knowledge graph stores all world facts. The Narrator (LLM) is lightweight (~3B-7B parameters) because it retrieves only what's needed per query. This allows consumer-hardware deployment while maintaining narrative quality.
+## Key Design Decision: Division of Responsibility
 
-## Module Breakdown
+**LightRAG**: "What is the world like?"
+- Stores all facts, entities, relationships
+- Answers knowledge queries
+- Maintains consistency
+- Grounded, factual
 
-### 1. LLM Providers (`rag_quest/llm/`)
+**LLM Narrator**: "Tell me a story based on this context"
+- Receives player action + RAG context
+- Generates narrative response
+- Can be small (2-4B parameters)
+- Only needs good storytelling skills, not world knowledge
 
-Abstracts LLM APIs behind a consistent interface.
+**Game State**: "What's the player's current status?"
+- Character attributes, inventory, quests
+- Serializable to JSON
+- Restored on load
+- Independent from narration
 
-**File Structure:**
-- `base.py` - `BaseLLMProvider` abstract class
-- `openai_provider.py` - OpenAI API implementation
-- `openrouter_provider.py` - OpenRouter API implementation
-- `ollama_provider.py` - Local Ollama implementation
+## System Components
 
-**Key Class: `BaseLLMProvider`**
+### 1. Game Loop (engine/game.py)
+
+**Synchronous turn-based game loop**:
 
 ```python
-class BaseLLMProvider(ABC):
-    def __init__(self, config: LLMConfig)
-    def complete(messages: list[dict], temperature=None, max_tokens=None, **kwargs) -> str  # Synchronous
-    def lightrag_complete_func() -> callable
+def run_game():
+    # 1. Load/create character and world
+    game_state = create_game_state()
+    world_rag = WorldRAG(game_state.world.name)
+    world_rag.initialize()
+    
+    # 2. Main loop
+    while game_running:
+        # Print current state
+        print_status(game_state)
+        
+        # Get player input
+        action = input("> ")
+        
+        # Handle commands (/inventory, /help, etc.)
+        if action.startswith("/"):
+            handle_command(action, game_state)
+        else:
+            # Normal action: call narrator
+            response = narrator.process_action(action, game_state)
+            print(response)
+            
+            # Auto-save every N turns
+            if turn_count % AUTO_SAVE_INTERVAL == 0:
+                save_game(game_state)
 ```
 
-**Design Decisions:**
-- Uses httpx for synchronous HTTP (lightweight, no SDK) — converted from async in v0.1.1
-- All providers implement same interface
-- `lightrag_complete_func()` adapts our interface to LightRAG's expectations
-- Temperature & max_tokens are configurable per call
-- **Narrator expects lightweight models**: Ollama Gemma 4 E2B/E4B or Llama deliver excellent results with RAG context
+**All commands implemented**:
+- `/i` — Inventory
+- `/s` — Stats
+- `/q` — Quests
+- `/p` — Party
+- `/rel` — Relationships
+- `/h` — Help
+- `/config` — Settings
+- `/new` — New game
+- `/save` — Manual save
+- `/exit` — Quit
 
-**Extension Point:**
-To add a new provider, inherit from `BaseLLMProvider`:
+### 2. Narrator (engine/narrator.py)
+
+**Orchestrates LLM narration with RAG context**:
 
 ```python
-class MyProvider(BaseLLMProvider):
-    async def complete(self, messages, temperature=None, max_tokens=None) -> str:
-        # Implement API call
-        ...
+def process_action(self, action: str, game_state: GameState) -> str:
+    # 1. Query RAG for relevant world knowledge
+    world_context = self.world_rag.query_world(
+        f"Context for action: {action}",
+        context=game_state.get_context()
+    )
+    
+    # 2. Build LLM messages
+    messages = [
+        {
+            "role": "system",
+            "content": NARRATOR_SYSTEM_PROMPT + world_context
+        },
+        {"role": "user", "content": action}
+    ]
+    
+    # Add conversation history (last 6 messages for context)
+    messages.extend(self.conversation_history[-6:])
+    
+    # 3. Call LLM (synchronous)
+    response = self.llm_provider.complete(messages)
+    
+    # 4. Record event to RAG
+    self.world_rag.record_event(f"Player: {action}\nNarrator: {response}")
+    
+    # 5. Update conversation history
+    self.conversation_history.append({"role": "assistant", "content": response})
+    
+    return response
 ```
 
-### 2. Knowledge Management (`rag_quest/knowledge/`)
+**Key insight**: The RAG knowledge graph provides world context. The LLM just needs to be a good storyteller.
 
-Wraps LightRAG and handles lore ingestion. This is the "heavy lifter."
+### 3. Knowledge Graph (knowledge/world_rag.py)
 
-**File Structure:**
-- `world_rag.py` - `WorldRAG` wrapper class
-- `ingest.py` - File ingestion (txt, md, pdf)
-
-**Key Class: `WorldRAG`**
+**LightRAG wrapper for persistent world knowledge**:
 
 ```python
 class WorldRAG:
-    def __init__(world_name, llm_config, llm_provider)
-    def initialize()  # Synchronous (uses ThreadPoolExecutor for async LightRAG)
-    def ingest_text(text, source)  # Synchronous
-    def ingest_file(path)  # Synchronous
-    def query_world(question, context, profile) -> str  # Synchronous
-    def record_event(event)  # Synchronous
+    def __init__(self, world_name: str):
+        self.world_name = world_name
+        self.index_path = f"~/.local/share/rag-quest/worlds/{world_name}"
+    
+    def initialize(self):
+        """Initialize RAG index (lazy, on first query)."""
+        # Creates or loads existing index
+        self.rag = LightRAG(
+            working_dir=self.index_path,
+            llm_model_func=self.llm_provider.lightrag_complete_func()
+        )
+    
+    def query_world(self, question: str, context: str = "") -> str:
+        """Retrieve relevant knowledge for a question."""
+        # LightRAG dual-level retrieval:
+        # 1. Entity matching (exact entity names)
+        # 2. Vector similarity (semantic matching)
+        return self.rag.query(question, param=QueryParam(...))
+    
+    def record_event(self, event: str):
+        """Insert an event into the knowledge graph."""
+        self.rag.insert_event(event)
+    
+    def ingest_text(self, text: str, source: str = "manual"):
+        """Add knowledge from text (lore)."""
+        self.rag.insert_text(text, source)
 ```
 
-**Design Decisions:**
-- Lazy initialization (RAG starts on first use)
-- Stored in `~/.local/share/rag-quest/worlds/{world_name}/`
-- Uses "hybrid" mode for queries (entity + theme matching)
-- Events are inserted with metadata for tracking
-- **RAG is the "long-term memory"**: all world facts live here, not in the LLM context window
+**Storage**: `~/.local/share/rag-quest/worlds/{world_name}/`
+- Knowledge graph index
+- Entity embeddings
+- Relationship metadata
 
-**Data Flow: Query**
+**Why separate from game state**: The RAG knowledge graph is the "persistent world knowledge." The game state is the "player's current status." They serve different purposes.
 
-```
-Player action: "I go to the forest"
-       ↓
-Narrator builds context query:
-"Location: Tavern, Action: I go to the forest"
-       ↓
-WorldRAG.query_world(context_query)
-       ↓
-LightRAG returns relevant facts about forests, journeys, etc.
-       ↓
-Narrator includes this in system prompt (with RAG context, LLM can be lightweight)
-       ↓
-Lightweight LLM generates response based on injected context
-```
+### 4. Game State Serialization
 
-**Data Flow: Ingestion**
-
-```
-Lore file (txt/md/pdf)
-       ↓
-ingest.py reads & chunks file
-       ↓
-For each chunk:
-  WorldRAG.ingest_text(chunk, source=filename)
-       ↓
-LightRAG processes & stores in knowledge graph
-```
-
-### 3. Game Engine (`rag_quest/engine/`)
-
-Contains game logic and state management.
-
-**File Structure:**
-- `character.py` - Player character (stats, race, class)
-- `world.py` - World state (time, weather, locations)
-- `inventory.py` - Item management
-- `quests.py` - Quest tracking
-- `narrator.py` - Lightweight AI narrator & response generation
-- `game.py` - Main game loop
-
-**Key Classes:**
-
-**Character**
-- Tracks: name, race, class, HP, location, level
-- Methods: `take_damage()`, `heal()`, `get_status()`
-- Serializable via `to_dict()/from_dict()`
-
-**World**
-- Tracks: time of day, weather, visited locations, NPCs met, recent events
-- Methods: `advance_time()`, `add_visited_location()`, `get_context()`
-- Enums: `TimeOfDay`, `Weather`
-
-**Inventory**
-- Tracks: items, max weight capacity
-- Methods: `add_item()`, `remove_item()`, `get_total_weight()`
-- Items have: name, description, weight, quantity, rarity
-
-**QuestLog**
-- Tracks: quests with objectives and status
-- Methods: `add_quest()`, `get_active_quests()`, `complete_quest()`
-- Quests can have multiple objectives
-
-**Narrator**
-- Core AI logic
-- Methods: `process_action()` - main entry point
-- Performs: RAG query, message building, LLM call, state parsing
-- Maintains conversation history
-- **Design note**: Narrator is intentionally simple; RAG complexity does the work
-
-**GameState**
-- Bundles all state together
-- Serializable to JSON
-- Passed to game loop and all systems
-
-**Game Loop**
+**All game objects are fully serializable**:
 
 ```python
-def run_game(game_state):
-    while character.is_alive():
-        1. Display status (HP, location, time)
-        2. Get player input
-        3. If command: handle_command()
-        4. Else: narrator.process_action()  # Synchronous
-        5. Display response
-        6. Auto-save (periodic)
+@dataclass
+class GameState:
+    character: Character
+    world: World
+    inventory: Inventory
+    quest_log: QuestLog
+    party: Party
+    relationships: RelationshipManager
+    conversation_history: list[dict]
+    
+    def to_dict(self) -> dict:
+        return {
+            "character": self.character.to_dict(),
+            "world": self.world.to_dict(),
+            "inventory": self.inventory.to_dict(),
+            # ... etc
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'GameState':
+        return cls(
+            character=Character.from_dict(data["character"]),
+            world=World.from_dict(data["world"]),
+            # ... etc
+        )
 ```
 
-### 4. Configuration (`rag_quest/config.py`)
+**Save format**: JSON at `~/.local/share/rag-quest/saves/{world_name}.json`
 
-Interactive setup and configuration management.
+**Design principle**: Game state is separate from world knowledge. Saves capture "what the player has done," not "what the world knows."
 
-**Functions:**
-- `get_config()` - Get existing or run setup
-- `setup_first_run()` - Interactive wizard
-- `load_llm_provider()` - Load provider from config
-- `create_character_from_config()` - Hydrate character
-- `create_world_from_config()` - Hydrate world
+### 5. LLM Provider Interface (llm/base.py)
 
-**Config File Location:** `~/.config/rag-quest/config.json`
+**All providers implement the same interface**:
 
-**Config Structure:**
-```json
-{
-  "llm": {
-    "provider": "openrouter|openai|ollama",
-    "model": "string",
-    "api_key": "string (optional)",
-    "base_url": "string (optional)"
-  },
-  "world": {
-    "name": "string",
-    "setting": "string",
-    "tone": "string",
-    "starting_location": "string",
-    "lore_path": "string (optional)"
-  },
-  "character": {
-    "name": "string",
-    "race": "Human|Elf|Dwarf|Halfling|Orc",
-    "class": "Fighter|Mage|Rogue|Ranger|Cleric",
-    "background": "string (optional)"
-  }
-}
+```python
+class BaseLLMProvider(ABC):
+    def complete(self,
+                messages: list[dict],
+                temperature: float = None,
+                max_tokens: int = None,
+                **kwargs) -> str:
+        """Call LLM synchronously and return response."""
+    
+    def lightrag_complete_func(self):
+        """Return async function for LightRAG compatibility."""
 ```
 
-### 5. Save System (`rag_quest/saves/`)
+**Why synchronous**: Turn-based game doesn't need async. Simpler, cleaner code.
 
-**New in v0.5.0** - Persistent multi-slot saves with auto-save rotation.
+**Implementations**:
+- **OllamaProvider** — `POST http://localhost:11434/api/generate`
+- **OpenAIProvider** — `POST https://api.openai.com/v1/chat/completions`
+- **OpenRouterProvider** — `POST https://openrouter.ai/api/v1/chat/completions`
 
-**File Structure:**
-- `manager.py` - `SaveManager` for orchestrating save/load
-- `migration.py` - Save format versioning and migration
-- `__init__.py` - Exports and setup
+### 6. Configuration Management (config.py)
 
-**Key Class: `SaveManager`**
+**Persistent, environment-aware configuration**:
 
-Manages multiple save slots per world:
-- Slot metadata (timestamp, character level, playtime)
-- Auto-save rotation (keeps N most recent auto-saves)
-- Export/import to `.rqsave` files
-- Format migration for backwards compatibility
+```python
+class ConfigManager:
+    def __init__(self):
+        # Load from ~/.config/rag-quest/config.json
+        # Fall back to environment variables
+        # Use sensible defaults
+        self._config = self._load_config()
+    
+    def get(self, key: str) -> Any:
+        # Returns nested config (e.g., "llm.provider")
+        pass
+    
+    def set(self, key: str, value: Any) -> None:
+        # Update and immediately persist
+        pass
+```
+
+**Three initialization modes**:
+1. **Fresh Adventure** — Blank world, new character
+2. **Quick Start** — Choose template (4 built-in)
+3. **Upload Lore** — Ingest custom PDF/text files
+
+**Environment variables** (for scripting):
+```bash
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=gemma4:e4b
+OLLAMA_BASE_URL=http://localhost:11434
+RAG_PROFILE=balanced
+WORLD_NAME="My World"
+CHARACTER_NAME="Hero"
+```
+
+### 7. Save System (engine/saves.py)
+
+**Multi-slot save system with auto-save rotation**:
 
 ```python
 class SaveManager:
-    def save_game(slot_name: str, game_state: GameState) -> bool
-    def load_game(slot_name: str) -> GameState
-    def list_saves() -> list[SaveMetadata]
-    def export_save(slot_name: str, file_path: str) -> bool
-    def import_save(file_path: str, slot_name: str) -> bool
+    def save_game(self, game_state: GameState, slot: int = -1) -> str:
+        # slot=-1 means auto-save (rotates oldest)
+        # Returns path to saved file
+    
+    def load_game(self, slot: int) -> GameState:
+        # Loads from slot, handles format migration
+    
+    def export_save(self, slot: int, output_path: str):
+        # Export as .rqsave for sharing
+    
+    def import_save(self, input_path: str, slot: int):
+        # Import from .rqsave
 ```
 
-### 6. World Sharing (`rag_quest/worlds/`)
+**Save file structure**:
+```
+~/.local/share/rag-quest/saves/
+├── MyWorld_slot_1.json
+├── MyWorld_slot_2.json
+├── MyWorld_auto_1.json  (most recent)
+├── MyWorld_auto_2.json  (previous)
+└── MyWorld_auto_3.json  (oldest)
+```
 
-**New in v0.5.0** - Export/import worlds as packages.
+**Format migration**: Old save formats are automatically upgraded. No loss of data.
 
-**File Structure:**
-- `exporter.py` - `WorldExporter` for packaging worlds
-- `importer.py` - `WorldImporter` for loading world packages
-- `templates.py` - 4 built-in starter world templates
+### 8. Character & World State
 
-**Key Classes:**
+**Character** — Player character:
+- Attributes: name, race, class, level, HP, XP
+- Six D&D attributes: STR, DEX, CON, INT, WIS, CHA
+- Location, status effects
+- Methods: `take_damage()`, `heal()`, `level_up()`, `get_status()`
 
-`WorldExporter` - Packages entire world:
-- Knowledge graph export
-- World metadata (name, setting, tone)
-- NPC definitions and relationships
-- Quest data and world events
+**World** — World state:
+- name, setting, tone, time_of_day, weather
+- visited_locations, npcs_met
+- recent_events (last 5 for narrative context)
+- Methods: `advance_time()`, `add_visited_location()`, `get_context()`
 
-`WorldImporter` - Loads world packages:
-- Validates package integrity
-- Deserializes knowledge graph
-- Restores world state
+**Inventory** — Item management:
+- items dict with quantities
+- max_weight capacity
+- Methods: `add_item()`, `remove_item()`, `get_total_weight()`
 
-### 7. Multiplayer (`rag_quest/multiplayer/`)
+### 9. Combat System (engine/combat.py)
 
-**New in v0.5.0** - Local multiplayer (hot-seat) turn-based play.
+**D&D-style turn-based combat**:
 
-**File Structure:**
-- `session.py` - `MultiplayerSession` for managing turns
-- `sync.py` - `StateSynchronizer` for shared state
-- `trading.py` - `TradingSystem` for player-to-player trades
+```python
+class CombatEncounter:
+    def __init__(self, player: Character, enemy: Enemy):
+        self.player = player
+        self.enemy = enemy
+        self.initiative = self.calculate_initiative()
+    
+    def take_turn(self, combatant: Character, action: str):
+        # Handle attack, defend, cast spell, flee
+        # Apply damage, critical hits, etc.
+    
+    def calculate_damage(self, attacker: Character, defender: Character) -> int:
+        # Base damage + attribute modifiers + critical hits
+    
+    def is_combat_over(self) -> bool:
+        # Check if anyone has 0 HP
+```
 
-**Key Classes:**
+**Dice rolling**: d4, d6, d8, d10, d12, d20 support.
 
-`MultiplayerSession` - Manages turn order and state:
-- Player turn tracking
-- Shared world state sync per turn
-- Combat resolution for multiplayer encounters
-- Party management across players
+### 10. Quest System (engine/quests.py)
 
-`TradingSystem` - Inter-player trading:
-- Trade offers and negotiation
-- Item validation and transfer
-- Trade history tracking
+**Quest chains with objectives**:
 
-### 8. Achievements (`rag_quest/engine/achievements.py`)
+```python
+@dataclass
+class Quest:
+    title: str
+    description: str
+    objectives: list[str]
+    status: QuestStatus  # pending, active, completed
+    reward_xp: int
+    reward_items: list[str]
 
-**New in v0.5.0** - 11 built-in achievements with tracking.
+class QuestLog:
+    def add_quest(self, quest: Quest):
+        """Add new quest."""
+    
+    def complete_quest(self, quest_id: str):
+        """Mark quest complete, award rewards."""
+    
+    def get_active_quests(self) -> list[Quest]:
+        """Get all pending/active quests."""
+```
 
-**Key Class: `AchievementEngine`**
+### 11. NPC & Relationship System (engine/relationships.py)
+
+**Track NPC trust and faction reputation**:
+
+```python
+class RelationshipManager:
+    def add_npc(self, name: str, role: str, disposition: float = 0.0):
+        """Add NPC with initial disposition."""
+    
+    def change_disposition(self, npc_name: str, delta: float):
+        """Modify trust level (+1.0 ally, -1.0 enemy)."""
+    
+    def create_faction(self, name: str, description: str):
+        """Create a faction."""
+    
+    def change_reputation(self, faction_name: str, delta: float):
+        """Change faction reputation."""
+```
+
+### 12. Achievement System (engine/achievements.py)
+
+**11 built-in achievements**:
 
 ```python
 class AchievementEngine:
-    def on_event(event: GameEvent) -> list[Achievement]  # Returns newly unlocked
-    def get_progress(achievement_id: str) -> ProgressData
-    def list_achievements() -> list[Achievement]
+    def check_achievements(self, game_state: GameState):
+        """Called each turn, checks for triggers."""
+        # Automatically detects and notifies
+    
+    def get_achievements(self) -> list[Achievement]:
+        """Get all with progress."""
 ```
 
-**11 Built-In Achievements:**
-- Explorer (visit 20 locations)
-- Warrior (win 10 combats)
-- Diplomat (complete 5 social quests)
-- Scholar (read 50 lore entries)
-- Treasure Hunter (find 25 items)
-- And 6 more...
+**Achievements**: Explorer, Warrior, Diplomat, Scholar, Treasure Hunter, Dragon Slayer, Indestructible, Hoarder, Wealthy, Legendary, Well-Connected.
 
-### 9. Dungeon Generation (`rag_quest/engine/dungeon.py`)
+### 13. Procedural Dungeon Generation (engine/dungeon.py)
 
-**New in v0.5.0** - Procedural dungeon with ASCII maps.
-
-**Key Class: `DungeonGenerator`**
+**Randomly generated dungeons**:
 
 ```python
 class DungeonGenerator:
-    def generate(level: int, seed: int = None) -> Dungeon
-    def render_map(revealed: set[RoomID]) -> str  # ASCII art
+    def generate_level(self, level: int) -> DungeonLevel:
+        """5-15 rooms, ASCII map, difficulty scaling."""
+        # Returns DungeonLevel with rooms and map
+    
+    def generate_room(self, room_type: str) -> Room:
+        """Generate single room with enemies and loot."""
 ```
 
-**Algorithm:**
-- Room generation (5-15 per level)
-- Room types: corridor, chamber, trap, treasure, boss
-- Connection network with backtracks
-- Difficulty scaling by level
-- Loot tables indexed by depth
+### 14. Text-to-Speech (engine/tts.py)
 
-### 10. Prompts (`rag_quest/prompts/templates.py`)
-
-System prompts that shape AI behavior.
-
-**Templates:**
-- `NARRATOR_SYSTEM` - Main DM prompt
-- `WORLD_GENERATOR` - For future world generation
-- `NPC_DIALOGUE` - For NPC interactions
-- `CHARACTER_INTRO` - Initial character intro
-- `ACTION_PARSER` - For extracting action details
-
-**Design Note:**
-Prompts are strings, not f-strings. This allows dynamic filling of context at runtime while keeping prompts editable.
-
-## Data Flows
-
-### Action Processing (Core Loop)
-
-```
-Player Input: "I search the desk for clues"
-       ↓
-Narrator.process_action(input)
-       ↓
-1. Query RAG:
-   question = "Player action: search desk for clues"
-   context = "Location: study, Recent: found a letter"
-   ↓
-   RAG returns: "Desk contains: old books, jewels, secret compartment..."
-       ↓
-2. Build Messages:
-   - System prompt (NARRATOR_SYSTEM)
-   - RAG context (injected knowledge)
-   - World state (time, location, character)
-   - Conversation history (last 3 exchanges)
-   - Current input
-       ↓
-3. Generate Response:
-   llm.complete(messages, temperature=0.85, max_tokens=1024)
-   ↓ (Lightweight model sufficient with RAG context)
-   ↓
-   Response: "You pull open the drawer carefully..."
-       ↓
-4. Parse for State Changes:
-   - Look for location changes ("move to X", "enter X")
-   - Look for NPC meetings ("meet X", "encounter X")
-   - Look for item discoveries ("find X", "gain X")
-       ↓
-5. Update State:
-   - Modify character location if detected
-   - Add NPCs to world.npcs_met
-   - Add items to world.discovered_items
-   - Add event to world.recent_events
-       ↓
-6. Record to RAG:
-   world_rag.record_event(f"{character.name} searched the desk")
-       ↓
-7. Save History:
-   conversation_history.append({"role": "user", ...})
-   conversation_history.append({"role": "assistant", ...})
-       ↓
-Return Response to Display
-```
-
-### Game State Serialization
-
-```
-Character, World, Inventory, QuestLog
-       ↓
-Each has to_dict() method
-       ↓
-GameState.to_dict() combines all
-       ↓
-json.dump() to ~/.local/share/rag-quest/saves/{world_name}.json
-       ↓
-Load: json.load() + from_dict() for each component
-```
-
-## Design Patterns
-
-### 1. Provider Pattern (LLM)
-
-Different implementations (OpenAI, OpenRouter, Ollama) behind common interface.
-
-**Benefits:**
-- Easy to swap providers
-- Easy to add new providers
-- Client code doesn't need to know about specific APIs
-
-### 2. State Pattern (GameState)
-
-All game state bundled together and serializable.
-
-**Benefits:**
-- Clean save/load mechanism
-- Easy to reason about game state
-- Supports multiple games/saves
-
-### 3. Adapter Pattern (LightRAG)
-
-`lightrag_complete_func()` adapts our complete() interface to LightRAG's expectations.
-
-**Benefits:**
-- LightRAG can use any LLM provider
-- Our providers don't need to know about LightRAG
-
-### 4. Template Method (Narrator)
-
-`process_action()` defines the template; sub-steps can be overridden.
-
-**Benefits:**
-- Clear, testable flow
-- Easy to add new processing steps
-- Can mock/test individual steps
-
-## Extension Points
-
-### Adding a New LLM Provider
-
-1. Create `rag_quest/llm/my_provider.py`
-2. Inherit from `BaseLLMProvider`
-3. Implement `async def complete(messages, ...)`
-4. Add to `config.py` setup wizard
-5. Add to `llm/__init__.py` imports
-
-### Adding a New Game Mechanic
-
-1. Add to appropriate engine module (character.py, world.py, etc.)
-2. Update `GameState.to_dict()` for serialization
-3. Update `GameState.from_dict()` for deserialization
-4. Update game loop in `game.py` if needed
-5. Add commands in `_handle_command()` if user-facing
-
-### Custom Narrator Behavior
-
-Override `Narrator.process_action()` or modify:
-- `_build_messages()` - Change what context is included
-- `_parse_and_apply_changes()` - Add new state detection
-- Prompt templates in `prompts/templates.py`
-
-### Adding New Commands
-
-In `game.py`, add to `_handle_command()`:
+**Optional TTS narration**:
 
 ```python
-elif cmd == "/mynewcommand":
-    # Your logic here
-    console.print("Result")
+class TTSEngine:
+    def __init__(self, provider: str = "pyttsx3"):
+        # pyttsx3: offline, local voices
+        # gTTS: online, more natural
+    
+    def speak(self, text: str):
+        """Convert text to speech and play."""
 ```
 
-## Performance Considerations
+### 15. Multiplayer (multiplayer/)
 
-### RAG Query Timing
+**Hot-seat multiplayer**:
 
-- First query: 30-60 seconds (LightRAG initialization)
-- Subsequent queries: 1-3 seconds (cached)
-- Large lore files: Slower initialization
-- Query response: Depends on LLM provider
+```python
+class MultiplayerSession:
+    def __init__(self, world: World, max_players: int = 4):
+        self.world = world
+        self.players: list[Character] = []
+        self.current_player_index = 0
+    
+    def add_player(self, character: Character):
+        """Add player to session."""
+    
+    def next_turn(self):
+        """Rotate to next player."""
+    
+    def trade_items(self, player1: Character, player2: Character, items: list[str]):
+        """Enable item trading."""
+```
 
-### Memory Usage
+### 16. World Sharing (worlds/)
 
-- Character & world state: <1 MB
+**Export/import worlds**:
+
+```python
+class WorldExporter:
+    def export_world(self, world: World, output_path: str):
+        """Package as .rqworld file."""
+        # Includes RAG knowledge graph
+        # Compressed format
+    
+class WorldImporter:
+    def import_world(self, input_path: str) -> World:
+        """Load from .rqworld file."""
+        # Validates integrity
+        # Merges knowledge
+```
+
+## Data Flow: A Single Turn
+
+```
+1. Player types action
+   > "I cast fireball at the dragon"
+   
+2. Game loop receives input
+   action = "I cast fireball at the dragon"
+   
+3. Query RAG for context
+   context = "You're in the dragon's lair. The dragon is
+   enraged. You have mana for one spell."
+   
+4. Build LLM prompt
+   messages = [
+     system: NARRATOR_SYSTEM_PROMPT + context,
+     user: action
+   ]
+   
+5. Call LLM (synchronous)
+   response = llm_provider.complete(messages)
+   → "The fireball erupts from your hands, engulfing the
+      dragon in flames. It roars in pain..."
+   
+6. Record to RAG
+   world_rag.record_event("Player casts fireball at dragon.
+   Dragon takes damage, roars in pain.")
+   
+7. Update game state
+   character.mana -= cost
+   enemy.hp -= damage
+   
+8. Auto-save
+   save_game(game_state)
+   
+9. Print response
+   "The fireball erupts..."
+   
+10. Loop (back to step 2)
+```
+
+## Synchronous Architecture
+
+**Design decision**: Everything is synchronous (not async).
+
+Why:
+- Turn-based game doesn't benefit from async
+- Simpler code (no callbacks, no event loops)
+- Easier debugging
+- Clear execution flow
+
+How LightRAG compatibility is maintained:
+- LightRAG's async API is wrapped with `ThreadPoolExecutor`
+- `WorldRAG._run_async()` bridges sync/async gap
+- No async/await in game code
+
+## Error Handling Philosophy (v0.5.2)
+
+**No tracebacks shown to users.** Every error path returns a friendly message.
+
+**Error categories**:
+1. **Ollama not running** — Setup guidance
+2. **Model not found** — `ollama pull` instruction
+3. **API key invalid** — Check `/config` or env vars
+4. **Timeout** — Try faster RAG profile or smaller model
+5. **File not found** — Path and retry instruction
+
+All handled in try/except blocks with user-friendly messages.
+
+## Performance Characteristics
+
+**Latency**:
+- RAG query: 1-3 sec (typical), 30-60 sec (first)
+- LLM response: 2-10 sec (Gemma 4 E4B), 10-60 sec (E2B)
+- Total turn: 3-70 sec depending on hardware/model
+
+**Memory**:
+- Game state: <50 MB
+- RAG index: 50-200 MB per world
 - Conversation history: ~100 KB per 100 exchanges
-- LightRAG storage: ~50-200 MB per world (grows with lore)
 
-### LLM Model Size Impact
-
-- **3B model + RAG**: Fast, excellent quality
-- **7B model + RAG**: Very good quality, good speed
-- **70B model + RAG**: Excellent quality, slower
-- **Large model without RAG**: Slower, hallucination risk
-
-**Key insight**: A 7B model with RAG often outperforms a 70B model without RAG.
-
-### Optimization Tips
-
-1. **Lore chunking** - Break large lore files into smaller pieces
-2. **History pruning** - Conversation history is limited to last 6 messages
-3. **Lazy initialization** - RAG doesn't start until first query
-4. **Hybrid queries** - Balances speed vs. relevance
-5. **Lightweight models** - Use 7B or smaller with strong RAG
+**Storage**:
+- Save file: ~50-100 KB per save
+- RAG index: ~100 MB per ~50K entities
 
 ## Testing Strategy
 
-### Unit Tests
+**Test levels**:
+1. **Unit tests** — Individual components (Character, Inventory, etc.)
+2. **Integration tests** — Systems working together (Game loop, Narrator, RAG)
+3. **Playthrough tests** — Full game from start to finish
 
-- `test_llm_providers.py` - Mock HTTP calls
-- `test_engine/` - Test character, world, inventory in isolation
-- `test_narrator.py` - Mock LLM calls
-- `test_config.py` - Configuration loading
+**Test files**:
+- `test_v051_core.py` — Core systems (51+ tests)
+- `test_all_fixes.py` — API compatibility (41 tests)
+- Integration test playthroughs (35+ turns)
 
-### Integration Tests
+## Design Principles
 
-- Full game loop with mock provider
-- Save/load round-trip
-- Multi-turn conversation consistency
-
-### Manual Testing
-
-- Try with different providers
-- Test with custom lore files
-- Verify state persistence
-- Check error handling
-
-## Debugging
-
-### Enable Debug Mode
-
-```bash
-python -m rag_quest --debug
-```
-
-This shows:
-- Full tracebacks
-- RAG query results
-- Message building
-- State changes
-
-### Common Issues
-
-**RAG returning irrelevant context:**
-- Check lore ingestion
-- Verify query is descriptive
-- Try hybrid vs other modes
-
-**Character state not updating:**
-- Check regex patterns in `_parse_and_apply_changes()`
-- Verify state changes are actually in response
-- Check console output for parsed changes
-
-**LLM API errors:**
-- Verify API key
-- Check rate limits
-- Confirm model name
-- Test with curl
-
-## Future Architecture Improvements
-
-1. **Plugin System** - Allow third-party providers/mechanics
-2. **Event Bus** - Decouple narrator from state updates
-3. **Async RAG** - Queue queries instead of blocking
-4. **Memory Management** - Compress old conversation history
-5. **Metrics** - Track game events, costs, performance
-6. **Multiplayer** - State sync via Tailscale or similar
+1. **Separation of Concerns** — RAG = knowledge, LLM = narrative, GameState = player status
+2. **Synchronous Game Loop** — Clean, simple, no async complexity
+3. **Full Serialization** — All state saved and loaded as JSON
+4. **LightRAG-First** — Knowledge graph is the source of truth
+5. **Lightweight Narrator** — Small models work great with good RAG
+6. **Consumer Hardware** — Everything runs locally on modest hardware
+7. **Zero Friction** — Setup is automatic, errors are friendly
+8. **Backwards Compatibility** — All saves migrate cleanly between versions
 
 ---
 
-*Last Updated: v0.1.0*
-
-**Core Principle**: LightRAG does the heavy lifting. Keep the LLM lightweight and focused on narrative synthesis.
+**Last Updated**: April 2026  
+**Version**: 0.5.2
