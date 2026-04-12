@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rag-quest"
-version = "0.5.1"
+version = "0.5.2"
 description = "AI-powered D&D-style text RPG with multiplayer, persistent saves, world sharing, achievements, and procedural dungeons"
 readme = "README.md"
 requires-python = ">=3.11"

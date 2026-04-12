@@ -23,8 +23,19 @@ def main() -> None:
         console.print("\n[yellow]Thanks for playing! Your progress has been saved.[/yellow]")
         sys.exit(0)
     except Exception as e:
-        ui.print_error(str(e))
+        # Never show traceback to users - always friendly messages
+        error_msg = str(e)
+        if "Ollama" in error_msg or "localhost:11434" in error_msg:
+            ui.print_error("Could not connect to Ollama. Is it running? Check the startup guide with /help.")
+        elif "API" in error_msg or "provider" in error_msg.lower():
+            ui.print_error(f"LLM provider error: {error_msg}. Check your configuration with /config.")
+        elif "file" in error_msg.lower() or "path" in error_msg.lower():
+            ui.print_error(f"File error: {error_msg}. Check the file path and try again.")
+        else:
+            ui.print_error(f"An unexpected error occurred: {error_msg}")
+        
         if "--debug" in sys.argv:
+            console.print("\n[dim]Debug trace:[/dim]")
             import traceback
             traceback.print_exc()
         sys.exit(1)
@@ -76,7 +87,16 @@ def _create_character_with_descriptions() -> dict:
     console.clear()
     console.print(Panel("[bold cyan]Character Creation[/bold cyan]", border_style="cyan"))
     
-    name = Prompt.ask("\n[bold]Your name[/bold]")
+    # Get valid name
+    while True:
+        name = Prompt.ask("\n[bold]Your character's name[/bold]").strip()
+        if not name:
+            console.print("[yellow]Name cannot be empty.[/yellow]")
+            continue
+        if len(name) > 50:
+            console.print("[yellow]Name too long (max 50 characters).[/yellow]")
+            continue
+        break
     
     # Race selection with descriptions
     console.print("\n[bold cyan]Choose Your Race[/bold cyan]\n")
@@ -100,6 +120,7 @@ def _create_character_with_descriptions() -> dict:
         default="1",
     )
     race = races_map[race_choice]
+    console.print(f"[green]✓ Race selected: {race}[/green]")
     
     # Class selection with descriptions and abilities
     console.print("\n[bold cyan]Choose Your Class[/bold cyan]\n")
@@ -133,6 +154,18 @@ def _create_character_with_descriptions() -> dict:
         default="1",
     )
     character_class = classes_map[class_choice]
+    console.print(f"[green]✓ Class selected: {character_class}[/green]")
+    
+    # Show confirmation
+    console.print()
+    confirm = Prompt.ask(
+        f"\n[bold]Create {name}, a {race} {character_class}?[/bold]",
+        choices=["y", "n"],
+        default="y",
+    )
+    if confirm.lower() != "y":
+        console.print("[yellow]Character creation cancelled. Starting over...[/yellow]")
+        return _create_character_with_descriptions()  # Recursively restart
     
     return {
         "name": name,
@@ -179,9 +212,9 @@ def _main() -> None:
         
         if start_choice == "1":
             # Fresh Adventure
-            world_desc = Prompt.ask(
-                "\n[bold]Describe your world[/bold] (e.g., 'Dark medieval fantasy with dragon riders')"
-            )
+            console.print("\n[cyan]Describe your world in a sentence or two.[/cyan]")
+            console.print("[dim]Examples: 'Dark medieval fantasy with dragon riders', 'Magical underwater kingdom', 'Post-apocalyptic desert'[/dim]")
+            world_desc = Prompt.ask("\n[bold]Your world[/bold]")
             
             # Create world from description
             world_name = Prompt.ask("World name", default="Generated World")

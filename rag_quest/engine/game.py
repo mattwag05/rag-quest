@@ -135,6 +135,7 @@ def run_game(
                 break
 
             if not player_input:
+                ui.print_info("[dim]Type an action like 'look around' or /help for commands[/dim]")
                 continue
 
             # Handle special commands
@@ -160,23 +161,33 @@ def run_game(
                 ui.print_warning(f"{member_name} has left the party due to low loyalty!")
 
             # Process action through narrator with error recovery
-            with console.status("[bold green]The Dungeon Master considers your action...[/bold green]"):
-                try:
+            try:
+                with console.status("[bold green]The Dungeon Master considers your action...[/bold green]"):
                     response = game_state.narrator.process_action(player_input)
                     errors_in_row = 0  # Reset error counter on success
-                except Exception as e:
-                    errors_in_row += 1
-                    ui.print_error(f"Error generating response: {type(e).__name__}")
-                    
-                    # If too many errors in a row, suggest exiting
-                    if errors_in_row >= max_errors_in_row:
-                        ui.print_error("Too many errors. Consider saving and restarting.")
-                        response = (
-                            "The world seems unstable. You should find a safe place to rest "
-                            "before continuing your adventure."
-                        )
-                    else:
-                        continue
+            except Exception as e:
+                errors_in_row += 1
+                error_msg = str(e).lower()
+                
+                # Provide helpful, user-friendly error messages
+                if "timeout" in error_msg or "connection" in error_msg:
+                    ui.print_error("The LLM is taking too long. Try again or check your connection.")
+                elif "ollama" in error_msg or "llm" in error_msg:
+                    ui.print_error("Problem with the AI narrator. Make sure Ollama is running.")
+                elif "rag" in error_msg or "knowledge" in error_msg:
+                    ui.print_error("Issue with the world knowledge system. Try a simpler action.")
+                else:
+                    ui.print_error(f"The Dungeon Master stumbles: {type(e).__name__}")
+                
+                # If too many errors in a row, suggest exiting
+                if errors_in_row >= max_errors_in_row:
+                    ui.print_error("Too many errors. Consider saving with /save and restarting RAG-Quest.")
+                    response = (
+                        "The world seems unstable. You should find a safe place to rest "
+                        "before continuing your adventure."
+                    )
+                else:
+                    continue
 
             # Display response
             ui.print_narrator_response(response)
@@ -190,12 +201,13 @@ def run_game(
             # Auto-save frequently to protect progress
             action_count += 1
             if save_path:
-                # Save every 3 actions or every 5 minutes of gameplay
-                if action_count % 3 == 0:
+                # Save every 5 actions
+                if action_count % 5 == 0:
                     try:
                         _save_game(game_state, save_path)
+                        console.print("[dim]✓ Progress saved[/dim]")
                     except Exception as e:
-                        ui.print_warning(f"Could not auto-save: {e}")
+                        console.print(f"[yellow]⚠ Could not auto-save: {e}[/yellow]")
 
     except KeyboardInterrupt:
         # Graceful exit with save prompt
@@ -250,7 +262,7 @@ def _handle_command(
                   title=game_state.character.location)
         )
 
-    elif cmd == "/map":
+    elif cmd == "/map" or cmd == "/world":
         ui.print_world_context(game_state.world)
 
     elif cmd == "/status" or cmd == "/s":
@@ -258,8 +270,15 @@ def _handle_command(
 
     elif cmd == "/save":
         if save_path:
-            _save_game(game_state, save_path)
-            ui.print_success("Game saved!")
+            try:
+                _save_game(game_state, save_path)
+                ui.print_save_confirmation(
+                    save_path.name,
+                    game_state.character.name,
+                    game_state.world.name
+                )
+            except Exception as e:
+                ui.print_error(f"Could not save: {e}")
         else:
             ui.print_warning("No save location specified.")
 
@@ -363,17 +382,22 @@ def _handle_command(
         config_manager = ConfigManager()
         config_manager.modify_settings_menu()
 
-    elif cmd == "/help":
+    elif cmd == "/help" or cmd == "/h":
         ui.print_help()
 
-    elif cmd == "/quit":
+    elif cmd == "/new":
+        if ui.get_yes_no_confirmation("[yellow]Start a new game? Current progress will be saved.[/yellow]"):
+            ui.print_success("Restart your game by quitting and running RAG-Quest again!")
+        return True
+
+    elif cmd == "/quit" or cmd == "/exit":
         if save_path:
             if ui.get_yes_no_confirmation("[yellow]Save before quitting?[/yellow]"):
                 _save_game(game_state, save_path)
         return False
 
     else:
-        ui.print_error(f"Unknown command: {cmd}")
+        ui.print_unknown_command(cmd)
 
     return True
 

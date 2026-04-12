@@ -86,7 +86,10 @@ def print_narrator_response(response: str) -> None:
 
 def print_command_prompt() -> str:
     """Print input prompt and get user input."""
-    return console.input("\n[bold cyan]What do you do? > [/bold cyan]").strip()
+    result = console.input("\n[bold cyan]What do you do? > [/bold cyan]").strip()
+    if not result:
+        console.print("[dim]Tip: Type an action like 'look around' or '/help' for commands[/dim]")
+    return result
 
 
 def print_inventory_panel(inventory) -> None:
@@ -136,33 +139,47 @@ Just type what you want to do! The AI understands natural language:
 
 Be creative and descriptive — the AI remembers what happened and your choices matter!
 
-## Special Commands
+## Quick Commands (Shortcuts)
 
-### Inventory & Status
-- `/help` — Show this help screen
-- `/inventory` or `/i` — Check what you're carrying
-- `/quests` or `/q` — View active quests
-- `/stats` or `/s` — Show your character stats
-- `/abilities` — List unlocked abilities
+| Command | Shortcut | Description |
+|---------|----------|-------------|
+| `/inventory` | `/i` | Check your inventory |
+| `/quests` | `/q` | View active quests |
+| `/stats` | `/s` | Show character stats |
+| `/party` | `/p` | Show party members |
+| `/relationships` | `/rel` | View NPC relationships |
+| `/help` | `/h` | Show this help screen |
+
+## All Commands
+
+### Status & Inventory
+- `/help` `/h` — Show this help screen
+- `/stats` `/s` — Show your character stats and attributes
+- `/inventory` `/i` — Check what you're carrying and weight limit
+- `/quests` `/q` — View active quests and objectives
+- `/abilities` — List unlocked class abilities
 
 ### Exploration & World
 - `/look` — Examine your current surroundings
 - `/map` — See locations you've discovered
 - `/events` — View active world events
+- `/world` — World information and context
 
 ### Party & Relationships
-- `/party` or `/p` — Show party members
-- `/relationships` or `/rel` — View NPC relationships
+- `/party` `/p` — Show party members and their status
+- `/relationships` `/rel` — View NPC relationships and trust
+- `/factions` `/f` — View faction standings
 - `/recruit NAME` — Recruit an NPC to join your party
 - `/dismiss NAME` — Remove party member
 
 ### Advanced
-- `/equipment` — Check equipped gear
-- `/voice` — Toggle text-to-speech
-- `/dungeon` — Enter a procedural dungeon
+- `/equipment` — Check equipped gear (weapon, armor, accessory)
+- `/voice` — Toggle text-to-speech narration
+- `/dungeon` — Enter a procedural dungeon crawl
 - `/achievements` — View unlocked achievements
-- `/config` — Change settings
-- `/save` — Save your game manually
+- `/config` — Change game settings
+- `/save` — Manually save your game
+- `/new` — Start a new game (without quitting)
 - `/quit` — Exit game (prompts to save)
 
 ## Pro Tips
@@ -183,17 +200,17 @@ Be creative and descriptive — the AI remembers what happened and your choices 
 **Auto-Save** — Your progress is saved automatically every few turns.
 **Character Progression** — Level up, unlock new abilities, and improve your stats.
 
-## Need Help?
+## Stuck or Need Advice?
 
-If something isn't working or you're stuck, try:
-1. Describing what you want to do more specifically
-2. Using `/look` to see your surroundings
-3. Visiting `/help` for command reference
-4. Checking `/quests` for current objectives
+1. Describe what you want to do more specifically
+2. Use `/look` to examine your surroundings
+3. Check `/quests` to see current objectives
+4. Visit `/stats` to review your abilities and equipment
+5. Talk to NPCs to learn about available quests
 
 Happy adventuring!
 """
-    console.print(Panel(Markdown(help_text), title="[bold cyan]Help[/bold cyan]", border_style="green"))
+    console.print(Panel(Markdown(help_text), title="[bold cyan]Help & Commands[/bold cyan]", border_style="green"))
 
 
 def print_game_over(character, world) -> None:
@@ -302,3 +319,90 @@ def print_level_up(level: int, stats_gained: str = "") -> None:
     if stats_gained:
         message += f"\n{stats_gained}"
     console.print(Panel(message, border_style="yellow", expand=False))
+
+
+def print_game_recap(character, world, days_survived: int) -> None:
+    """Print a recap of the game before loading/continuing."""
+    recap = f"""[cyan]Last Adventure:[/cyan]
+[bold]{character.name}[/bold] — {character.race.value} {character.character_class.value}
+Level {character.level} | {character.current_hp}/{character.max_hp} HP
+World: {world.name} ({world.setting})
+Survived: {days_survived} days
+
+Ready to continue? Type any action or [cyan]/help[/cyan] for commands."""
+    console.print(Panel(recap, title="[bold]Welcome Back[/bold]", border_style="green"))
+
+
+def print_save_confirmation(save_name: str, character_name: str, world_name: str) -> None:
+    """Print confirmation that save was successful."""
+    msg = f"[green]✓ Game saved![/green]\n\n[cyan]{character_name}[/cyan] in [cyan]{world_name}[/cyan]\nSlot: [dim]{save_name}[/dim]"
+    console.print(Panel(msg, border_style="green", expand=False))
+
+
+def print_unknown_command(command: str) -> None:
+    """Print helpful message for unknown command with suggestions."""
+    console.print(f"[yellow]Hmm, '[bold]{command}[/bold]' isn't recognized.[/yellow]")
+    console.print("[dim]Did you mean one of these?[/dim]")
+    console.print("  /help — See all commands and tips")
+    console.print("  /inventory — Check your items")
+    console.print("  /stats — View your status")
+    console.print("[dim]Or just type what you want to do, like 'look around'[/dim]")
+
+
+def print_confirm_quit() -> bool:
+    """Get confirmation for quit action."""
+    console.print("\n[yellow]Are you sure you want to quit?[/yellow]")
+    result = console.input("[cyan]Your progress will be saved. Continue? [y/n]: [/cyan]").strip().lower()
+    return result in ['y', 'yes']
+
+
+def validate_name_input(prompt: str, allow_empty: bool = False) -> str:
+    """Get and validate a name from user with smart defaults."""
+    while True:
+        name = console.input(f"\n[bold]{prompt}[/bold]").strip()
+        if not name:
+            if allow_empty:
+                return ""
+            console.print("[yellow]Name cannot be empty. Try again.[/yellow]")
+            continue
+        if len(name) > 50:
+            console.print("[yellow]Name too long (max 50 characters). Try again.[/yellow]")
+            continue
+        return name
+
+
+def validate_number_input(prompt: str, min_val: int = 1, max_val: int = 99) -> int:
+    """Get and validate a number from user."""
+    while True:
+        try:
+            value = int(console.input(f"[bold]{prompt}[/bold] [{min_val}-{max_val}]: ").strip())
+            if min_val <= value <= max_val:
+                return value
+            console.print(f"[yellow]Please enter a number between {min_val} and {max_val}.[/yellow]")
+        except ValueError:
+            console.print("[yellow]Please enter a valid number.[/yellow]")
+
+
+def print_thinking() -> None:
+    """Print thinking indicator."""
+    with console.status("[bold cyan]The Dungeon Master considers your action...[/bold cyan]"):
+        pass
+
+
+def print_loading_world() -> None:
+    """Print world loading indicator."""
+    with console.status("[bold cyan]Loading world...[/bold cyan]"):
+        pass
+
+
+def print_character_creation_summary(name: str, race: str, character_class: str) -> bool:
+    """Show character creation summary and confirm."""
+    summary = f"""[cyan]You'll be playing as:[/cyan]
+
+[bold]{name}[/bold]
+{race} {character_class}
+
+Ready to begin your adventure? [y/n]"""
+    console.print(Panel(summary, border_style="cyan"))
+    result = console.input("[cyan]Continue? [y/n]: [/cyan]").strip().lower()
+    return result in ['y', 'yes']

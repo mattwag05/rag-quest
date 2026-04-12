@@ -25,7 +25,7 @@ def print_welcome_screen() -> None:
     ║                                                          ║
     ║            Your AI Dungeon Master Awaits                ║
     ║         AI-Powered D&D with Knowledge Graphs            ║
-    ║                  Version 0.5.1                          ║
+    ║                  Version 0.5.2                          ║
     ║                                                          ║
     ╚══════════════════════════════════════════════════════════╝
     """

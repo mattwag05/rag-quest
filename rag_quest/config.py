@@ -270,17 +270,28 @@ class ConfigManager:
     
     def _setup_openai(self) -> dict:
         """Setup OpenAI provider."""
-        console.print("\n[bold]OpenAI Setup[/bold]\n")
+        console.print("\n[bold cyan]OpenAI Setup[/bold cyan]")
+        console.print("[dim]Get your API key from https://platform.openai.com/api-keys[/dim]\n")
         
         model = Prompt.ask(
             "Model (e.g., gpt-4o, gpt-4-turbo)",
             default="gpt-4o",
         )
         
-        api_key = Prompt.ask(
-            "API key (will be saved securely)",
-            password=True,
-        )
+        while True:
+            api_key = Prompt.ask(
+                "API key [hidden]",
+                password=True,
+            )
+            if not api_key:
+                console.print("[yellow]API key cannot be empty.[/yellow]")
+                continue
+            if len(api_key) < 20:
+                console.print("[yellow]API key seems too short. Paste the full key.[/yellow]")
+                continue
+            break
+        
+        console.print("[green]✓ OpenAI configured[/green]")
         
         return {
             "provider": "openai",
@@ -291,17 +302,28 @@ class ConfigManager:
     
     def _setup_openrouter(self) -> dict:
         """Setup OpenRouter provider."""
-        console.print("\n[bold]OpenRouter Setup[/bold]\n")
+        console.print("\n[bold cyan]OpenRouter Setup[/bold cyan]")
+        console.print("[dim]Get your API key from https://openrouter.ai/keys[/dim]\n")
         
         model = Prompt.ask(
             "Model (e.g., anthropic/claude-sonnet-4)",
             default="anthropic/claude-sonnet-4",
         )
         
-        api_key = Prompt.ask(
-            "API key (will be saved securely)",
-            password=True,
-        )
+        while True:
+            api_key = Prompt.ask(
+                "API key [hidden]",
+                password=True,
+            )
+            if not api_key:
+                console.print("[yellow]API key cannot be empty.[/yellow]")
+                continue
+            if len(api_key) < 20:
+                console.print("[yellow]API key seems too short. Paste the full key.[/yellow]")
+                continue
+            break
+        
+        console.print("[green]✓ OpenRouter configured[/green]")
         
         return {
             "provider": "openrouter",
@@ -344,10 +366,13 @@ class ConfigManager:
     
     def _setup_tts(self) -> bool:
         """Setup Text-to-Speech."""
-        console.print("\n[bold]Text-to-Speech[/bold]")
-        console.print("[dim]Have the narrator read responses aloud?[/dim]\n")
+        console.print("\n[bold cyan]Text-to-Speech[/bold cyan]")
+        console.print("[dim]Would you like the AI to read responses aloud?[/dim]")
+        console.print("[dim](You can toggle this anytime with /voice during gameplay)[/dim]\n")
         
         enable = Confirm.ask("Enable TTS", default=False)
+        if enable:
+            console.print("[green]✓ TTS enabled[/green]")
         return enable
     
     def modify_settings_menu(self) -> None:
