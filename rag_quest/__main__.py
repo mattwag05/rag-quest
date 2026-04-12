@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from . import config, ui
+from . import config, ui, startup
 from .engine import run_game, GameState, Narrator
 from .knowledge import WorldRAG
 
@@ -20,7 +20,7 @@ def main() -> None:
     try:
         _main()
     except KeyboardInterrupt:
-        console.print("\n[yellow]Game interrupted by user.[/yellow]")
+        console.print("\n[yellow]Thanks for playing! Your progress has been saved.[/yellow]")
         sys.exit(0)
     except Exception as e:
         ui.print_error(str(e))
@@ -32,14 +32,7 @@ def main() -> None:
 
 def _print_welcome_screen() -> None:
     """Print the welcome screen and main menu."""
-    console.clear()
-    console.print(
-        Panel(
-            "[bold cyan]RAG-Quest v0.5.2[/bold cyan]\n"
-            "[dim]AI-Powered D&D Adventure — LightRAG Does the Heavy Lifting[/dim]",
-            border_style="cyan",
-        )
-    )
+    startup.print_welcome_screen()
 
 
 def _show_start_menu() -> str:
@@ -274,6 +267,12 @@ def _main() -> None:
     try:
         llm_provider, llm_config = config.load_llm_provider(game_config)
         ui.print_success("LLM provider loaded!")
+        
+        # Run startup checks (e.g., verify Ollama is running)
+        provider_type = game_config["llm"]["provider"]
+        if provider_type == "ollama":
+            base_url = game_config["llm"].get("base_url", "http://localhost:11434")
+            startup.startup_checks(provider_type, base_url)
     except Exception as e:
         ui.print_error(f"Failed to load LLM provider: {e}")
         if "--debug" in sys.argv:

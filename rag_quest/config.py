@@ -29,7 +29,7 @@ class ConfigManager:
     """Manages persistent configuration for RAG-Quest."""
     
     DEFAULT_CONFIG = {
-        "version": "0.5.2",
+        "version": "0.5.1",
         "llm": {
             "provider": "ollama",
             "model": "gemma4",
@@ -173,14 +173,18 @@ class ConfigManager:
     
     def setup_wizard(self) -> dict:
         """Interactive first-run setup wizard."""
-        console.clear()
+        from . import startup
+        
+        startup.print_welcome_screen()
         console.print(
             Panel(
-                "[bold cyan]RAG-Quest v0.5.2[/bold cyan]\nAI-Powered D&D Adventure",
+                "[bold cyan]First-Time Setup[/bold cyan]\n\n"
+                "Just a few quick choices and you'll be ready to adventure!\n"
+                "This only takes a minute.",
                 border_style="cyan",
             )
         )
-        console.print("[bold]Welcome! Let's set up your adventure...[/bold]\n")
+        console.print()
         
         # Step 1: LLM Provider
         self.config["llm"] = self._setup_llm_provider()
@@ -199,31 +203,33 @@ class ConfigManager:
     
     def _setup_llm_provider(self) -> dict:
         """Setup LLM provider with detailed explanations."""
-        console.print("[bold]LLM Provider Setup[/bold]")
-        console.print("[dim]Choose where your AI narrator runs:[/dim]\n")
+        from . import startup
+        
+        console.print("\n[bold cyan]Choose Your AI Narrator[/bold cyan]")
+        console.print("[dim]Where should your AI dungeon master run?[/dim]\n")
         
         # Show options with descriptions
         options = {
             "1": {
                 "name": "Ollama (Local - Recommended)",
-                "desc": "Run AI locally on your machine. Fast, free, no API key needed.\n      Great for: Privacy, speed, consumer hardware with Gemma 4."
+                "desc": "Runs completely on your computer\n         Free • Private • No internet needed • Fast with Gemma 4\n         Best for: Most players, consumer hardware, offline play"
             },
             "2": {
                 "name": "OpenAI (Cloud)",
-                "desc": "Use OpenAI's GPT models. Requires API key and costs per request.\n      Great for: Maximum quality, if you have an API key."
+                "desc": "Uses OpenAI's GPT models via the internet\n         Requires: API key (from https://platform.openai.com)\n         Best for: Maximum quality, if you have an API subscription"
             },
             "3": {
                 "name": "OpenRouter (Multi-Model Cloud)",
-                "desc": "Access 100+ models from one API. Requires API key and costs per request.\n      Great for: Trying different models, flexible provider."
+                "desc": "Access 100+ AI models from one place\n         Requires: API key (from https://openrouter.ai)\n         Best for: Trying different models, flexible options"
             },
         }
         
         for key, opt in options.items():
-            console.print(f"[bold cyan]{key}[/bold cyan] {opt['name']}")
-            console.print(f"   {opt['desc']}\n")
+            console.print(f"[bold cyan][{key}][/bold cyan] {opt['name']}")
+            console.print(f"    {opt['desc']}\n")
         
         choice = Prompt.ask(
-            "Choose provider",
+            "Choose [1-3]",
             choices=["1", "2", "3"],
             default="1",
         )
@@ -237,8 +243,13 @@ class ConfigManager:
     
     def _setup_ollama(self) -> dict:
         """Setup Ollama provider."""
-        console.print("\n[bold]Ollama Setup[/bold]")
-        console.print("[dim]Recommended: Gemma 4 E2B (2B - fast, CPU) or E4B (4B - quality, GPU)[/dim]\n")
+        console.print("\n[bold cyan]Ollama Setup[/bold cyan]")
+        console.print("[dim]Gemma 4 is recommended (free, fast, great for D&D)[/dim]\n")
+        
+        console.print("[cyan]Popular models:[/cyan]")
+        console.print("  [bold]gemma4[/bold] or [bold]gemma4:latest[/bold] — Recommended (best balance)")
+        console.print("  [bold]gemma4:e4b[/bold] — 4B parameters (quality, needs GPU)")
+        console.print("  [bold]gemma4:e2b[/bold] — 2B parameters (fast, works on CPU)\n")
         
         model = Prompt.ask(
             "Model name",
@@ -246,7 +257,7 @@ class ConfigManager:
         )
         
         base_url = Prompt.ask(
-            "Ollama base URL",
+            "Ollama address",
             default="http://localhost:11434",
         )
         
@@ -301,31 +312,30 @@ class ConfigManager:
     
     def _setup_rag_profile(self) -> str:
         """Setup RAG profile with explanations."""
-        console.print("\n[bold]RAG Profile (Speed vs Quality)[/bold]")
-        console.print("[dim]Choose how much AI context to use per narration:[/dim]\n")
+        console.print("\n[bold cyan]Game Quality Setting[/bold cyan]")
+        console.print("[dim]How detailed should the world-building be?[/dim]\n")
         
         profiles = {
             "1": {
                 "name": "fast",
-                "desc": "Quick responses, uses less context.\n      Best for: Older hardware, fast testing, limited RAM."
+                "desc": "Quick & snappy. Less detailed narration.\n         Best for: Older computers, fast machines, quick testing"
             },
             "2": {
                 "name": "balanced",
-                "desc": "Good balance of speed and quality. [DEFAULT]\n      Best for: Most users, consumer hardware, fun gameplay."
+                "desc": "Great mix of speed and detail. ← [bold]RECOMMENDED[/bold]\n         Best for: Most players, smooth gameplay, good immersion"
             },
             "3": {
                 "name": "deep",
-                "desc": "Maximum narrative quality, uses full knowledge graph.\n      Best for: High-end hardware, immersive experience, slow gameplay OK."
+                "desc": "Maximum detail & immersion. Slower but richer.\n         Best for: High-end hardware, patient players, deep story"
             },
         }
         
         for key, prof in profiles.items():
-            marker = " ← DEFAULT" if key == "2" else ""
-            console.print(f"[bold cyan]{key}[/bold cyan] {prof['name']}{marker}")
-            console.print(f"   {prof['desc']}\n")
+            console.print(f"[bold cyan][{key}][/bold cyan] {prof['name']}")
+            console.print(f"    {prof['desc']}\n")
         
         choice = Prompt.ask(
-            "Choose profile",
+            "Choose [1-3]",
             choices=["1", "2", "3"],
             default="2",
         )

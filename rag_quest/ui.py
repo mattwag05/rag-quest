@@ -86,7 +86,7 @@ def print_narrator_response(response: str) -> None:
 
 def print_command_prompt() -> str:
     """Print input prompt and get user input."""
-    return console.input("\n[bold cyan]> [/bold cyan]").strip()
+    return console.input("\n[bold cyan]What do you do? > [/bold cyan]").strip()
 
 
 def print_inventory_panel(inventory) -> None:
@@ -123,35 +123,77 @@ def print_world_context(world) -> None:
 def print_help() -> None:
     """Print in-game help."""
     help_text = """
-# RAG-Quest Commands
+# RAG-Quest Commands & Tips
 
-## Navigation & Interaction
-Type natural language actions to interact with the world:
+## How to Play
+Just type what you want to do! The AI understands natural language:
+- `look around`
 - `go to the tavern`
-- `examine the chest`
-- `talk to the merchant`
+- `talk to the merchant about quests`
+- `examine the ancient chest`
+- `cast fireball at the goblin`
+- `carefully search the bookshelf`
 
-## In-Game Commands
+Be creative and descriptive — the AI remembers what happened and your choices matter!
 
-- `/help` - Show this help
-- `/inventory` or `/i` - Show inventory
-- `/quests` or `/q` - Show active quests
-- `/status` or `/s` - Show character stats
-- `/look` - Examine current location
-- `/map` - Show discovered locations
-- `/save` - Save game
-- `/load` - Load game (next session)
-- `/quit` - Exit game (with save prompt)
+## Special Commands
 
-## Tips
+### Inventory & Status
+- `/help` — Show this help screen
+- `/inventory` or `/i` — Check what you're carrying
+- `/quests` or `/q` — View active quests
+- `/stats` or `/s` — Show your character stats
+- `/abilities` — List unlocked abilities
 
-1. **Be creative** - The AI responds to creative descriptions and actions
-2. **Combat** - Describe tactical actions like "dodge and counterattack"
-3. **Dialogue** - Talk to NPCs to learn about quests and lore
-4. **Exploration** - Visit new locations to discover items and meet NPCs
-5. **Resources** - Manage your HP and inventory carefully
+### Exploration & World
+- `/look` — Examine your current surroundings
+- `/map` — See locations you've discovered
+- `/events` — View active world events
+
+### Party & Relationships
+- `/party` or `/p` — Show party members
+- `/relationships` or `/rel` — View NPC relationships
+- `/recruit NAME` — Recruit an NPC to join your party
+- `/dismiss NAME` — Remove party member
+
+### Advanced
+- `/equipment` — Check equipped gear
+- `/voice` — Toggle text-to-speech
+- `/dungeon` — Enter a procedural dungeon
+- `/achievements` — View unlocked achievements
+- `/config` — Change settings
+- `/save` — Save your game manually
+- `/quit` — Exit game (prompts to save)
+
+## Pro Tips
+
+1. **Be specific** — "search carefully" works better than "search"
+2. **Use the world** — Reference locations, NPCs, and items from earlier
+3. **Combat tactics** — Describe your combat actions: "dodge left and counterattack"
+4. **Dialogue** — Talk to NPCs to learn about quests and world lore
+5. **Inventory** — Watch your carrying capacity and manage your gear
+6. **Exploration** — New locations unlock new encounters and loot
+7. **Party** — Recruit allies to enhance your abilities and story
+
+## Game Features
+
+**Persistent World** — Your actions change the world. NPCs remember you.
+**Achievements** — Unlock achievements for exploring, fighting, and completing quests.
+**Procedural Dungeons** — `/dungeon` generates new dungeons with scaling difficulty.
+**Auto-Save** — Your progress is saved automatically every few turns.
+**Character Progression** — Level up, unlock new abilities, and improve your stats.
+
+## Need Help?
+
+If something isn't working or you're stuck, try:
+1. Describing what you want to do more specifically
+2. Using `/look` to see your surroundings
+3. Visiting `/help` for command reference
+4. Checking `/quests` for current objectives
+
+Happy adventuring!
 """
-    console.print(Panel(Markdown(help_text), title="[bold]Help[/bold]", border_style="green"))
+    console.print(Panel(Markdown(help_text), title="[bold cyan]Help[/bold cyan]", border_style="green"))
 
 
 def print_game_over(character, world) -> None:
@@ -241,3 +283,22 @@ def print_world_context(world) -> None:
     """Print world state and locations."""
     context = world.get_context()
     console.print(Panel(context, title="World Status", border_style="blue"))
+
+
+def print_achievement_unlocked(name: str, icon: str = "★") -> None:
+    """Print achievement unlock celebration."""
+    console.print(
+        Panel(
+            f"[bold green]{icon} Achievement Unlocked! {icon}[/bold green]\n\n{name}",
+            border_style="yellow",
+            expand=False,
+        )
+    )
+
+
+def print_level_up(level: int, stats_gained: str = "") -> None:
+    """Print level up celebration."""
+    message = f"[bold cyan]⚔ LEVEL UP! ⚔[/bold cyan]\n\nYou're now [bold]Level {level}[/bold]!"
+    if stats_gained:
+        message += f"\n{stats_gained}"
+    console.print(Panel(message, border_style="yellow", expand=False))

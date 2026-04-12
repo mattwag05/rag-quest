@@ -9,6 +9,7 @@ from typing import Optional
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.prompt import Confirm
 
 from ..knowledge import WorldRAG
 from ..llm import BaseLLMProvider
@@ -197,7 +198,15 @@ def run_game(
                         ui.print_warning(f"Could not auto-save: {e}")
 
     except KeyboardInterrupt:
-        console.print("\n[yellow]Game interrupted by player.[/yellow]")
+        # Graceful exit with save prompt
+        console.print("\n[yellow][bold]Exiting RAG-Quest[/bold][/yellow]")
+        if save_path and Confirm.ask("Save your progress before quitting?", default=True):
+            try:
+                _save_game(game_state, save_path)
+                console.print("[green]✓ Game saved![/green]")
+            except Exception as e:
+                console.print(f"[yellow]Could not save: {e}[/yellow]")
+        console.print("[cyan]Thanks for playing, adventurer. See you next time![/cyan]\n")
     finally:
         # Cleanup
         try:
