@@ -39,6 +39,23 @@ changelog" for the full convention.
   between machines without a cloud account.
 
 ### Added
+- **v0.8 web turn endpoint** — `POST /session/{session_id}/turn`
+  with body `{"input": "..."}` drives a single player turn through
+  the existing `Narrator.process_action` path. Returns
+  `{"response": str, "state_change": dict, "state": dict}` where
+  `state_change` is `dataclasses.asdict(narrator.last_change)` (or
+  `{}` if no state change was parsed) and `state` is the updated
+  `GameState.to_dict()`. Increments `game_state.turn_number` after
+  each successful call. Returns 404 for unknown session ids and 400
+  for empty/whitespace input. Narrator's own fallback-response path
+  is transparent — clients always get a 200 with a non-empty
+  response body even if the underlying LLM raises. 5 new tests in
+  `tests/test_v08_web_turn.py`. Full CLI turn-loop parity (world
+  events, party loyalty departures, timeline recording, module
+  gating, achievements) is tracked as a follow-up in rag-quest-1o2
+  — the MVP endpoint intentionally stays narrow so sub-bead
+  dependencies stay unblocked. (rag-quest-g86)
+
 - **v0.8 web read endpoints** — new `rag_quest/web/sessions.py`
   module encapsulates the "read save dict from disk → build provider
   → build WorldRAG → build Narrator → hydrate GameState" chain behind

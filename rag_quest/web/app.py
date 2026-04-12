@@ -13,6 +13,7 @@ runtime, not string forward references. Engine types (``GameState``,
 TYPE_CHECKING-only for engine imports without the future import.
 """
 
+import dataclasses
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
@@ -97,6 +98,9 @@ def _build_app() -> "FastAPI":
     class LoadSessionRequest(BaseModel):
         slot_id: str
 
+    class TurnRequest(BaseModel):
+        input: str
+
     @instance.get("/healthz")
     def healthz() -> dict:
         return {"status": "ok", "version": __version__}
@@ -136,6 +140,32 @@ def _build_app() -> "FastAPI":
                 status_code=404, detail=f"No active session with id {session_id!r}"
             )
         return game_state.to_dict()
+
+    @instance.post("/session/{session_id}/turn")
+    def take_turn(session_id: str, payload: TurnRequest) -> dict:
+        store: SessionStore = instance.state.sessions
+        game_state = store.get(session_id)
+        if game_state is None:
+            raise HTTPException(
+                status_code=404, detail=f"No active session with id {session_id!r}"
+            )
+        if not payload.input.strip():
+            raise HTTPException(status_code=400, detail="Input cannot be empty")
+
+        # Narrator.process_action swallows its own exceptions and returns a
+        # fallback string on failure — the web endpoint never sees a
+        # traceback and the client always gets a valid response body.
+        response = game_state.narrator.process_action(payload.input)
+        game_state.turn_number += 1
+
+        change = game_state.narrator.last_change
+        change_dict = dataclasses.asdict(change) if change is not None else {}
+
+        return {
+            "response": response,
+            "state_change": change_dict,
+            "state": game_state.to_dict(),
+        }
 
     return instance
 
