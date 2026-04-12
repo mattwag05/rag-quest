@@ -74,7 +74,7 @@ class Narrator:
                 if response and len(response.strip()) > 0:
                     return response
             except Exception as e:
-                print(f"LLM call failed: {e}, falling back to canned responses")
+                pass  # Silently fall back to canned responses
         
         # Fallback to pre-written responses if LLM is unavailable
         action_lower = player_input.lower()
@@ -173,29 +173,32 @@ class Narrator:
                 except Exception as e:
                     pass  # Silently fail if RAG is unavailable
             
-            # Build the full prompt
-            prompt = f"""{system_prompt}
+            # Build the full system context
+            system_content = f"""{system_prompt}
 
 === CURRENT SITUATION ===
 Location: {location}
-Character HP: {hp_status}
-Action: {player_input}{rag_context}{history_context}
+Character HP: {hp_status}{rag_context}{history_context}
 
 Provide a vivid, engaging narrative response to the character's action. Keep it to 2-3 sentences."""
-            
+
+            # Build proper messages list for the LLM provider
+            messages = [
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": player_input},
+            ]
+
             # Call LLM with timeout
             start = time.time()
-            response = self.llm.complete(prompt)
+            response = self.llm.complete(messages)
             elapsed = time.time() - start
             
             if response and len(response.strip()) > 0:
-                print(f"[LLM] Generated response in {elapsed:.2f}s")
                 return response
             
             return None
             
-        except Exception as e:
-            print(f"LLM error: {e}")
+        except Exception:
             return None
 
     def _get_fallback_response(self, error_msg: str = "") -> str:

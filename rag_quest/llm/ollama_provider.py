@@ -32,9 +32,11 @@ class OllamaProvider(BaseLLMProvider):
         payload = {
             "model": self.config.model,
             "messages": messages,
-            "temperature": temp,
-            "max_tokens": tokens,
             "stream": False,
+            "options": {
+                "temperature": temp,
+                "num_predict": tokens,
+            },
         }
 
         response = self.client.post(

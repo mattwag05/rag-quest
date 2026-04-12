@@ -85,7 +85,7 @@ def _show_start_menu() -> str:
 def _create_character_with_descriptions() -> dict:
     """Create character with race/class descriptions."""
     console.clear()
-    console.print(Panel("[bold cyan]Character Creation[/bold cyan]", border_style="cyan"))
+    console.print("\n[bold cyan]═══ Character Creation ═══[/bold cyan]\n")
     
     # Get valid name
     while True:
