@@ -130,6 +130,7 @@ Type these anytime during the game:
 | `/s` or `/stats` | Check your health, level, attributes |
 | `/q` or `/quests` | View active quests and objectives |
 | `/p` or `/party` | See your companions |
+| `/tutorial` | Interactive 9-step guided tutorial |
 | `/h` or `/help` | Full command reference |
 | `/config` | Change LLM or settings |
 | `/save` | Save your game manually |

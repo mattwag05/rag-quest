@@ -43,6 +43,8 @@
 - **Achievement System** — 11 achievements tracking exploration, combat, diplomacy, and progression
 
 ### Accessibility & Polish
+- **Interactive Tutorial** — `/tutorial` launches a 9-step guided TUI walkthrough for new players
+- **Downloadable User Guide** — 8-chapter Word document covering all game systems
 - **Friendly Setup Wizard** — Automatically detects Ollama, guides you through configuration
 - **No Command-Line Experience Needed** — Welcoming interface, helpful prompts, no jargon
 - **Command Shortcuts** — `/i` for inventory, `/s` for stats, `/q` for quests, `/p` for party, `/h` for help
@@ -51,6 +53,7 @@
 - **User Guide** — Downloadable Word document covering all game features for non-technical users
 - **Text-to-Speech Narration** — Optional TTS with multiple voices (pyttsx3 offline, gTTS online)
 - **RAG Profiles** — Choose speed vs quality (fast/balanced/deep) based on your hardware
+- **25-Turn Automated Test Suite** — All core game systems verified in simulation
 
 ## Quick Start (5 Minutes)
 
