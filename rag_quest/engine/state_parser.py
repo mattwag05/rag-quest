@@ -3,7 +3,7 @@
 import random
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 # Markdown emphasis strippers used by `_strip_markdown`. Compiled once so the
 # per-turn hot path (every extracted location/item/quest/NPC passes through
@@ -112,34 +112,6 @@ class StateParser:
             + r")(?:s|es|ed|ing)?\b",
             re.IGNORECASE,
         )
-
-        # Relationship and social keywords
-        self.relationship_keywords = {
-            "trust": 15,
-            "grateful": 20,
-            "ally": 25,
-            "friend": 20,
-            "help": 10,
-            "betray": -30,
-            "angry": -25,
-            "hostile": -20,
-            "insult": -15,
-            "refuse": -10,
-            "gift": 20,
-            "favor": 15,
-            "quest_complete": 15,
-            "recruit": 30,
-        }
-
-        # Party recruitment patterns
-        self.recruitment_patterns = [
-            re.compile(p, re.IGNORECASE)
-            for p in (
-                r"(\w+\s+\w+)?\s*joins?\s+(?:your\s+)?party",
-                r"(\w+\s+\w+)?\s*(?:agrees?|volunteers?)\s+to\s+join",
-                r"you\s+recruit\s+(\w+\s+\w+)?",
-            )
-        ]
 
         # Healing patterns
         self.healing_patterns = [
@@ -323,52 +295,6 @@ class StateParser:
         text = text.replace("**", "").replace("__", "")
         text = text.strip(" *_\t")
         return text
-
-    def parse_action_intent(self, player_input: str) -> Dict[str, bool]:
-        """Detect what the player is trying to do based on their input."""
-        input_lower = player_input.lower()
-
-        return {
-            "is_movement": any(
-                word in input_lower
-                for word in [
-                    "go",
-                    "move",
-                    "travel",
-                    "walk",
-                    "run",
-                    "explore",
-                    "enter",
-                    "exit",
-                    "head",
-                    "journey",
-                ]
-            ),
-            "is_combat": any(word in input_lower for word in self.combat_keywords),
-            "is_pickup": any(
-                word in input_lower
-                for word in ["pick", "take", "grab", "obtain", "find"]
-            ),
-            "is_drop": any(
-                word in input_lower for word in ["drop", "leave", "discard", "abandon"]
-            ),
-            "is_use": any(
-                word in input_lower
-                for word in [
-                    "use",
-                    "consume",
-                    "drink",
-                    "eat",
-                    "activate",
-                    "wield",
-                    "equip",
-                ]
-            ),
-            "is_quest": any(
-                word in input_lower
-                for word in ["quest", "mission", "task", "accept", "complete"]
-            ),
-        }
 
     def parse_narrator_response(self, response: str, player_input: str) -> StateChange:
         """Parse narrator response and extract state changes."""

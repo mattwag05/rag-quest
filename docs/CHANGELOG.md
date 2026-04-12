@@ -38,6 +38,21 @@ changelog" for the full convention.
   <file.rqworld>` wrap the round-trip so players can move a campaign
   between machines without a cloud account.
 
+### Removed
+- **Dead-code sweep in `StateParser`.** `parse_action_intent` was a
+  player-input intent classifier that used raw substring matching —
+  so a player typing "I lay the stable boy down" would have tripped
+  `is_combat` on `"stab" in "stable"`. Audit turned up zero callers
+  in production code, tests, or docs, so the method was deleted
+  rather than patched — a bug in unreachable code is worse than
+  missing functionality. A cascade check then found two more
+  `StateParser.__init__` attributes that only `parse_action_intent`
+  (or nothing at all) referenced: `self.relationship_keywords` (a
+  disposition-delta lookup table, never consulted) and
+  `self.recruitment_patterns` (three regexes, never searched). Both
+  removed. If intent classification is needed later, reuse the
+  word-boundary `StateParser._combat_regex` idiom. (rag-quest-1d9)
+
 ### Changed
 - **State parser: pre-compiled every regex on the per-turn hot path.**
   Nine pattern lists (`healing_patterns`, `pickup_patterns`,
