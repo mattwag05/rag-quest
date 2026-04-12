@@ -12,7 +12,11 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+### Fixed
+- State parser: strip Markdown emphasis markers (`**`, `__`, `*`, `_`) from extracted
+  NPC names, item names, locations, and quest titles. Narrators that format proper nouns
+  with bold/italic no longer leak `**Captain Mira**` into `World.npcs_met`, Inventory, or
+  Timeline events (`rag_quest/engine/state_parser.py`).
 
 ## [0.6.0] — Campaign Memory
 
