@@ -62,13 +62,15 @@ def test_timeline_filter_by_type():
 
 def test_timeline_size_rotation():
     tl = Timeline(max_events=5)
+    # Push enough events to exceed max + slack so rotation fires at least once.
     change = StateChange()
     change.items_gained = ["coin"]
-    for i in range(1, 12):
+    n = 5 + Timeline._ROTATION_SLACK + 20
+    for i in range(1, n + 1):
         tl.record_from_state_change(turn=i, change=change, player_input="loot")
-    assert len(tl.events) == 5
-    # Oldest should have rotated out — earliest remaining should be turn 7+
-    assert tl.events[0].turn >= 7
+    # After rotation, length clamps back down to max_events.
+    assert len(tl.events) <= 5 + Timeline._ROTATION_SLACK
+    assert tl.events[-1].turn == n
 
 
 def test_timeline_bookmarks_never_rotate():

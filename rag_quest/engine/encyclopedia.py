@@ -70,10 +70,17 @@ class LoreEncyclopedia:
         return result
 
     def categories_with_counts(self) -> List[tuple[str, int]]:
-        counts = []
-        for cat in CATEGORIES:
-            counts.append((cat, len(self.list_entries(cat))))
-        return counts
+        """Cheap count of each category without materializing LoreEntry objects."""
+        npc_count = len(
+            set(getattr(self._gs.world, "npcs_met", set()))
+            | set(getattr(self._gs.relationships, "relationships", {}).keys())
+        )
+        return [
+            ("npcs", npc_count),
+            ("locations", len(getattr(self._gs.world, "visited_locations", set()))),
+            ("factions", len(getattr(self._gs.relationships, "factions", {}))),
+            ("items", len(getattr(self._gs.inventory, "items", {}))),
+        ]
 
     # ------------------------------------------------------------------
     # Detail layer

@@ -106,8 +106,18 @@ class Notetaker:
     # Summarization
     # ------------------------------------------------------------------
 
+    # Minimum new turns required before an auto-refresh fires. Manual
+    # `/notes refresh` bypasses this by calling `refresh()` directly.
+    AUTO_REFRESH_MIN_TURNS = 10
+
     def needs_refresh(self, current_turn: int) -> bool:
-        return current_turn > self.last_summarized_turn
+        """Cheap check used by the auto-save hook to decide whether to run an LLM call.
+
+        Because `refresh()` blocks on the same provider the narrator uses (20-30s on
+        local Ollama), we gate auto-refreshes behind a turn threshold so the 5-turn
+        auto-save cadence doesn't produce a summary call every single save.
+        """
+        return current_turn - self.last_summarized_turn >= self.AUTO_REFRESH_MIN_TURNS
 
     def refresh(
         self,

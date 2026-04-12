@@ -87,10 +87,14 @@ class Timeline:
         self.bookmarks: List[Bookmark] = []
         self.max_events = max_events
 
+    # Chunk rotation window: only prune when we're this many events past the
+    # cap, so the O(n) slice delete amortizes to O(1) per append.
+    _ROTATION_SLACK = 128
+
     def add_event(self, event: TimelineEvent) -> None:
         self.events.append(event)
         # Oldest-first rotation. Bookmarks are never rotated.
-        if len(self.events) > self.max_events:
+        if len(self.events) > self.max_events + self._ROTATION_SLACK:
             overflow = len(self.events) - self.max_events
             del self.events[:overflow]
 
