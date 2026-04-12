@@ -1,6 +1,6 @@
-# CLAUDE.md — RAG-Quest v0.5.2 AI Developer Guide
+# CLAUDE.md — RAG-Quest v0.5.3 AI Developer Guide
 
-This document provides AI assistants (Claude, GPT, etc.) with a comprehensive understanding of RAG-Quest v0.5.2 architecture, conventions, and development practices.
+This document provides AI assistants (Claude, GPT, etc.) with a comprehensive understanding of RAG-Quest v0.5.3 architecture, conventions, and development practices.
 
 ## Project Overview
 
@@ -8,13 +8,28 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 
 **Core Design Philosophy**: LightRAG does the heavy lifting. The LLM narrator is intentionally kept small (Gemma 4 E2B/E4B, 2-4B parameters) because it doesn't memorize the world. Instead, LightRAG's dual-level retrieval (entity matching + vector similarity) injects precise knowledge per query. This architecture enables RAG-Quest to run on consumer hardware while producing narrative quality comparable to much larger models.
 
-**Version**: v0.5.2 (Polished UX for non-developers)
+**Version**: v0.5.3 (Interactive tutorial & user guide)
 
 **Status**: Production-ready. All core systems verified and working. Full backwards compatibility with legacy code.
 
-**Key Achievement**: Zero tracebacks shown to users. Every error has an actionable, friendly message.
+**Key Achievement**: Interactive 9-step TUI tutorial, downloadable 8-chapter user guide, 25/25 automated tests passing.
 
-## What's New in v0.5.2
+## What's New in v0.5.3
+
+### Interactive Tutorial
+- **`/tutorial` Command**: Launches 9-step guided TUI walkthrough (welcome, character creation, game loop, combat, inventory, quests, NPCs, saving, advanced commands)
+- **Progress Indicator**: Step X of 9 display with rich formatting
+- **Skippable**: Ctrl+C exits at any point
+
+### User Guide
+- **Downloadable Word Doc**: `docs/RAG-Quest_User_Guide.docx` — 8 chapters for non-developers
+- **Full Coverage**: Getting started through advanced features and troubleshooting
+
+### Quality Assurance
+- **25-Turn Test Suite**: `test_v053.py` — 25/25 passing, full game loop simulation
+- **Verified Systems**: Character creation → combat → quests → level up → saves
+
+## What's New in v0.5.2 (Previous)
 
 ### UX Polish & Accessibility
 - **Friendly Setup Wizard**: Automatically detects Ollama, guides through configuration
@@ -314,6 +329,7 @@ class WorldRAG:
 - `/p`, `/party` — Show party
 - `/rel`, `/relationships` — Show NPC relationships
 - `/h`, `/help` — Show full help
+- `/tutorial` — Launch 9-step interactive TUI tutorial
 - `/config` — Change settings
 - `/new` — New game
 - `/save` — Manual save

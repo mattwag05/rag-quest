@@ -1,4 +1,4 @@
-# AGENTS.md — LLM Provider Guide for RAG-Quest v0.5.2
+# AGENTS.md — LLM Provider Guide for RAG-Quest v0.5.3
 
 This document describes RAG-Quest's LLM provider architecture, how each provider works, and how to add new providers.
 

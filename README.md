@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Version 0.5.2](https://img.shields.io/badge/version-0.5.2-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.5.2)
+[![Version 0.5.3](https://img.shields.io/badge/version-0.5.3-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.5.3)
 [![Status: Stable](https://img.shields.io/badge/status-stable-green.svg)](docs/TEST_REPORT.md)
 
 > **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone.**
@@ -43,12 +43,15 @@
 - **Achievement System** — 11 achievements tracking exploration, combat, diplomacy, and progression
 
 ### Accessibility & Polish
+- **Interactive Tutorial** — `/tutorial` launches a 9-step guided TUI walkthrough for new players
+- **Downloadable User Guide** — 8-chapter Word document covering all game systems
 - **Friendly Setup Wizard** — Automatically detects Ollama, guides you through configuration
 - **No Command-Line Experience Needed** — Welcoming interface, helpful prompts, no jargon
 - **Command Shortcuts** — `/i` for inventory, `/s` for stats, `/q` for quests, `/p` for party, `/h` for help
 - **Smart Error Handling** — Actionable error messages, zero tracebacks, graceful recovery
 - **Text-to-Speech Narration** — Optional TTS with multiple voices (pyttsx3 offline, gTTS online)
 - **RAG Profiles** — Choose speed vs quality (fast/balanced/deep) based on your hardware
+- **25-Turn Automated Test Suite** — All core game systems verified in simulation
 
 ## Quick Start (5 Minutes)
 
