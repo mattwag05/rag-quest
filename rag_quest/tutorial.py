@@ -1,11 +1,8 @@
 """Interactive TUI tutorial for new RAG-Quest players."""
 
-from rich.align import Align
 from rich.console import Console
-from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
 console = Console()
 

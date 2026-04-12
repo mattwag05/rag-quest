@@ -1,11 +1,9 @@
 """Main entry point for RAG-Quest."""
 
-import asyncio
 import sys
 from pathlib import Path
 
 from rich.console import Console
-from rich.panel import Panel
 from rich.prompt import Prompt
 
 from . import config, startup, ui

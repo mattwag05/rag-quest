@@ -13,7 +13,6 @@ unique-id check, cycle detection) is delegated to `load_modules` and
 from __future__ import annotations
 
 import re
-import textwrap
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional

@@ -1,26 +1,22 @@
 """Main game loop and state management."""
 
-import asyncio
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 from rich.console import Console
-from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Confirm
 
 from .. import ui
 from ..knowledge import WorldRAG
 from ..llm import BaseLLMProvider
-from ..saves import SaveManager
 from ..worlds.modules import ModuleStatus
 from .achievements import AchievementManager
 from .character import Character
-from .combat import CombatEncounter, CombatManager
+from .combat import CombatManager
 from .dungeon import DungeonGenerator
-from .encounters import EncounterGenerator
 from .encyclopedia import CATEGORIES as LORE_CATEGORIES
 from .encyclopedia import LoreEncyclopedia
 from .events import EventManager
@@ -876,8 +872,6 @@ def _cmd_base(parts: list, game_state: GameState) -> None:
 
 def _render_base_menu(base) -> None:
     """Rich panel listing stationed NPCs grouped by service + storage summary."""
-    from rich.table import Table
-
     grouped = base.npcs_by_service()
     if not grouped:
         roster_text = (

@@ -1,8 +1,6 @@
 """LightRAG wrapper for world knowledge."""
 
 import asyncio
-import json
-import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
@@ -10,7 +8,7 @@ from typing import Optional
 from lightrag import LightRAG, QueryParam
 
 from ..llm import BaseLLMProvider, LLMConfig
-from .chunking import RAGProfileConfig, chunk_pdf_text
+from .chunking import RAGProfileConfig
 
 
 class WorldRAG:
@@ -108,11 +106,6 @@ class WorldRAG:
         """Ingest text into the knowledge graph with profile-aware chunking."""
         if not self.initialized:
             self.initialize()
-
-        # Chunk text based on profile for optimal ingestion
-        from .ingest import should_re_ingest
-
-        chunk_size = self.profile_config.get_chunk_size()
 
         # Split text into chunks appropriate for the profile
         from .chunking import TextChunker

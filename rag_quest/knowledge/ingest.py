@@ -2,12 +2,9 @@
 
 import hashlib
 from pathlib import Path
-from typing import Optional, List
 
 import fitz  # pymupdf
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
-
-from .chunking import chunk_pdf_text, TextChunker
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 
 
 def ingest_file(filepath: str, profile: str = "balanced") -> str:
@@ -26,8 +23,7 @@ def ingest_file(filepath: str, profile: str = "balanced") -> str:
         return _ingest_text_file(filepath)
     else:
         raise ValueError(
-            f"Unsupported file type: {path.suffix}. "
-            "Supported: .txt, .md, .pdf"
+            f"Unsupported file type: {path.suffix}. " "Supported: .txt, .md, .pdf"
         )
 
 
@@ -41,27 +37,31 @@ def _ingest_pdf(filepath: str, profile: str = "balanced") -> str:
     with fitz.open(filepath) as doc:
         total_pages = len(doc)
         text_parts = []
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
         ) as progress:
-            task = progress.add_task(f"Extracting PDF ({total_pages} pages)...", total=total_pages)
-            
+            task = progress.add_task(
+                f"Extracting PDF ({total_pages} pages)...", total=total_pages
+            )
+
             for page_num, page in enumerate(doc):
                 text = page.get_text()
                 if text.strip():
                     text_parts.append(f"[Page {page_num + 1}]\n{text}")
                 progress.advance(task)
-        
+
         full_text = "\n\n".join(text_parts)
-        
+
         # Report chunking if large PDF
         if total_pages > 20:
-            print(f"[*] PDF has {total_pages} pages - applying {profile} chunking strategy")
-        
+            print(
+                f"[*] PDF has {total_pages} pages - applying {profile} chunking strategy"
+            )
+
         return full_text
 
 
@@ -77,9 +77,11 @@ def ingest_directory(
         raise NotADirectoryError(f"Not a directory: {directory}")
 
     results = {}
-    files = list(dir_path.rglob("*.txt")) + list(
-        dir_path.rglob("*.md")
-    ) + list(dir_path.rglob("*.pdf"))
+    files = (
+        list(dir_path.rglob("*.txt"))
+        + list(dir_path.rglob("*.md"))
+        + list(dir_path.rglob("*.pdf"))
+    )
 
     if not files:
         return results
@@ -121,8 +123,8 @@ def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> list[st
 def get_file_hash(filepath: str) -> str:
     """Get SHA256 hash of a file for change detection."""
     hash_obj = hashlib.sha256()
-    with open(filepath, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
+    with open(filepath, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
             hash_obj.update(chunk)
     return hash_obj.hexdigest()
 
@@ -130,13 +132,13 @@ def get_file_hash(filepath: str) -> str:
 def should_re_ingest(filepath: str, cache_dir: Path) -> bool:
     """Check if a file has been modified since last ingestion."""
     cache_file = cache_dir / f".{Path(filepath).name}.hash"
-    
+
     if not cache_file.exists():
         return True
-    
+
     current_hash = get_file_hash(filepath)
     cached_hash = cache_file.read_text().strip()
-    
+
     return current_hash != cached_hash
 
 

@@ -56,6 +56,25 @@ changelog" for the full convention.
   pyflakes audit. (rag-quest-5ya)
 
 ### Removed
+- **Unused-import sweep across `rag_quest/`.** pyflakes audit turned
+  up ~30 imports that were pulled in but never referenced — typing
+  helpers (`Dict`, `Optional`, `Tuple`), Rich widgets (`Layout`,
+  `Rule`, `Text`, `Table`, `Align`, `Markdown`, `Panel`, depending on
+  the file), `asyncio` in modules that became synchronous in v0.5,
+  stale world-class exports (`TimeOfDay`, `Weather`), leftover
+  `dataclass` / `field` imports in modules without dataclasses,
+  `textwrap` in `worlds/new_module.py`, and several orphaned
+  per-module helpers (`chunk_pdf_text`, `TextChunker`,
+  `should_re_ingest`, `SaveManager`, `CombatEncounter`,
+  `EncounterGenerator`, `ACTION_PARSER`, `Markdown` in
+  `engine/game.py`, local `from rich.table import Table` inside
+  `_render_base_menu`, local `from . import startup` inside
+  `ConfigManager._setup_llm_provider`). Also lifted
+  `MultiplayerSession` in `multiplayer/sync.py` from a never-imported
+  forward-ref string to a proper `TYPE_CHECKING` import. No behavior
+  change; pyflakes now reports zero "imported but unused" warnings
+  for `rag_quest/`. (rag-quest-dt4)
+
 - **Dead-code sweep in `StateParser`.** `parse_action_intent` was a
   player-input intent classifier that used raw substring matching —
   so a player typing "I lay the stable boy down" would have tripped

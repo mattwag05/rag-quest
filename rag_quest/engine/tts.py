@@ -2,7 +2,7 @@
 
 import os
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict
 
 
 class TTSEngine(Enum):

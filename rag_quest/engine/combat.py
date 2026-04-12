@@ -3,7 +3,7 @@
 import random
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 
 class DamageType(Enum):

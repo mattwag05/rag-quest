@@ -2,11 +2,12 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, List, Dict
+from typing import List, Optional
 
 
 class CombatStyle(Enum):
     """How companions fight in combat."""
+
     AGGRESSIVE = "aggressive"
     DEFENSIVE = "defensive"
     SUPPORT = "support"
@@ -15,6 +16,7 @@ class CombatStyle(Enum):
 
 class DialogueStyle(Enum):
     """How companions speak."""
+
     FORMAL = "formal"
     CASUAL = "casual"
     GRUMPY = "grumpy"
@@ -70,7 +72,7 @@ class PartyMember:
     def modify_loyalty(self, amount: int, reason: str = "") -> None:
         """
         Modify loyalty score.
-        
+
         Args:
             amount: Change to loyalty (-100 to +100)
             reason: Reason for loyalty change (for logging)
@@ -101,10 +103,16 @@ class PartyMember:
 
     def get_combat_power(self) -> int:
         """Calculate combat power as aggregate of stats."""
-        return sum([
-            self.strength, self.dexterity, self.constitution,
-            self.intelligence, self.wisdom, self.charisma
-        ]) + (self.level * 10)
+        return sum(
+            [
+                self.strength,
+                self.dexterity,
+                self.constitution,
+                self.intelligence,
+                self.wisdom,
+                self.charisma,
+            ]
+        ) + (self.level * 10)
 
     def to_dict(self) -> dict:
         """Serialize party member."""
@@ -145,7 +153,7 @@ class PartyMember:
 class Party:
     """Manages the player's party of companions."""
 
-    def __init__(self, max_size: int = 4, leader: Optional['PartyMember'] = None):
+    def __init__(self, max_size: int = 4, leader: Optional["PartyMember"] = None):
         """Initialize party. Default size includes player."""
         self.members: List[PartyMember] = []
         self.max_size = max_size
@@ -154,7 +162,7 @@ class Party:
     def add_member(self, member: PartyMember) -> bool:
         """
         Add a member to the party.
-        
+
         Returns:
             True if added, False if party is full
         """
@@ -166,7 +174,7 @@ class Party:
     def remove_member(self, name: str) -> bool:
         """
         Remove a member from the party.
-        
+
         Returns:
             True if removed, False if member not found
         """
@@ -200,7 +208,7 @@ class Party:
     def check_loyalty_departures(self) -> List[str]:
         """
         Check for members who leave due to low loyalty.
-        
+
         Returns:
             List of member names who left
         """
@@ -216,7 +224,9 @@ class Party:
         if not self.members:
             return "Party: Empty"
 
-        status_lines = [f"Party ({len(self.get_active_members())}/{len(self.members)} alive):"]
+        status_lines = [
+            f"Party ({len(self.get_active_members())}/{len(self.members)} alive):"
+        ]
         for member in self.members:
             status_char = "✓" if member.is_alive else "✗"
             hp_bar_length = 15

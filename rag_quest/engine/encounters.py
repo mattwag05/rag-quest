@@ -1,9 +1,9 @@
 """Dynamic encounter generation for RAG-Quest."""
 
 import random
-from typing import List, Optional
-from .combat import Enemy
+from typing import List
 
+from .combat import Enemy
 
 # Location-based enemy tables
 LOCATION_ENEMIES = {
@@ -194,7 +194,7 @@ ENEMY_TEMPLATES = {
 
 class EncounterGenerator:
     """Generates dynamic encounters based on location and difficulty."""
-    
+
     @staticmethod
     def generate_encounter(
         location: str,
@@ -203,12 +203,12 @@ class EncounterGenerator:
     ) -> List[Enemy]:
         """
         Generate enemies for an encounter.
-        
+
         Args:
             location: Location name or category
             player_level: Player's current level
             difficulty: "easy", "normal", "hard", "deadly"
-        
+
         Returns:
             List of Enemy objects
         """
@@ -219,34 +219,34 @@ class EncounterGenerator:
             "hard": (1.3, 2),
             "deadly": (1.6, 3),
         }
-        
+
         hp_scale, enemy_count = difficulty_scaling.get(difficulty, (1.0, 1))
-        
+
         # Get possible enemies for this location
         location_lower = location.lower()
         possible_enemies = []
-        
+
         # Try to match location
         for loc_key, enemies in LOCATION_ENEMIES.items():
             if loc_key in location_lower:
                 possible_enemies = enemies
                 break
-        
+
         # Default to any enemies if no location match
         if not possible_enemies:
             possible_enemies = list(ENEMY_TEMPLATES.keys())
-        
+
         # Select enemies randomly
         enemies = []
         for _ in range(enemy_count):
             enemy_name = random.choice(possible_enemies)
             template = ENEMY_TEMPLATES[enemy_name]
-            
+
             # Scale HP by difficulty and player level
             scaled_hp = int(template["hp"] * hp_scale)
             scaled_attack = template["attack"] + (player_level - 1) // 2
             scaled_defense = template["defense"] + (player_level - 1) // 3
-            
+
             enemy = Enemy(
                 name=enemy_name,
                 level=max(1, player_level - 1),
@@ -256,12 +256,14 @@ class EncounterGenerator:
                 dexterity=template.get("dexterity", 10),
                 damage_dice=template["damage_dice"],
                 xp_reward=int(template["xp"] * (1.0 + (player_level - 1) * 0.2)),
-                loot=random.sample(template.get("loot", []), min(2, len(template.get("loot", [])))),
+                loot=random.sample(
+                    template.get("loot", []), min(2, len(template.get("loot", [])))
+                ),
             )
             enemies.append(enemy)
-        
+
         return enemies
-    
+
     @staticmethod
     def generate_boss_encounter(location: str, player_level: int) -> List[Enemy]:
         """Generate a boss encounter."""
@@ -294,10 +296,10 @@ class EncounterGenerator:
                 "loot": ["Phylactery", "Spell Tome", "Soul Crystal"],
             },
         }
-        
+
         boss_name = random.choice(list(boss_templates.keys()))
         template = boss_templates[boss_name]
-        
+
         boss = Enemy(
             name=boss_name,
             level=player_level + 2,
@@ -309,18 +311,18 @@ class EncounterGenerator:
             xp_reward=int(template["xp"] * (1.0 + (player_level - 1) * 0.2)),
             loot=template["loot"],
         )
-        
+
         return [boss]
-    
+
     @staticmethod
     def get_random_enemy(player_level: int) -> Enemy:
         """Get a single random enemy scaled to player level."""
         enemy_name = random.choice(list(ENEMY_TEMPLATES.keys()))
         template = ENEMY_TEMPLATES[enemy_name]
-        
+
         scaled_hp = int(template["hp"] * (1.0 + (player_level - 1) * 0.1))
         scaled_attack = template["attack"] + (player_level - 1) // 2
-        
+
         return Enemy(
             name=enemy_name,
             level=max(1, player_level - 1),
@@ -330,5 +332,7 @@ class EncounterGenerator:
             dexterity=template.get("dexterity", 10),
             damage_dice=template["damage_dice"],
             xp_reward=int(template["xp"] * (1.0 + (player_level - 1) * 0.2)),
-            loot=random.sample(template.get("loot", []), min(1, len(template.get("loot", [])))),
+            loot=random.sample(
+                template.get("loot", []), min(1, len(template.get("loot", [])))
+            ),
         )

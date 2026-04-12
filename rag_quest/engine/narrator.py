@@ -1,13 +1,12 @@
 """AI narrator for the game."""
 
 import random
-import re
 import time
 from typing import Optional
 
 from ..knowledge import WorldRAG
 from ..llm import BaseLLMProvider
-from ..prompts import ACTION_PARSER, NARRATOR_SYSTEM
+from ..prompts import NARRATOR_SYSTEM
 from .character import Character
 from .inventory import Inventory
 from .quests import QuestLog

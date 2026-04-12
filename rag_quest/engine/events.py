@@ -1,13 +1,13 @@
 """Dynamic world events system for RAG-Quest."""
 
 import random
-from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
 
 
 class EventType(Enum):
     """Types of world events."""
+
     WEATHER = "Weather"
     POLITICAL = "Political"
     ECONOMIC = "Economic"
@@ -21,6 +21,7 @@ class EventType(Enum):
 
 class EventSeverity(Enum):
     """How severe an event is."""
+
     MINOR = "Minor"
     MODERATE = "Moderate"
     MAJOR = "Major"
@@ -28,14 +29,22 @@ class EventSeverity(Enum):
 
 class WorldEvent:
     """Something happening in the world independent of the player."""
-    
-    def __init__(self, name: str = None, description: str = None, 
-                 event_type: EventType = None, severity: EventSeverity = None,
-                 duration_turns: int = None, turns_remaining: int = 0,
-                 effects: Dict[str, int] = None, is_active: bool = False,
-                 started_turn: int = 0, title: str = None):
+
+    def __init__(
+        self,
+        name: str = None,
+        description: str = None,
+        event_type: EventType = None,
+        severity: EventSeverity = None,
+        duration_turns: int = None,
+        turns_remaining: int = 0,
+        effects: Dict[str, int] = None,
+        is_active: bool = False,
+        started_turn: int = 0,
+        title: str = None,
+    ):
         """Initialize a WorldEvent.
-        
+
         Supports both 'name' (new) and 'title' (old) parameter names.
         """
         # Handle backwards compatibility: title -> name
@@ -97,25 +106,35 @@ class EventManager:
         self.active_events: List[WorldEvent] = []
         self.event_history: List[WorldEvent] = []
         self.event_templates = self._init_event_templates()
-    
+
     @staticmethod
-    def create_world_event(name: str = None, title: str = None, description: str = None,
-                          event_type: EventType = None, severity: EventSeverity = None,
-                          duration_turns: int = None, **kwargs) -> WorldEvent:
+    def create_world_event(
+        name: str = None,
+        title: str = None,
+        description: str = None,
+        event_type: EventType = None,
+        severity: EventSeverity = None,
+        duration_turns: int = None,
+        **kwargs,
+    ) -> WorldEvent:
         """Factory method to create a WorldEvent with backwards compatibility.
-        
+
         Supports both 'name' (new) and 'title' (old) parameters.
         """
         # Handle backwards compatibility: title -> name
         final_name = name or title or "Unnamed Event"
-        
+
         return WorldEvent(
             name=final_name,
             description=description or "",
             event_type=event_type or EventType.SOCIAL,
             severity=severity or EventSeverity.MINOR,
             duration_turns=duration_turns or 1,
-            **{k: v for k, v in kwargs.items() if k in ['turns_remaining', 'effects', 'is_active', 'started_turn']}
+            **{
+                k: v
+                for k, v in kwargs.items()
+                if k in ["turns_remaining", "effects", "is_active", "started_turn"]
+            },
         )
 
     def _init_event_templates(self) -> List[WorldEvent]:
@@ -127,7 +146,7 @@ class EventManager:
                 event_type=EventType.ECONOMIC,
                 severity=EventSeverity.MINOR,
                 duration_turns=5,
-                effects={"shop_prices": -15, "item_variety": 20}
+                effects={"shop_prices": -15, "item_variety": 20},
             ),
             WorldEvent(
                 name="Goblin Raid",
@@ -135,7 +154,7 @@ class EventManager:
                 event_type=EventType.COMBAT,
                 severity=EventSeverity.MODERATE,
                 duration_turns=3,
-                effects={"combat_encounters": 30, "enemy_difficulty": 10}
+                effects={"combat_encounters": 30, "enemy_difficulty": 10},
             ),
             WorldEvent(
                 name="Festival of Light",
@@ -143,7 +162,7 @@ class EventManager:
                 event_type=EventType.SOCIAL,
                 severity=EventSeverity.MINOR,
                 duration_turns=4,
-                effects={"npc_friendliness": 20, "healing_availability": 15}
+                effects={"npc_friendliness": 20, "healing_availability": 15},
             ),
             WorldEvent(
                 name="Dark Storm",
@@ -151,7 +170,7 @@ class EventManager:
                 event_type=EventType.WEATHER,
                 severity=EventSeverity.MAJOR,
                 duration_turns=5,
-                effects={"visibility": -30, "enemy_difficulty": 15, "morale": -10}
+                effects={"visibility": -30, "enemy_difficulty": 15, "morale": -10},
             ),
             WorldEvent(
                 name="Plague Outbreak",
@@ -159,7 +178,7 @@ class EventManager:
                 event_type=EventType.NATURAL_DISASTER,
                 severity=EventSeverity.MAJOR,
                 duration_turns=7,
-                effects={"hp_drain": 1, "healer_availability": 30, "npc_sickness": 10}
+                effects={"hp_drain": 1, "healer_availability": 30, "npc_sickness": 10},
             ),
             WorldEvent(
                 name="Royal Decree",
@@ -167,7 +186,7 @@ class EventManager:
                 event_type=EventType.POLITICAL,
                 severity=EventSeverity.MAJOR,
                 duration_turns=6,
-                effects={"faction_conflicts": 20}
+                effects={"faction_conflicts": 20},
             ),
             WorldEvent(
                 name="Magic Surge",
@@ -175,7 +194,7 @@ class EventManager:
                 event_type=EventType.MAGICAL,
                 severity=EventSeverity.MODERATE,
                 duration_turns=4,
-                effects={"spell_power": 20, "mana_recovery": 25}
+                effects={"spell_power": 20, "mana_recovery": 25},
             ),
             WorldEvent(
                 name="Vampire Rise",
@@ -183,7 +202,11 @@ class EventManager:
                 event_type=EventType.SUPERNATURAL,
                 severity=EventSeverity.MAJOR,
                 duration_turns=8,
-                effects={"night_encounters": 40, "undead_difficulty": 20, "holy_power": 15}
+                effects={
+                    "night_encounters": 40,
+                    "undead_difficulty": 20,
+                    "holy_power": 15,
+                },
             ),
             WorldEvent(
                 name="Harvest Blessing",
@@ -191,7 +214,7 @@ class EventManager:
                 event_type=EventType.ECONOMIC,
                 severity=EventSeverity.MINOR,
                 duration_turns=3,
-                effects={"food_prices": -20, "health_recovery": 10}
+                effects={"food_prices": -20, "health_recovery": 10},
             ),
             WorldEvent(
                 name="Dragon Sighting",
@@ -199,18 +222,20 @@ class EventManager:
                 event_type=EventType.COMBAT,
                 severity=EventSeverity.MAJOR,
                 duration_turns=10,
-                effects={"legendary_encounters": 50, "reward_multiplier": 50}
+                effects={"legendary_encounters": 50, "reward_multiplier": 50},
             ),
         ]
 
-    def check_for_events(self, turn_number: int, event_chance: float = 0.1) -> Optional[WorldEvent]:
+    def check_for_events(
+        self, turn_number: int, event_chance: float = 0.1
+    ) -> Optional[WorldEvent]:
         """
         Check if a new world event should occur this turn.
-        
+
         Args:
             turn_number: Current game turn
             event_chance: Probability (0-1) of event occurring
-        
+
         Returns:
             New WorldEvent if triggered, None otherwise
         """
@@ -219,7 +244,7 @@ class EventManager:
 
         # Select random event
         event_template = random.choice(self.event_templates)
-        
+
         # Create a new instance
         event = WorldEvent(
             name=event_template.name,
@@ -227,9 +252,9 @@ class EventManager:
             event_type=event_template.event_type,
             severity=event_template.severity,
             duration_turns=event_template.duration_turns,
-            effects=event_template.effects.copy()
+            effects=event_template.effects.copy(),
         )
-        
+
         event.activate(turn_number)
         self.active_events.append(event)
         return event
@@ -237,7 +262,7 @@ class EventManager:
     def apply_effects(self, game_state) -> Dict[str, int]:
         """
         Apply effects from all active events to game state.
-        
+
         Returns:
             Dictionary of applied effects
         """
@@ -246,7 +271,9 @@ class EventManager:
         for event in self.active_events:
             if event.is_active:
                 for effect_key, effect_value in event.effects.items():
-                    cumulative_effects[effect_key] = cumulative_effects.get(effect_key, 0) + effect_value
+                    cumulative_effects[effect_key] = (
+                        cumulative_effects.get(effect_key, 0) + effect_value
+                    )
 
         # Apply specific effects
         if "shop_prices" in cumulative_effects:
@@ -264,7 +291,7 @@ class EventManager:
     def expire_events(self) -> List[str]:
         """
         Remove ended events and return their names.
-        
+
         Returns:
             List of expired event names
         """
@@ -287,9 +314,10 @@ class EventManager:
         return [
             f"[{event.severity.value}] {event.name}: {event.description} "
             f"({event.turns_remaining} turns remaining)"
-            for event in self.active_events if event.is_active
+            for event in self.active_events
+            if event.is_active
         ]
-    
+
     def get_active_events(self) -> List[WorldEvent]:
         """Get all active events. Alias for accessing active_events list."""
         return [e for e in self.active_events if e.is_active]
@@ -305,6 +333,10 @@ class EventManager:
     def from_dict(cls, data: dict) -> "EventManager":
         """Deserialize event manager."""
         mgr = cls()
-        mgr.active_events = [WorldEvent.from_dict(e) for e in data.get("active_events", [])]
-        mgr.event_history = [WorldEvent.from_dict(e) for e in data.get("event_history", [])]
+        mgr.active_events = [
+            WorldEvent.from_dict(e) for e in data.get("active_events", [])
+        ]
+        mgr.event_history = [
+            WorldEvent.from_dict(e) for e in data.get("event_history", [])
+        ]
         return mgr

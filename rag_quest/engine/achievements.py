@@ -1,6 +1,6 @@
 """Achievement system for RAG-Quest."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
@@ -8,6 +8,7 @@ from typing import List, Optional
 @dataclass
 class Achievement:
     """An achievement that can be unlocked."""
+
     id: str
     name: str
     description: str
@@ -122,13 +123,15 @@ class AchievementManager:
         for achievement in achievement_list:
             self.achievements[achievement.id] = achievement
 
-    def check_achievements(self, game_state: dict = None, player: dict = None) -> List[Achievement]:
+    def check_achievements(
+        self, game_state: dict = None, player: dict = None
+    ) -> List[Achievement]:
         """Check for newly unlocked achievements based on game state.
-        
+
         Args:
             game_state: Current game state dict (NEW API)
             player: Player dict (OLD API backwards compat, ignored if game_state provided)
-        
+
         Returns:
             List of newly unlocked achievements
         """
@@ -141,12 +144,12 @@ class AchievementManager:
                 "inventory": {"items": []},
                 "party": {"members": []},
                 "quest_log": {"quests": []},
-                "turn_number": 1
+                "turn_number": 1,
             }
-        
+
         if game_state is None:
             return []
-        
+
         newly_unlocked = []
 
         character = game_state.get("character", {})
@@ -192,8 +195,9 @@ class AchievementManager:
                 newly_unlocked.append(self.achievements["party_leader"])
 
         # Quest Master - complete 5 quests
-        completed_quests = len([q for q in quest_log.get("quests", [])
-                                if q.get("status") == "completed"])
+        completed_quests = len(
+            [q for q in quest_log.get("quests", []) if q.get("status") == "completed"]
+        )
         if completed_quests >= 5:
             if not self.achievements["quest_master"].unlocked:
                 self.achievements["quest_master"].unlock()
@@ -224,7 +228,7 @@ class AchievementManager:
 
     def get_all_achievements(self) -> List[Achievement]:
         """Get all achievements (both locked and unlocked).
-        
+
         Returns:
             List of all Achievement objects
         """
@@ -232,7 +236,7 @@ class AchievementManager:
 
     def get_unlocked(self) -> List[Achievement]:
         """Get all unlocked achievements.
-        
+
         Returns:
             List of unlocked Achievement objects
         """
@@ -240,10 +244,10 @@ class AchievementManager:
 
     def unlock_achievement(self, achievement_id: str) -> bool:
         """Manually unlock an achievement.
-        
+
         Args:
             achievement_id: ID of the achievement
-        
+
         Returns:
             True if unlocked, False if not found
         """
@@ -257,8 +261,7 @@ class AchievementManager:
         """Serialize achievement manager."""
         return {
             "achievements": {
-                aid: ach.to_dict()
-                for aid, ach in self.achievements.items()
+                aid: ach.to_dict() for aid, ach in self.achievements.items()
             }
         }
 
