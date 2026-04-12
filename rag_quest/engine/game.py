@@ -543,6 +543,9 @@ def _handle_command(
     elif cmd == "/base":
         _cmd_base(parts, game_state)
 
+    elif cmd == "/modules":
+        _cmd_modules(parts, game_state)
+
     else:
         ui.print_unknown_command(cmd)
 
@@ -780,6 +783,49 @@ def _cmd_base(parts: list, game_state: GameState) -> None:
         services = ", ".join(base.services) if base.services else "—"
         storage_count = len(base.storage.items)
         table.add_row(base.name, base.location_ref, services, str(storage_count))
+    console.print(table)
+
+
+def _cmd_modules(parts: list, game_state: GameState) -> None:
+    """List modules declared for this world, grouped by lifecycle status."""
+    from ..worlds.modules import ModuleStatus
+
+    registry = game_state.world.module_registry
+    if len(registry) == 0:
+        console.print(
+            "[yellow]This world has no modules.yaml manifest. Create one "
+            "at the world directory root to declare adventure modules.[/yellow]"
+        )
+        return
+
+    from rich.table import Table
+
+    table = Table(title="Adventure Modules", border_style="cyan")
+    table.add_column("Status", style="bold")
+    table.add_column("ID")
+    table.add_column("Title")
+    table.add_column("Entry Location")
+    table.add_column("Unlocks On")
+
+    status_rank = {
+        ModuleStatus.ACTIVE: 0,
+        ModuleStatus.AVAILABLE: 1,
+        ModuleStatus.LOCKED: 2,
+        ModuleStatus.COMPLETED: 3,
+    }
+    for module in sorted(registry.all(), key=lambda m: status_rank[m.status]):
+        unlock_display = (
+            ", ".join(module.unlock_when_quests_completed)
+            if module.unlock_when_quests_completed
+            else "—"
+        )
+        table.add_row(
+            module.status.value,
+            module.id,
+            module.title,
+            module.entry_location,
+            unlock_display,
+        )
     console.print(table)
 
 

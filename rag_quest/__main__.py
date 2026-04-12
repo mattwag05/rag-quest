@@ -442,6 +442,33 @@ def _main() -> None:
     )
     game_state.encyclopedia = LoreEncyclopedia(game_state)
 
+    # v0.7: Load modules.yaml if present. Checked in order:
+    #   1. ./lore/modules.yaml (world-template authors)
+    #   2. ~/.local/share/rag-quest/worlds/{name}/modules.yaml (shipped worlds)
+    # Malformed manifests surface via ui.print_error — never abort the game.
+    # Lore ingestion can take minutes on first boot — keep the user informed
+    # via a Rich status spinner so it doesn't look like a silent hang.
+    from .worlds.modules import ModuleManifestError, load_modules
+
+    module_search_paths = [
+        Path("lore"),
+        Path.home() / ".local/share/rag-quest/worlds" / world.name,
+    ]
+    for mod_dir in module_search_paths:
+        if not (mod_dir / "modules.yaml").exists():
+            continue
+        try:
+            with console.status(
+                f"[bold green]Loading modules from {mod_dir}/modules.yaml…[/bold green]"
+            ):
+                world.module_registry = load_modules(mod_dir, world_rag=world_rag)
+            ui.print_success(
+                f"Loaded {len(world.module_registry)} module(s) from {mod_dir}/modules.yaml"
+            )
+        except ModuleManifestError as e:
+            ui.print_error(f"Could not load modules.yaml: {e}")
+        break
+
     # Determine save path
     save_dir = Path.home() / ".local/share/rag-quest/saves"
     save_path = save_dir / f"{world.name}.json"

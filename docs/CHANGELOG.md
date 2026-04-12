@@ -23,6 +23,20 @@ changelog" for the full convention.
   `StateChange.claim_base` rule. New `/base` command lists claimed bases;
   `/base claim [name]` is a deterministic escape hatch when regex detection
   doesn't catch the narrator's phrasing. Claims dedupe on `location_ref`.
+- **v0.7: `modules.yaml` loader + `ModuleRegistry`** — worlds can now declare
+  hub-and-spoke adventure modules in a top-level `modules.yaml` manifest.
+  New `rag_quest/worlds/modules.py` validates the schema (id, title,
+  description, entry_location, unlock_when_quests_completed, completion_quest,
+  lore_files, rewards), ingests referenced lore files into the knowledge
+  graph via `WorldRAG.ingest_file()`, and stores the result in a new
+  `World.module_registry` field. Malformed manifests raise
+  `ModuleManifestError` and surface via `ui.print_error()` — never crashes the
+  game loop. New `/modules` command lists declared modules by lifecycle status
+  (active / available / locked / completed). On startup, the loader probes
+  `./lore/modules.yaml` then `~/.local/share/rag-quest/worlds/{name}/modules.yaml`.
+
+### Dependencies
+- Adds `pyyaml>=6.0` as a runtime dependency for the new modules.yaml loader.
 
 ### Fixed
 - State parser: strip Markdown emphasis markers (`**`, `__`, `*`, `_`) from extracted

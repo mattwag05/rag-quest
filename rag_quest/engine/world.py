@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+from ..worlds.modules import ModuleRegistry
 from .bases import Base
 
 
@@ -45,6 +46,7 @@ class World:
     recent_events: list[str] = field(default_factory=list)
     discovered_items: list[str] = field(default_factory=list)
     bases: list[Base] = field(default_factory=list)
+    module_registry: ModuleRegistry = field(default_factory=ModuleRegistry)
 
     def advance_time(self) -> None:
         """Advance to next time period."""
@@ -110,6 +112,7 @@ class World:
             "recent_events": self.recent_events,
             "discovered_items": self.discovered_items,
             "bases": [b.to_dict() for b in self.bases],
+            "module_registry": self.module_registry.to_dict(),
         }
 
     @classmethod
@@ -121,4 +124,7 @@ class World:
         data["visited_locations"] = set(data.get("visited_locations", []))
         data["npcs_met"] = set(data.get("npcs_met", []))
         data["bases"] = [Base.from_dict(b) for b in data.get("bases", [])]
+        data["module_registry"] = ModuleRegistry.from_dict(
+            data.get("module_registry", {})
+        )
         return cls(**data)

@@ -389,7 +389,23 @@ Claim flow: `StateChange.claim_base` fires when the narrator emits phrases like
 state-change handler calls `World.claim_base_at(location, name)`, which dedupes
 on `location_ref` and returns the new `Base` (or `None`). The `/base` command
 lists claimed bases; `/base claim [name]` is the deterministic escape hatch and
-calls the same `World` method directly. Service
+calls the same `World` method directly.
+
+**Modular Adventures (v0.7, `worlds/modules.py`)** — Worlds can declare
+hub-and-spoke adventures in a top-level `modules.yaml` manifest. Schema: `id`,
+`title`, `description`, `entry_location` (required); `unlock_when_quests_completed`,
+`completion_quest`, `lore_files`, `rewards` (optional). `load_modules(world_dir,
+world_rag)` parses + validates the manifest, ingests referenced lore via
+`WorldRAG.ingest_file()`, and returns a `ModuleRegistry`. `World.module_registry`
+holds the registry and round-trips via `to_dict`/`from_dict` (persisted
+statuses win over initial-state computation on reload — pass
+`compute_initial_states=False` to skip the recompute). `ModuleStatus` is an
+`Enum` (LOCKED / AVAILABLE / ACTIVE / COMPLETED). Malformed manifests raise
+`ModuleManifestError` (zero-traceback principle); `__main__.py` wraps the load
+in a Rich status spinner so first-boot ingestion doesn't look like a hang.
+`/modules` command lists declared modules by lifecycle status. Gating hook
+(post-turn re-evaluation) and `.rqworld` export integration are follow-up
+beads (`rag-quest-d4h`, `rag-quest-8qc`). Service
 menus and save-format v3 bump land in follow-up beads (`rag-quest-cxp`,
 `rag-quest-vei`).
 
