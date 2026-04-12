@@ -24,11 +24,8 @@ class Narrator:
         world_rag: WorldRAG,
         character: Character,
         world: World,
-        inventory: Optional["Inventory"] = None,
-        quest_log: Optional["QuestLog"] = None,
-        party: Optional["Party"] = None,
-        relationships: Optional["Relationships"] = None,
-        events: Optional["EventManager"] = None,
+        inventory: Optional[Inventory] = None,
+        quest_log: Optional[QuestLog] = None,
     ):
         self.llm = llm
         self.world_rag = world_rag
@@ -36,9 +33,6 @@ class Narrator:
         self.world = world
         self.inventory = inventory
         self.quest_log = quest_log
-        self.party = party
-        self.relationships = relationships
-        self.events = events
         self.conversation_history: list[dict] = []
         self.state_parser = StateParser()
         # Last parsed StateChange + the prose that produced it — consumed by

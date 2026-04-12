@@ -153,29 +153,6 @@ def print_quest_log_panel(quest_log) -> None:
     )
 
 
-def print_character_status(character) -> None:
-    """Print detailed character status."""
-    status_text = character.get_status()
-    console.print(
-        Panel(status_text, title="[bold]Character Status[/bold]", border_style="green")
-    )
-
-
-def print_world_context(world) -> None:
-    """Print world context and discovered locations."""
-    locations = (
-        ", ".join(world.visited_locations) if world.visited_locations else "None yet"
-    )
-    context = f"""[bold]Setting:[/bold] {world.setting}
-[bold]Tone:[/bold] {world.tone}
-[bold]Day:[/bold] {world.day_number}
-[bold]Time:[/bold] {world.current_time.value}
-[bold]Weather:[/bold] {world.weather.value}
-[bold]Visited Locations:[/bold]
-{locations}"""
-    console.print(Panel(context, title="[bold]World[/bold]", border_style="cyan"))
-
-
 def print_help() -> None:
     """Print in-game help."""
     help_text = """

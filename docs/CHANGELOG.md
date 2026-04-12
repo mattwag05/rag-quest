@@ -38,6 +38,23 @@ changelog" for the full convention.
   <file.rqworld>` wrap the round-trip so players can move a campaign
   between machines without a cloud account.
 
+### Fixed
+- **`Narrator.__init__` dead parameters.** `party`, `relationships`, and
+  `events` were declared `Optional["Party"] / Optional["Relationships"]
+  / Optional["EventManager"]` but none of the three forward-ref class
+  names were imported (`"Relationships"` was a typo; the actual class
+  is `RelationshipManager`). All three attributes were assigned in
+  `__init__` and then never read anywhere in the module, and the only
+  caller (`rag_quest/__main__.py`) never passed them. Removed the
+  params, the assignments, and the broken type hints. Found via
+  pyflakes audit. (rag-quest-wav)
+- **`ui.py` duplicate function definitions.** `print_character_status`
+  was defined twice (lines 156 and 357) and `print_world_context` was
+  defined twice (lines 164 and 375). Python late-binding silently made
+  the second definitions authoritative, so the first versions were
+  unreachable dead code. Removed the dead first versions. Found via
+  pyflakes audit. (rag-quest-5ya)
+
 ### Removed
 - **Dead-code sweep in `StateParser`.** `parse_action_intent` was a
   player-input intent classifier that used raw substring matching —
