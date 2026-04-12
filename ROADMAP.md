@@ -466,9 +466,29 @@ Ongoing throughout all versions:
 
 ## Current Status (2026-04-11)
 
-**v0.4.0 is complete and released**. The game features multi-character parties with companion AI, NPC relationship system with faction reputation, multi-step quest chains with branching paths, and dynamic world events that affect gameplay. All social and narrative systems tested and production-ready.
+**v0.4.0 is in final testing phase** after comprehensive playtest (22 test turns, all major systems).
 
-**Next focus**: v0.5 (multiplayer support, persistent cloud saves, world sharing). These enhance long-term engagement and social play.
+### v0.4 Playtest Results
+✅ **Working Well:**
+- Character creation with race/class bonuses
+- Combat system (damage, rolls, victory conditions)
+- Inventory core mechanics
+- World state management
+- Save/load functionality
+- Experience tracking
+
+❌ **Critical Bugs Found (6 issues):**
+1. Inventory.list_items() returns wrong type (P1)
+2. Party initialization broken (P1)
+3. RelationshipManager.add_npc() missing (P1)
+4. QuestLog.add_quest() API mismatch (P1)
+5. EventType enum incomplete (P2)
+6. Character ability methods missing (P2)
+
+**Status:** P1 bugs must be fixed before v0.4.1 release. Estimated 2-hour fix effort.
+**See:** [TEST_REPORT_v04.md](docs/TEST_REPORT_v04.md) and [PLAYTEST_FINDINGS.md](PLAYTEST_FINDINGS.md)
+
+**Next focus**: Fix critical v0.4 bugs, then proceed to v0.5 (multiplayer support, persistent cloud saves, world sharing).
 
 ---
 
