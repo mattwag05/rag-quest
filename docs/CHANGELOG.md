@@ -23,6 +23,17 @@ changelog" for the full convention.
   `StateChange.claim_base` rule. New `/base` command lists claimed bases;
   `/base claim [name]` is a deterministic escape hatch when regex detection
   doesn't catch the narrator's phrasing. Claims dedupe on `location_ref`.
+- **v0.7: `rag-quest new-module <world-dir>` CLI** — interactive manifest
+  author tool. Rich prompts walk you through module id (with auto-suggested
+  slug from the title), title, description, entry location, optional
+  completion quest, optional prerequisite modules (auto-wires to the
+  selected modules' `completion_quest` values as the new module's
+  `unlock_when_quests_completed`), and optional XP reward. Can stub a lore
+  template at `lore/modules/<id>.md` if one doesn't already exist (never
+  clobbers hand-written lore). Validates the resulting manifest via
+  `validate_manifest` and rolls back the append if validation fails so the
+  manifest can't be left wedged. Also hardens the loader: `modules:` with
+  nothing underneath is now a legal empty manifest.
 - **v0.7: `.rqworld` exporter/importer know about bases + modules** —
   `WorldExporter.export_world` gains an optional `source_dir` parameter.
   When supplied, the packager bundles `modules.yaml` plus every

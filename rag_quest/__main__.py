@@ -21,6 +21,8 @@ def main() -> None:
     positional = [a for a in sys.argv[1:] if not a.startswith("-")]
     if positional and positional[0] == "validate-module":
         sys.exit(_cmd_validate_module(positional[1:]))
+    if positional and positional[0] == "new-module":
+        sys.exit(_cmd_new_module(positional[1:]))
 
     try:
         _main()
@@ -96,6 +98,36 @@ def _cmd_validate_module(args: list[str]) -> int:
         ui.print_success(f"Manifest is clean — {module_count} module(s) validated.")
         return 0
     return 1
+
+
+def _cmd_new_module(args: list[str]) -> int:
+    """Subcommand: rag-quest new-module <world-dir>.
+
+    Drives the interactive new-module flow, appending a validated stanza to
+    `<world-dir>/modules.yaml`. Exits 0 on success, 1 on validator failure
+    or missing/invalid args.
+    """
+    from .worlds.modules import ModuleManifestError
+    from .worlds.new_module import run_interactive
+
+    if not args:
+        ui.print_error("Usage: rag-quest new-module <world-dir>")
+        return 1
+
+    world_dir = Path(args[0])
+    if world_dir.exists() and not world_dir.is_dir():
+        ui.print_error(f"Not a directory: {world_dir}")
+        return 1
+
+    try:
+        run_interactive(world_dir)
+    except ModuleManifestError as e:
+        ui.print_error(f"Could not add module: {e}")
+        return 1
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]Cancelled.[/yellow]")
+        return 1
+    return 0
 
 
 def _print_welcome_screen() -> None:

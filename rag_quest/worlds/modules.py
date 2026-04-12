@@ -243,6 +243,9 @@ def load_modules(
             f"{MANIFEST_FILENAME} must be a mapping with a top-level 'modules:' key"
         )
     entries = raw["modules"]
+    if entries is None:
+        # `modules:` with nothing underneath is a legal empty manifest.
+        return ModuleRegistry()
     if not isinstance(entries, list):
         raise ModuleManifestError(
             f"{MANIFEST_FILENAME} 'modules' must be a list of module definitions"

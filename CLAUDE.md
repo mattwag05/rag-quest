@@ -425,7 +425,12 @@ Authors can validate a manifest before shipping with
 `rag_quest.worlds.validate.validate_manifest()` which checks lore-file
 existence, warns on orphan unlock references, and detects prerequisite
 cycles in the completion-quest → unlock dependency graph. Exits 1 on any
-fatal error so CI can gate on it.
+fatal error so CI can gate on it. `rag-quest new-module <world-dir>` is
+the matching creation tool: `rag_quest.worlds.new_module.run_interactive`
+walks the author through the schema with Rich prompts, appends a
+validated stanza via `write_module`, and rolls back on validator failure.
+All prompt/confirm callables are injectable so the CLI flow is unit
+testable without Rich.
 
 **Import-graph trap** — `rag_quest.worlds.modules` lazy-imports
 `engine.quests.QuestStatus` inside `ModuleRegistry.reevaluate` rather than
