@@ -362,7 +362,7 @@ def get_achievements(self) -> list[Achievement]:
 ### Campaign Memory (v0.6)
 
 Three additive subsystems that layer over `GameState`, `WorldRAG`, and `state_parser`. No
-existing code is restructured; memory features are strictly new-save-only (save_version 2).
+existing code is restructured; memory features are strictly new-save-only (save_version 2; bumped to 3 for v0.7 bases + modules).
 
 **Timeline (`engine/timeline.py`)** — `Timeline` container holds `TimelineEvent` and
 `Bookmark` lists. After each turn, the game loop calls
@@ -599,6 +599,11 @@ python -m py_compile rag_quest/**/*.py
 New state fields bump `save_version` and add safe defaults in `GameState.from_dict()`. Policy
 is clean-break: old saves load with empty new fields, no retroactive migration — new features
 populate only on new saves. Document the bump in `docs/CHANGELOG.md` under that version.
+
+Current: `SAVE_FORMAT_VERSION = 3` in `rag_quest/engine/game.py`.
+- **v3** (v0.7): `world.bases`, `world.module_registry`
+- **v2** (v0.6): timeline, notetaker sidecar pointer
+- **v1**: baseline
 
 ## File Locations
 

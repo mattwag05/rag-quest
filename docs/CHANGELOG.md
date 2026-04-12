@@ -38,6 +38,14 @@ changelog" for the full convention.
 ### Dependencies
 - Adds `pyyaml>=6.0` as a runtime dependency for the new modules.yaml loader.
 
+### Changed
+- **Save format bumped to v3.** `world.bases` and `world.module_registry`
+  are now part of the serialized save state. Clean-break migration policy
+  (same as v0.6): v2 saves load with empty `bases` and an empty
+  `ModuleRegistry`; new v0.7 features populate only on new saves. No
+  retroactive migration. `SAVE_FORMAT_VERSION` lives in
+  `rag_quest/engine/game.py`.
+
 ### Fixed
 - State parser: strip Markdown emphasis markers (`**`, `__`, `*`, `_`) from extracted
   NPC names, item names, locations, and quest titles. Narrators that format proper nouns

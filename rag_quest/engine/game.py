@@ -33,7 +33,7 @@ from .timeline import Bookmark, Timeline
 from .tts import TTSNarrator
 from .world import World
 
-SAVE_FORMAT_VERSION = 2
+SAVE_FORMAT_VERSION = 3
 
 
 console = Console()
@@ -63,6 +63,9 @@ class GameState:
     timeline: Timeline = field(default_factory=Timeline)
     notetaker: Optional[Notetaker] = None
     encyclopedia: Optional[LoreEncyclopedia] = None
+    # v0.7 (save v3): bases and modules live on `World`, so they round-trip via
+    # `World.to_dict/from_dict`. v2 saves load with empty collections — same
+    # clean-break policy as v0.6: new features on new saves only, no migration.
 
     def to_dict(self) -> dict:
         """Serialize game state."""
