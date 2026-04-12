@@ -23,6 +23,19 @@ changelog" for the full convention.
   `StateChange.claim_base` rule. New `/base` command lists claimed bases;
   `/base claim [name]` is a deterministic escape hatch when regex detection
   doesn't catch the narrator's phrasing. Claims dedupe on `location_ref`.
+- **v0.7: `.rqworld` exporter/importer know about bases + modules** —
+  `WorldExporter.export_world` gains an optional `source_dir` parameter.
+  When supplied, the packager bundles `modules.yaml` plus every
+  `lore_files` reference into the archive (with a Zip-Slip guard that
+  rejects lore paths escaping `source_dir`). `Base` state already rides
+  along inside `world.json` via `World.to_dict` from earlier v0.7
+  commits, so existing saves with claimed bases now round-trip through
+  `.rqworld` automatically. New `WorldImporter.extract_to(file, target_dir)`
+  writes the archive contents to disk with a Zip-Slip guard on the import
+  side so shipped worlds can be dropped straight into
+  `~/.local/share/rag-quest/worlds/<name>/` and immediately handed to
+  `load_modules()`. Metadata `version` field now tracks
+  `rag_quest.__version__` instead of a stale hardcode.
 - **v0.7: `rag-quest validate-module <path>` CLI** — non-interactive subcommand
   that loads a `modules.yaml` manifest, checks all referenced lore files
   exist, warns on unlock prereqs that no declared module completes (likely

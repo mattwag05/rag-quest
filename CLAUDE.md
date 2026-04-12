@@ -408,7 +408,18 @@ in a Rich status spinner so first-boot ingestion doesn't look like a hang.
 locked modules unlock when their `unlock_when_quests_completed` prereqs
 are all completed, and modules with a matching `completion_quest` flip to
 `COMPLETED`. Transitions are monotonic. Quest matching is case-insensitive
-on `Quest.title`. `.rqworld` export integration is follow-up (`rag-quest-8qc`).
+on `Quest.title`.
+
+**`.rqworld` packaging (v0.7)** — `WorldExporter.export_world(game_state,
+output_path, source_dir=...)` bundles `world.json` (which already carries
+bases + serialized module registry via `World.to_dict`) plus the source
+`modules.yaml` and every referenced lore file when `source_dir` is
+supplied. Both sides apply a Zip-Slip guard (reject lore paths that
+escape `source_dir` on export; reject archive members that escape
+`target_dir` on extract). `WorldImporter.extract_to(file, target_dir)`
+unpacks the archive back to a world directory so the caller can run
+`load_modules(target_dir, world_rag)` to re-ingest lore. Metadata
+`version` field is `rag_quest.__version__` (not a hardcode).
 Authors can validate a manifest before shipping with
 `rag-quest validate-module <world-dir>` — the subcommand calls
 `rag_quest.worlds.validate.validate_manifest()` which checks lore-file
