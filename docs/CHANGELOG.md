@@ -56,6 +56,23 @@ changelog" for the full convention.
   pyflakes audit. (rag-quest-5ya)
 
 ### Removed
+- **Dead public exports: `StateSync` + 6 unused prompt templates.**
+  Scout audit found two clean dead-export categories with zero
+  callers in `rag_quest/` or `tests/`:
+  (1) `rag_quest/multiplayer/sync.py` — a `StateSync` class with
+  three `@staticmethod`s (`sync_world_state`, `merge_player_actions`,
+  `resolve_conflicts`) that was re-exported from
+  `multiplayer/__init__.py::__all__` but never instantiated or
+  called. Deleted the whole `sync.py` file and trimmed the
+  `__init__.py` import + `__all__` entry.
+  (2) `rag_quest/prompts/templates.py` — `COMBAT_NARRATOR`,
+  `ABILITY_NARRATION`, `PARTY_CONTEXT`, `RELATIONSHIP_CONTEXT`,
+  `QUEST_CHAIN_NARRATION`, `WORLD_EVENT_NARRATION` were defined as
+  module constants but each had exactly one reference in the entire
+  codebase — the definition itself. Deleted all six. `prompts/__init__.py`
+  didn't re-export them, so no import hygiene work was needed there.
+  192 tests pass, pyflakes stays exit 0. (rag-quest-zo9)
+
 - **Dead-local / cosmetic cleanup (pyflakes round 2).** Follow-up to
   the import sweep: deleted unused locals (`response_lower` and
   `defensive_words` in `engine/state_parser.py`; `char` in
