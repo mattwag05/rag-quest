@@ -85,7 +85,7 @@ class WorldRAG:
                         response.raise_for_status()
                         embedding = response.json()["embedding"]
                         embeddings.append(embedding)
-                    except Exception as e:
+                    except Exception:
                         # Return zero vector on error
                         embeddings.append([0.0] * embedding_dim)
 

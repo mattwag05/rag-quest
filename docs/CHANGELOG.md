@@ -56,6 +56,22 @@ changelog" for the full convention.
   pyflakes audit. (rag-quest-5ya)
 
 ### Removed
+- **Dead-local / cosmetic cleanup (pyflakes round 2).** Follow-up to
+  the import sweep: deleted unused locals (`response_lower` and
+  `defensive_words` in `engine/state_parser.py`; `char` in
+  `saves/migration.py`; `elapsed` plus its `start = time.time()` in
+  `engine/narrator.py::_call_llm`, which cascaded into dropping the
+  module's `time` import); dropped three unused `except ... as e:`
+  captures (`engine/game.py` cleanup path and
+  `engine/narrator.py::process_action` + `knowledge/world_rag.py`
+  embedder fallback) down to bare `except Exception:`; and removed
+  the `f` prefix from 15 format-string literals that had no
+  placeholders (fallback-response lists in `engine/narrator.py`,
+  blank-line entries in `ui.py::print_character_status`, the ASCII
+  banner in `engine/game.py::_print_banner`, and the constant
+  party-backstory string). Zero behavior change; `pyflakes
+  rag_quest/` now exits 0 — no warnings of any category. (rag-quest-720)
+
 - **Unused-import sweep across `rag_quest/`.** pyflakes audit turned
   up ~30 imports that were pulled in but never referenced — typing
   helpers (`Dict`, `Optional`, `Tuple`), Rich widgets (`Layout`,

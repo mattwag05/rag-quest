@@ -329,12 +329,12 @@ def run_game(
         # Cleanup
         try:
             game_state.world_rag.close()
-        except Exception as e:
+        except Exception:
             pass
 
         try:
             game_state.llm.close()
-        except Exception as e:
+        except Exception:
             pass
 
     ui.print_game_over(game_state.character, game_state.world)
@@ -451,7 +451,7 @@ def _handle_command(
                 name=npc_name,
                 race="Unknown",
                 character_class="Unknown",
-                backstory=f"Recruited from adventure",
+                backstory="Recruited from adventure",
             )
             if game_state.party.add_member(member):
                 console.print(f"[green]{npc_name} has joined your party![/green]")
@@ -1069,7 +1069,7 @@ def _cmd_modules(parts: list, game_state: GameState) -> None:
 
 def _print_banner(world: World) -> None:
     """Print game banner."""
-    banner = f"""
+    banner = """
 ██████╗   █████╗  ██████╗       ██████╗ ██╗   ██╗███████╗███████╗████████╗
 ██╔══██╗ ██╔══██╗██╔════╝       ██╔═══██╗██║   ██║██╔════╝██╔════╝╚══██╔══╝
 ██████╔╝ ███████║██║  ███╗█████╗██║   ██║██║   ██║█████╗  ███████╗   ██║

@@ -1,7 +1,6 @@
 """AI narrator for the game."""
 
 import random
-import time
 from typing import Optional
 
 from ..knowledge import WorldRAG
@@ -168,7 +167,7 @@ Provide a vivid, engaging narrative response to the character's action. Keep it 
                 response = self._call_llm(player_input)
                 if response and len(response.strip()) > 0:
                     return response
-            except Exception as e:
+            except Exception:
                 pass  # Silently fall back to canned responses
 
         # Fallback to pre-written responses if LLM is unavailable
@@ -180,9 +179,9 @@ Provide a vivid, engaging narrative response to the character's action. Keep it 
             for word in ["attack", "fight", "strike", "hit", "slash", "punch", "shoot"]
         ):
             responses = [
-                f"You prepare your stance and attack! Your blow connects, dealing 3 damage to your opponent.",
-                f"You swing your weapon at the creature. It dodges! You take a step back, ready for the next strike.",
-                f"With a fierce cry, you charge forward. Your attack finds its mark, and the enemy recoils!",
+                "You prepare your stance and attack! Your blow connects, dealing 3 damage to your opponent.",
+                "You swing your weapon at the creature. It dodges! You take a step back, ready for the next strike.",
+                "With a fierce cry, you charge forward. Your attack finds its mark, and the enemy recoils!",
             ]
             return random.choice(responses)
 
@@ -243,9 +242,9 @@ Provide a vivid, engaging narrative response to the character's action. Keep it 
             for word in ["rest", "sleep", "meditate", "sit", "wait"]
         ):
             responses = [
-                f"You take a moment to rest. Your wounds feel better. You recover 5 HP!",
-                f"You find a safe place to meditate. The world fades away as you center yourself. HP restored by 3.",
-                f"You settle down and take a well-deserved break. Your body feels refreshed.",
+                "You take a moment to rest. Your wounds feel better. You recover 5 HP!",
+                "You find a safe place to meditate. The world fades away as you center yourself. HP restored by 3.",
+                "You settle down and take a well-deserved break. Your body feels refreshed.",
             ]
             return random.choice(responses)
 
@@ -321,10 +320,7 @@ Provide a vivid, engaging narrative response to the character's action. Keep it 
                 {"role": "user", "content": player_input},
             ]
 
-            # Call LLM with timeout
-            start = time.time()
             response = self.llm.complete(messages)
-            elapsed = time.time() - start
 
             if response and len(response.strip()) > 0:
                 return response
@@ -337,10 +333,10 @@ Provide a vivid, engaging narrative response to the character's action. Keep it 
     def _get_fallback_response(self, error_msg: str = "") -> str:
         """Return a fallback response when generation fails."""
         fallback_responses = [
-            f"The dungeon master pauses for a moment, gathering their thoughts... Your action succeeds.",
-            f"There's a moment of silence as reality seems to shimmer around you... and then it continues.",
-            f"The world seems to fade for an instant, then refocuses... You continue on.",
-            f"You feel a strange presence, as if the very fabric of reality is thinking... The moment passes.",
+            "The dungeon master pauses for a moment, gathering their thoughts... Your action succeeds.",
+            "There's a moment of silence as reality seems to shimmer around you... and then it continues.",
+            "The world seems to fade for an instant, then refocuses... You continue on.",
+            "You feel a strange presence, as if the very fabric of reality is thinking... The moment passes.",
         ]
 
         base = random.choice(fallback_responses)

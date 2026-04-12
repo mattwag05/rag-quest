@@ -299,7 +299,6 @@ class StateParser:
     def parse_narrator_response(self, response: str, player_input: str) -> StateChange:
         """Parse narrator response and extract state changes."""
         change = StateChange()
-        response_lower = response.lower()
 
         # 1. Parse location changes
         location = self._extract_location(response)
@@ -396,7 +395,6 @@ class StateParser:
             "annihilate",
             "brutal",
         ]
-        defensive_words = ["defend", "protect", "shield", "dodge", "evade"]
 
         input_lower = player_input.lower()
         response_lower = response.lower()

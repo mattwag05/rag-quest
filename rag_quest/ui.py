@@ -333,11 +333,11 @@ def print_character_status(character) -> None:
         f"[cyan]{character.name}[/cyan]",
         f"Level: {character.level} | XP: {character.experience}",
         f"Race: {character.race.value} | Class: {character.character_class.value}",
-        f"",
+        "",
         "Attributes:",
         f"  STR: {character.strength:2d} | DEX: {character.dexterity:2d} | CON: {character.constitution:2d}",
         f"  INT: {character.intelligence:2d} | WIS: {character.wisdom:2d} | CHA: {character.charisma:2d}",
-        f"",
+        "",
         f"HP: {character.current_hp}/{character.max_hp}",
     ]
     console.print(
