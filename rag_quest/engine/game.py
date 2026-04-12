@@ -326,16 +326,22 @@ def run_game(
             "[cyan]Thanks for playing, adventurer. See you next time![/cyan]\n"
         )
     finally:
-        # Cleanup
+        # Cleanup. Inner close() methods log their own failures; the
+        # catches here are the last-line defense for secondary failures
+        # (executor hang, typo introduced at a refactor, etc.) — routed
+        # through log_swallowed_exc so RAG_QUEST_DEBUG=1 surfaces them
+        # instead of vanishing at shutdown.
+        from .._debug import log_swallowed_exc
+
         try:
             game_state.world_rag.close()
         except Exception:
-            pass
+            log_swallowed_exc("game.cleanup.world_rag")
 
         try:
             game_state.llm.close()
         except Exception:
-            pass
+            log_swallowed_exc("game.cleanup.llm")
 
     ui.print_game_over(game_state.character, game_state.world)
 

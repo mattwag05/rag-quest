@@ -39,6 +39,22 @@ changelog" for the full convention.
   between machines without a cloud account.
 
 ### Fixed
+- **`run_game` shutdown catches now route through `log_swallowed_exc`.**
+  The `finally` block in `rag_quest/engine/game.py::run_game` wraps
+  `game_state.world_rag.close()` and `game_state.llm.close()` in a
+  last-line-of-defense `except Exception:` handler each. Previously
+  those catches were bare `pass`, so any unexpected shutdown-phase
+  failure (e.g. a typo introduced at a refactor, an `executor.shutdown`
+  hang, a new contract violation) vanished silently at exit. Both are
+  now routed through `log_swallowed_exc("game.cleanup.world_rag")` and
+  `log_swallowed_exc("game.cleanup.llm")`, matching the per-turn
+  additive catch convention. Normal runs stay silent; exporting
+  `RAG_QUEST_DEBUG=1` surfaces the tagged traceback. Inner
+  `WorldRAG.close()` still logs its own `finalize_storages` failure
+  via `print(...)` — the new outer log only fires for secondary
+  failures above that. (rag-quest-hmq)
+
+### Fixed
 - **`Narrator.__init__` dead parameters.** `party`, `relationships`, and
   `events` were declared `Optional["Party"] / Optional["Relationships"]
   / Optional["EventManager"]` but none of the three forward-ref class
