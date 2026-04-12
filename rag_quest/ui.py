@@ -143,6 +143,7 @@ Be creative and descriptive — the AI remembers what happened and your choices 
 
 | Command | Shortcut | Description |
 |---------|----------|-------------|
+| `/tutorial` | — | Interactive tutorial (5 minutes) |
 | `/inventory` | `/i` | Check your inventory |
 | `/quests` | `/q` | View active quests |
 | `/stats` | `/s` | Show character stats |
@@ -154,6 +155,7 @@ Be creative and descriptive — the AI remembers what happened and your choices 
 
 ### Status & Inventory
 - `/help` `/h` — Show this help screen
+- `/tutorial` — Interactive tutorial (5 minutes)
 - `/stats` `/s` — Show your character stats and attributes
 - `/inventory` `/i` — Check what you're carrying and weight limit
 - `/quests` `/q` — View active quests and objectives

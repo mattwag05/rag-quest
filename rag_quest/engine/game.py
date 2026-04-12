@@ -385,6 +385,10 @@ def _handle_command(
     elif cmd == "/help" or cmd == "/h":
         ui.print_help()
 
+    elif cmd == "/tutorial":
+        from ..tutorial import run_interactive_tutorial
+        run_interactive_tutorial()
+
     elif cmd == "/new":
         if ui.get_yes_no_confirmation("[yellow]Start a new game? Current progress will be saved.[/yellow]"):
             ui.print_success("Restart your game by quitting and running RAG-Quest again!")
