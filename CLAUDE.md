@@ -667,6 +667,7 @@ python -m py_compile rag_quest/**/*.py
 - **PostToolUse hook auto-runs `black` + `isort`** on `.py` files after every Edit/Write. Don't manually format between edits — it's wasted work. The "file state is current in your context" note means the hook ran.
 - **Rich `Live` can fail** in non-interactive / subshell contexts. Any new streaming UI helper must wrap the `with Live(...)` block in `try/except` and fall back to a plain `console.print(Panel(...))` (see `ui.stream_narrator_response` for the pattern).
 - **Pre-push gate requires `/simplify` approval**: run the skill, then `touch /tmp/.claude-simplify-approved` before `git commit` AND again before `git push` (both fire the hook). For doc-only commits, the flag may be set manually per the global CLAUDE.md exception.
+- **State parser regex compilation is mixed**: `damage_patterns` and `_combat_regex` are pre-compiled at `__init__`; `healing_patterns`, `pickup_patterns`, `drop_patterns`, `quest_*_patterns`, `npc_patterns`, `location_patterns`, and `use_patterns` are still raw strings re-compiled via `re.search(..., re.IGNORECASE)` every turn. Follow the compiled idiom when touching a pattern list; full normalization is tracked in beads `rag-quest-40q`.
 
 ## Known Design Limitations
 
@@ -675,6 +676,14 @@ python -m py_compile rag_quest/**/*.py
    events from narrator text. It uses regex + keyword rules, so phrasings it doesn't
    recognize silently produce no state change. When a gameplay bug traces back to "the
    narrative said X but state didn't update," the parser patterns are the place to look.
+
+   **Two-stage damage flow**: `parse_narrator_response` runs explicit damage extraction
+   (`_extract_damage` via compiled `damage_patterns`) first, then falls back to
+   `_calculate_combat_damage` (dice roll) when `_has_combat_keyword` matches. A damage bug
+   can live in *either* stage — checking only the regex won't catch dice-roll false
+   positives. The combat gate must use word-boundary matching via `_combat_regex`; raw
+   `any(word in text for word in keyword_set)` substring checks false-positive on
+   "stable"→"stab" and similar (rag-quest-0gp).
 
 2. **RAG Query Latency** — First query takes 30-60 seconds (LightRAG initialization).
    Typical query 1-3 seconds.
