@@ -10,9 +10,9 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 
 **Why this matters**: A Gemma 4 model with excellent RAG context beats much larger models without RAG. The knowledge graph is the "long-term memory"; the LLM is just the "narrator."
 
-**Current Version**: v0.4.1 (API integration bug fixes)
+**Current Version**: v0.5.0 (Multiplayer, persistent saves, world sharing, achievements, procedural dungeons)
 
-**Status**: v0.4.1 complete with all API integration bugs fixed and verified via comprehensive test suite. Game features multi-character parties with companion AI, NPC relationship system with faction reputation, multi-step quest chains with branching paths, and dynamic world events that affect gameplay. All social and narrative systems working correctly with proper type signatures and all required methods implemented.
+**Status**: v0.5.0 complete with all core features implemented. Game features persistent multi-slot saves with auto-save rotation, world sharing via .rqworld packages, local multiplayer (hot-seat), 11 built-in achievements, and procedural dungeon generation with ASCII maps. All save/load systems, multiplayer state sync, world export/import, and achievement tracking working correctly.
 
 **Technology Stack**:
 - **Python 3.11+** - Core language
@@ -68,6 +68,64 @@ All fixes verified via comprehensive integration test suite (`test_v041_fixes.py
 - No more AttributeError or TypeError exceptions
 - Full backwards compatibility maintained
 - Serialization/deserialization working correctly for all types
+
+---
+
+## v0.5.0 Release Summary - Multiplayer, Saves & World Sharing (2026-04-11)
+
+RAG-Quest v0.5.0 adds persistent save systems, world sharing, local multiplayer, achievements, and procedural dungeons:
+
+### Persistent Save System
+- **Multi-Slot Saves**: 5+ independent save slots with metadata tracking
+- **Auto-Save Rotation**: Automatic saves every N turns, keeps 3 most recent
+- **Export/Import**: Save games as `.rqsave` files for backup or sharing
+- **Save Migration**: Format migration between versions, backwards compatible
+- **SaveManager**: Centralized save/load orchestration with version tracking
+
+### World Sharing & Templates
+- **World Export**: Package entire world as `.rqworld` file (knowledge graph + metadata)
+- **World Import**: Load community worlds and templates
+- **4 Starter Worlds**: Pre-built templates (Classic Dungeon, Enchanted Forest, Port City, War-Torn Kingdom)
+- **World Validation**: Integrity checking on import, prevents corrupted worlds
+- **WorldExporter/Importer**: Modular export/import system with compression
+
+### Local Multiplayer
+- **Hot-Seat Mode**: Turn-based multiplayer on same machine
+- **Shared World State**: All players see same world, NPCs, and events
+- **State Sync**: Character updates synchronized per turn
+- **Trading System**: Players can trade items with negotiation
+- **Combat Options**: Cooperative and PvP encounters
+- **MultiplayerSession**: Manages player turns, shared state, trading logic
+
+### Achievement System
+- **11 Built-In Achievements**: Explorer, Warrior, Diplomat, Scholar, etc.
+- **Automatic Detection**: Achievements triggered on game events
+- **Progress Tracking**: Partial completion tracking for multi-step achievements
+- **Notifications**: Real-time achievement notifications
+- **AchievementEngine**: Centralized achievement management and detection
+
+### Procedural Dungeon Generation
+- **Dungeon Levels**: 5-15 rooms per level, unlimited depth
+- **ASCII Maps**: Revealed as you explore
+- **Room Types**: Corridors, chambers, trap rooms, treasure rooms, boss rooms
+- **Scaling Difficulty**: Enemies and loot scale with dungeon level
+- **DungeonGenerator**: Algorithm-based generation with seeding support
+- **Progression**: Rewards scale with depth, boss encounters at specific intervals
+
+### New Packages
+- **saves/** — SaveManager for multi-slot persistence, migration, export/import
+- **worlds/** — WorldExporter, WorldImporter, templates for world sharing
+- **multiplayer/** — MultiplayerSession, StateSynchronizer, TradingSystem
+- **engine/achievements.py** — AchievementEngine with 11 achievements
+- **engine/dungeon.py** — DungeonGenerator with procedural dungeon creation
+
+### Verification
+- All save/load operations working with format migration
+- World export/import with validation functional
+- Multiplayer state sync and trading system verified
+- All 11 achievements triggered and tracked correctly
+- Procedural dungeon generation with ASCII maps working
+- All new commands (/saves, /export, /import, /multiplayer, /trade, /achievements, /dungeon) functional
 
 ---
 

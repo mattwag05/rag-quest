@@ -231,7 +231,117 @@ Interactive setup and configuration management.
 }
 ```
 
-### 5. Prompts (`rag_quest/prompts/templates.py`)
+### 5. Save System (`rag_quest/saves/`)
+
+**New in v0.5.0** - Persistent multi-slot saves with auto-save rotation.
+
+**File Structure:**
+- `manager.py` - `SaveManager` for orchestrating save/load
+- `migration.py` - Save format versioning and migration
+- `__init__.py` - Exports and setup
+
+**Key Class: `SaveManager`**
+
+Manages multiple save slots per world:
+- Slot metadata (timestamp, character level, playtime)
+- Auto-save rotation (keeps N most recent auto-saves)
+- Export/import to `.rqsave` files
+- Format migration for backwards compatibility
+
+```python
+class SaveManager:
+    def save_game(slot_name: str, game_state: GameState) -> bool
+    def load_game(slot_name: str) -> GameState
+    def list_saves() -> list[SaveMetadata]
+    def export_save(slot_name: str, file_path: str) -> bool
+    def import_save(file_path: str, slot_name: str) -> bool
+```
+
+### 6. World Sharing (`rag_quest/worlds/`)
+
+**New in v0.5.0** - Export/import worlds as packages.
+
+**File Structure:**
+- `exporter.py` - `WorldExporter` for packaging worlds
+- `importer.py` - `WorldImporter` for loading world packages
+- `templates.py` - 4 built-in starter world templates
+
+**Key Classes:**
+
+`WorldExporter` - Packages entire world:
+- Knowledge graph export
+- World metadata (name, setting, tone)
+- NPC definitions and relationships
+- Quest data and world events
+
+`WorldImporter` - Loads world packages:
+- Validates package integrity
+- Deserializes knowledge graph
+- Restores world state
+
+### 7. Multiplayer (`rag_quest/multiplayer/`)
+
+**New in v0.5.0** - Local multiplayer (hot-seat) turn-based play.
+
+**File Structure:**
+- `session.py` - `MultiplayerSession` for managing turns
+- `sync.py` - `StateSynchronizer` for shared state
+- `trading.py` - `TradingSystem` for player-to-player trades
+
+**Key Classes:**
+
+`MultiplayerSession` - Manages turn order and state:
+- Player turn tracking
+- Shared world state sync per turn
+- Combat resolution for multiplayer encounters
+- Party management across players
+
+`TradingSystem` - Inter-player trading:
+- Trade offers and negotiation
+- Item validation and transfer
+- Trade history tracking
+
+### 8. Achievements (`rag_quest/engine/achievements.py`)
+
+**New in v0.5.0** - 11 built-in achievements with tracking.
+
+**Key Class: `AchievementEngine`**
+
+```python
+class AchievementEngine:
+    def on_event(event: GameEvent) -> list[Achievement]  # Returns newly unlocked
+    def get_progress(achievement_id: str) -> ProgressData
+    def list_achievements() -> list[Achievement]
+```
+
+**11 Built-In Achievements:**
+- Explorer (visit 20 locations)
+- Warrior (win 10 combats)
+- Diplomat (complete 5 social quests)
+- Scholar (read 50 lore entries)
+- Treasure Hunter (find 25 items)
+- And 6 more...
+
+### 9. Dungeon Generation (`rag_quest/engine/dungeon.py`)
+
+**New in v0.5.0** - Procedural dungeon with ASCII maps.
+
+**Key Class: `DungeonGenerator`**
+
+```python
+class DungeonGenerator:
+    def generate(level: int, seed: int = None) -> Dungeon
+    def render_map(revealed: set[RoomID]) -> str  # ASCII art
+```
+
+**Algorithm:**
+- Room generation (5-15 per level)
+- Room types: corridor, chamber, trap, treasure, boss
+- Connection network with backtracks
+- Difficulty scaling by level
+- Loot tables indexed by depth
+
+### 10. Prompts (`rag_quest/prompts/templates.py`)
 
 System prompts that shape AI behavior.
 

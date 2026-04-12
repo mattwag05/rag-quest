@@ -173,6 +173,13 @@ Type naturally or use commands:
 | **Relationships** | `/relationships` — view trust and disposition with NPCs |
 | **Factions** | `/factions` — see faction reputation and standing |
 | **Events** | `/events` — view active world events and consequences |
+| **Saves** | `/saves` — list all save slots and metadata |
+| **Export Save** | `/export` — export current game to `.rqsave` file |
+| **Import Save** | `/import` — import save file or world template |
+| **Multiplayer** | `/multiplayer` — start local multiplayer session |
+| **Trade** | `/trade` — trade items with other players |
+| **Achievements** | `/achievements` — view achievement progress (11 total) |
+| **Dungeon** | `/dungeon` — enter procedurally generated dungeon |
 | **Look** | `/look` or `/examine` |
 | **Map** | `/map` to see discovered locations |
 | **Save** | `/save` to save progress |
@@ -304,12 +311,68 @@ Valid classes: FIGHTER, MAGE, ROGUE, RANGER, CLERIC (case-sensitive)
 - ✅ Companion AI with personality and loyalty system
 - ✅ Relationship-gated dialogue and quests
 
-## What's Coming in v0.5
+## What's New in v0.5.0
 
-- Multiplayer support with shared worlds
-- Cloud save synchronization
-- Community world sharing and templates
-- Procedural dungeon generation
+- ✅ Multi-slot persistent saves with auto-save rotation
+- ✅ World sharing via `.rqworld` packages
+- ✅ 4 built-in starter worlds (Classic Dungeon, Enchanted Forest, Port City, War-Torn Kingdom)
+- ✅ Local multiplayer (hot-seat) with shared world state
+- ✅ Achievement system (11 achievements tracking exploration, combat, social, progression)
+- ✅ Procedural dungeon generation with ASCII maps and scaling difficulty
+
+### Playing with Saves (v0.5)
+
+```bash
+# List all save slots
+/saves
+
+# Export current game to file
+/export
+
+# Import a saved game or world template
+/import
+
+# Example: Export and share your world
+/export  # Creates MyWorld.rqsave
+# Send MyWorld.rqsave to a friend
+# Friend runs: /import and loads MyWorld.rqsave
+```
+
+### Local Multiplayer (v0.5)
+
+```bash
+# Start multiplayer with friends on same computer
+/multiplayer
+
+# Takes turns playing the same world
+# Can trade items: /trade
+# Shared party and NPC relationships
+```
+
+### Achievements (v0.5)
+
+11 achievements to unlock:
+- **Explorer** — Visit 20 unique locations
+- **Warrior** — Win 10 combat encounters
+- **Diplomat** — Complete 5 social quests
+- **Scholar** — Read 50 lore entries
+- **Treasure Hunter** — Find 25 valuable items
+- And 6 more...
+
+Check progress with `/achievements`
+
+### Procedural Dungeons (v0.5)
+
+```bash
+# Enter a randomly generated dungeon
+/dungeon
+
+# Explore multiple levels (5-15 rooms each)
+# ASCII map reveals as you move
+# Enemies scale with depth
+# Boss rooms at regular intervals
+# Rare loot in treasure rooms
+```
 
 ## Have Fun!
 
@@ -317,6 +380,6 @@ RAG-Quest is designed for creative, emergent storytelling. Your choices matter. 
 
 ---
 
-**Version**: v0.2.0 MVP  
-**Status**: Ready for Game Night!  
+**Version**: v0.5.0  
+**Status**: Multiplayer, Saves & World Sharing!  
 **License**: MIT

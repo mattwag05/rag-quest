@@ -3,10 +3,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Version 0.4.1](https://img.shields.io/badge/version-0.4.1-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.4.1)
+[![Version 0.5.0](https://img.shields.io/badge/version-0.5.0-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.5.0)
 [![Status: Stable](https://img.shields.io/badge/status-stable-green.svg)](docs/TEST_REPORT_v04.md)
 
-> **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone.**
+> **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone. Now with persistent saves, world sharing, local multiplayer, achievements, and procedural dungeons.**
 
 RAG-Quest is the first playable release of an AI-powered text adventure game that eliminates hallucinations through retrieval-augmented generation. Your dungeon master is a small language model (Gemma 4 E2B/E4B, 2-4B parameters) that doesn't need to memorize the world—instead, LightRAG's dual-level retrieval system injects precise context for every narrative decision. This architecture means you get GPT-4-quality narration from a model that runs on a Mac or modest GPU.
 
@@ -20,6 +20,41 @@ RAG-Quest is the first playable release of an AI-powered text adventure game tha
 - **Ollama** (recommended for local play) — free, fast, private
 - **OpenRouter** — 100+ models, pay-per-use, cloud-hosted
 - **OpenAI** — GPT-4, GPT-3.5-turbo, highest quality
+
+## v0.5.0 Highlights — Multiplayer, Persistent Saves & World Sharing
+
+**✨ Multi-Slot Save System**
+- Save to 5+ independent slots with metadata tracking
+- Auto-save rotation (keeps 3 most recent auto-saves)
+- Export saves as `.rqsave` files for backup or sharing
+- Import saves from other games
+- Format migration between versions
+
+**✨ World Sharing & Templates**
+- Export worlds as `.rqworld` packages
+- Import community worlds and templates
+- 4 built-in starter worlds (Classic Dungeon, Enchanted Forest, Port City, War-Torn Kingdom)
+- Validation and integrity checking
+
+**✨ Local Multiplayer (Hot-Seat)**
+- Turn-based multiplayer on the same machine
+- Shared world state across all players
+- Item trading between players
+- Cooperative and PvP combat options
+- Commands: `/multiplayer`, `/trade`, `/party`
+
+**✨ Achievement System**
+- 11 built-in achievements tracking exploration, combat, social, and progression milestones
+- Automatic detection and notification
+- Achievement progress tracking
+- Command: `/achievements`
+
+**✨ Procedural Dungeon Generation**
+- Random dungeon generation with 5-15 rooms per level
+- ASCII maps that reveal as you explore
+- Room types: corridors, chambers, trap rooms, treasure rooms, boss rooms
+- Difficulty-scaled enemies and loot based on level
+- Command: `/dungeon`
 
 ## Quick Install
 
@@ -97,27 +132,19 @@ in these woods. There's been talk of a dragon in the mountains..."
 - **World Events** — Dynamic world events (festivals, raids, storms, plagues, etc.) that affect game mechanics
 - **Companion Mechanics** — Loyalty system affecting behavior, shared party objectives, inter-party dynamics
 
+### v0.5.0 New Systems
+- **Persistent Saves** — Multiple save slots, auto-save rotation, export/import
+- **World Sharing** — Package and share worlds, 4 built-in starter templates
+- **Local Multiplayer** — Hot-seat turn-based play with shared state
+- **Achievements** — 11 built-in achievements, progression tracking
+- **Procedural Dungeons** — Randomly generated dungeons with ASCII maps and scaling difficulty
+
 ### LightRAG Knowledge Graph
-- **Dual-Level Retrieval** — Entity matching + vector similarity for precise context injection
-
-## Features (Continued)
-
-### LightRAG Knowledge Graph (Continued)
-- **World Persistence** — Every event, NPC, location, and discovery lives in the knowledge graph
-- **PDF Lore Ingestion** — Upload your custom world lore; RAG extracts and grounds all narration in it
-- **Intelligent Chunking** — Three RAG profiles optimize chunk size and query depth for your hardware
-- **Smart Caching** — File hash caching skips re-ingestion of unchanged documents
-
-### Terminal UI
-- **Rich Panels** — Colored output with formatted panels for narrative, status, and commands
-- **ASCII Art** — Visual scene descriptions and maps (in development)
-- **Status Bar** — HP, location, inventory summary always visible
-- **Natural Actions** — Type what you want to do; the AI understands intent and context
-- **Real LLM Narrator** — No hardcoded responses; actual LLM calls generate dynamic narration based on game state
-- **Text-to-Speech** — Optional narrator voice narration (pyttsx3 or gTTS)
-- **Party UI** — Party roster with individual HP and status
-- **Relationship Display** — NPC trust, disposition, and reputation metrics
-- **Event Notifications** — Real-time alerts for world events and consequences
+- **Persistent Knowledge Base** — Everything about your world is stored in a knowledge graph
+- **Intelligent Retrieval** — Dual-level system: entity matching + vector similarity
+- **Lore Ingestion** — Upload PDFs, markdown, or plain text; RAG automatically chunks and indexes
+- **World Consistency** — No hallucinations; narrator always grounded in actual world knowledge
+- **Extensible Format** — Add more lore mid-game; graph updates automatically
 
 ### LLM Providers (All First-Class Citizens)
 | Provider | Best For | Cost | Speed | Setup |
@@ -137,6 +164,18 @@ Configure via environment variable:
 ```bash
 RAG_PROFILE=deep rag-quest
 ```
+
+## New Commands in v0.5.0
+
+| Command | Purpose |
+|---------|---------|
+| `/saves` | List all save slots and metadata |
+| `/export` | Export current game to `.rqsave` file |
+| `/import` | Import save file or world template |
+| `/multiplayer` | Start local multiplayer session |
+| `/trade` | Trade items between players |
+| `/achievements` | View progress on all 11 achievements |
+| `/dungeon` | Enter a procedurally generated dungeon |
 
 ## Example Gameplay
 
@@ -236,6 +275,9 @@ export CHARACTER_NAME="Kael"
 export CHARACTER_RACE=HUMAN
 export CHARACTER_CLASS=RANGER
 
+export SAVE_DIR=~/.local/share/rag-quest/saves
+export AUTO_SAVE_INTERVAL=5
+
 rag-quest
 ```
 
@@ -243,138 +285,87 @@ rag-quest
 
 Configuration is saved to: `~/.config/rag-quest/config.json`
 
-Game saves are stored at: `~/.local/share/rag-quest/saves/{world_name}.json`
+Game saves are stored at: `~/.local/share/rag-quest/saves/`
 
-RAG databases live at: `~/.local/share/rag-quest/worlds/{world_name}/`
+RAG databases live at: `~/.local/share/rag-quest/worlds/`
 
-## v0.4.0 Changelog
+## v0.5.0 Release Notes
 
-### New in v0.4.0 - Social Dynamics, Parties & World Events
+### New in v0.5.0 - Multiplayer, Persistent Saves & World Sharing
 
-**Multi-Character Parties** ✅
-- Recruit NPCs as companions (up to 4 party members total)
-- Companion AI with personality-driven combat styles
-- Loyalty system: companions have morale/loyalty that affects behavior
-- Party management commands: `/party`, `/recruit`, `/dismiss`
-- Shared party resources and combined encounter difficulty
+**Persistent Save System** ✅
+- Multiple save slots with metadata tracking
+- Auto-save rotation (keeps 3 most recent)
+- Export/import saves as `.rqsave` files
+- Save format migration between versions
 
-**NPC Relationship System** ✅
-- Trust and disposition tracking (Hostile → Allied spectrum)
-- Faction reputation that spreads across faction members
-- Relationship-gated dialogue, quests, and shop prices
-- NPC unique personalities affecting interaction outcomes
-- Commands: `/relationships`, `/factions`
+**World Sharing** ✅
+- Export worlds as `.rqworld` packages
+- Import community-created worlds
+- 4 built-in starter worlds (Classic Dungeon, Enchanted Forest, Port City, War-Torn Kingdom)
+- World validation and integrity checking
 
-**Quest Chains & Branching Narratives** ✅
-- Multi-step quests with dependencies and prerequisites
-- Branching quest paths based on player choices
-- Six objective types: Kill, Fetch, Talk, Explore, Escort, Deliver
-- Quest templates for rapid generation
-- Quest rewards: XP, gold, items, reputation changes
-- Failed quest states with narrative consequences
+**Local Multiplayer** ✅
+- Hot-seat turn-based multiplayer on the same machine
+- Shared world state across all players
+- Item trading between players
+- Cooperative and PvP combat options
 
-**Dynamic World Events** ✅
-- 10+ event types: festivals, raids, storms, plagues, etc.
-- Events affect game mechanics (encounter rates, prices, morale)
-- Duration-based events with automatic expiration
-- Event consequences that persist in world state
-- Command: `/events`
+**Achievement System** ✅
+- 11 built-in achievements tracking exploration, combat, social, and progression milestones
+- Automatic detection and notification
 
-**Enhanced Companion AI** ✅
-- Personality profiles affect dialogue and combat decisions
-- Loyalty degradation for morally inconsistent actions
-- Companion proactive actions and suggestions
-- Inter-party relationships and dynamics
-- Recruitment conditions and unique companion storylines
+**Procedural Dungeons** ✅
+- Random dungeon generation with 5-15 rooms
+- ASCII map that reveals as you explore
+- Room types: corridors, chambers, trap rooms, treasure rooms, boss rooms
+- Difficulty-scaled enemies and loot
 
-**New Commands** ✅
-- `/party` — View party roster, status, and morale
-- `/relationships` — See trust/disposition with NPCs and factions
-- `/factions` — View faction reputation and allegiances
-- `/recruit` — Invite NPC to party
-- `/dismiss` — Remove companion from party
-- `/events` — View active world events and their effects
-- `/quests` — Enhanced to show multi-step chains and choices
+### Inherited from v0.4.1
+- Multi-character parties with companion AI
+- NPC relationship system with faction reputation
+- Multi-step quest chains with branching paths
+- Dynamic world events affecting gameplay
+- D&D combat with dice rolls and critical hits
+- Character progression to level 10 with class abilities
+- Text-to-speech narration
+- All 6 critical API integration bugs fixed
 
-### Inherited from v0.3.0
-- D&D Combat System with dice rolls, initiative, and critical hits
-- Character Progression with six attributes, leveling to 10, class abilities
-- Equipment System with weapon, armor, and accessory slots
-- Text-to-Speech Narration with pyttsx3 and gTTS support
-- Real LLM Narrator with context injection and error recovery
-- Dynamic Encounter Generation with loot tables and scaling
+### v0.3.0 Features (Inherited)
+- D&D-style combat with dice rolls and class abilities
+- Character progression with leveling and equipment
+- Dynamic encounter generation with loot
+- Text-to-speech narrator (TTS)
+- Real LLM narrator with context injection and error recovery
 
 ### v0.2.0 Features (Inherited)
-
-**Game Loop & Mechanics** ✅
 - Full game engine with character, world, inventory, quests
 - Location tracking and movement with narrator integration
-- Combat system mechanics (now with actual dice rolls and class abilities)
-- Inventory system with item discovery and usage
-- Quest system with NPC offers and completion tracking
-
-**LightRAG Knowledge Graph** ✅
-- Multi-level knowledge retrieval (entity + vector matching)
-- World persistence across saves
-- Lore ingestion from PDF, markdown, and text files
-- Intelligent chunking with section boundary detection
-- File hash caching for smart re-ingestion
-
-**LLM Providers** ✅
-- OpenAI (GPT-4, GPT-3.5-turbo)
-- OpenRouter (100+ models)
-- Ollama (local, free, private) — Gemma 4 E2B/E4B recommended
-- Synchronous architecture for turn-based gameplay
-
-**RAG Profiles** ✅
-- Three configurable profiles: fast, balanced, deep
-- Profile-aware chunk sizes and query depths
-- Speed vs quality tradeoff configurable per user
-
-**Terminal UI** ✅
-- Rich colored output with formatted panels
-- Status bar with character HP, level, location, inventory
-- Natural language action processing
-- Graceful error recovery and fallbacks
-
-**Documentation** ✅
-- Comprehensive README with quick-start guide
-- CLAUDE.md — Developer reference for AI assistants
-- AGENTS.md — LLM provider integration guide
-- ROADMAP.md — Vision for v0.4+ features
-
-### Verified Functionality
-- ✅ Combat system with dice rolls, damage, HP
-- ✅ Character progression with 10 levels and class abilities
-- ✅ Encounter generation with loot and scaling
-- ✅ TTS narration with voice selection
-- ✅ Real LLM narrator with context injection
-- ✅ All LLM providers working (Ollama, OpenRouter, OpenAI)
-- ✅ Runs on consumer hardware with Gemma 4 E2B/E4B
+- Combat system mechanics with HP and damage
+- LightRAG knowledge graph with dual-level retrieval
+- Multi-provider LLM support (OpenAI, OpenRouter, Ollama)
+- Save/load system with auto-save
+- Three RAG profiles (fast, balanced, deep)
 
 ## Roadmap
 
-### v0.3 — Now Live
-- ✅ D&D-style combat with dice rolls and class abilities
-- ✅ Character progression with leveling and equipment
-- ✅ Dynamic encounter generation with loot
-- ✅ Text-to-speech narrator (TTS)
-- ✅ Real LLM narrator (no hardcoded responses)
+### v0.5 — Now Live ✅
+- ✅ Multi-slot save system with auto-save rotation
+- ✅ World sharing via .rqworld packages
+- ✅ 4 built-in starter worlds
+- ✅ Local multiplayer (hot-seat)
+- ✅ Achievement system (11 achievements)
+- ✅ Procedural dungeon generation
 
-### v0.4 (Coming Q3-Q4 2026)
-- Multi-character parties
-- NPC relationship system and companion recruitment
-- Quest chains and branching narratives
-- World events and faction dynamics
-- Advanced dialogue trees
-
-### v0.5+ (Coming 2027+)
-- Multiplayer support with shared worlds
+### v0.6+ (Coming 2026-2027)
 - Cloud save synchronization
-- Community world sharing and templates
-- Procedural dungeon generation
-- Native iOS app with SwiftUI and Apple Intelligence
+- Asynchronous multiplayer (turns-based online)
 - Advanced spell and crafting systems
+- PvP leaderboards and seasons
+- Mod support and script engine
+- Mobile companion app
+- Native iOS/Android clients
+- Advanced procedural generation (biomes, region themes)
 
 ## Contributing
 
@@ -411,6 +402,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-**v0.3.0 Release — Combat, Progression & Voice Narration!**
+**v0.5.0 Release — Multiplayer, Persistent Saves, World Sharing, Achievements & Procedural Dungeons!**
 
-Built with ❤️ for solo and group play. Designed to run on your hardware. Powered by LightRAG, lightweight LLMs, and immersive TTS narration.
+Built with ❤️ for solo and group play. Designed to run on your hardware. Powered by LightRAG, lightweight LLMs, and immersive AI narration.
