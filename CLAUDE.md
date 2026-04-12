@@ -441,6 +441,15 @@ validated stanza via `write_module`, and rolls back on validator failure.
 All prompt/confirm callables are injectable so the CLI flow is unit
 testable without Rich.
 
+**Debugging silent fallbacks** — The game loop and narrator contain
+several additive `except Exception: pass` blocks (timeline recorder,
+module gating re-eval, narrator RAG query) so a flaky subsystem never
+kills the game. Set `RAG_QUEST_DEBUG=1` to make every swallowed
+exception print a tagged traceback via
+`rag_quest._debug.log_swallowed_exc(context)`. Use this first when a
+v0.6+ feature silently stops working — it's the one-command check for
+"is a catch eating something?"
+
 **Import-graph trap** — `rag_quest.worlds.modules` lazy-imports
 `engine.quests.QuestStatus` inside `ModuleRegistry.reevaluate` rather than
 at module top. Hoisting creates a cycle: `engine/__init__.py → game.py

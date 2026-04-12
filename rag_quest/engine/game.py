@@ -269,7 +269,11 @@ def run_game(
                         location=game_state.character.location or "",
                     )
             except Exception:
-                pass  # Timeline is additive — never block the game loop.
+                # Timeline is additive — never block the game loop. Visible in
+                # RAG_QUEST_DEBUG=1 so future regressions don't hide silently.
+                from .._debug import log_swallowed_exc
+
+                log_swallowed_exc("timeline.record_from_state_change")
 
             # v0.7: re-evaluate module gating — quest status may have changed.
             try:
@@ -284,7 +288,10 @@ def run_game(
                     elif module.status == ModuleStatus.COMPLETED:
                         ui.print_success(f"Module completed: {module.title}")
             except Exception:
-                pass  # Module gating is additive — never block the game loop.
+                # Module gating is additive — never block the game loop.
+                from .._debug import log_swallowed_exc
+
+                log_swallowed_exc("module_registry.reevaluate")
 
             # Check for new achievements
             if game_state.achievements:

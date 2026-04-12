@@ -12,6 +12,23 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+### Added
+- **`RAG_QUEST_DEBUG=1` env flag** — new `rag_quest/_debug.py` module exposes
+  `log_swallowed_exc(context)`. When the env var is set, every additive
+  per-turn catch site (timeline recorder, module gating, narrator RAG query)
+  prints a tagged traceback to stderr instead of eating the exception.
+  Normal runs stay silent. Directly motivated by the v0.7.1 narrator-RAG
+  bug that hid inside a bare `except Exception: pass` block for an unknown
+  number of releases.
+
+### Fixed
+- Tightened the last three bare `except:` clauses in the repo
+  (`engine/tts.py:186`, `engine/tts.py:195`, `knowledge/world_rag.py:187`)
+  so they no longer swallow `KeyboardInterrupt` / `SystemExit` alongside
+  the errors they actually meant to catch. The `WorldRAG.close`
+  finalization path now logs failures to stderr instead of silently
+  eating them on shutdown.
+
 ## [0.7.1] — Narrator RAG Fix
 
 ### Fixed

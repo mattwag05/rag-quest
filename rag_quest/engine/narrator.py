@@ -213,7 +213,12 @@ class Narrator:
                             "\n\n=== RELEVANT WORLD LORE ===\n" + str(rag_lore)[:800]
                         )
                 except Exception:
-                    pass  # RAG unavailable — continue without lore context.
+                    # RAG unavailable — continue without lore context. This
+                    # block previously hid a method-name typo (rag-quest-aem);
+                    # debug flag surfaces future regressions of the same shape.
+                    from .._debug import log_swallowed_exc
+
+                    log_swallowed_exc("narrator.world_rag.query_world")
 
             # Build the full system context
             system_content = f"""{system_prompt}

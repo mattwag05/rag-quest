@@ -183,8 +183,8 @@ class TTSNarrator:
         for file in self.voice_cache.values():
             try:
                 os.remove(file)
-            except:
-                pass
+            except OSError:
+                pass  # File already gone or unremovable — non-fatal.
         self.voice_cache.clear()
 
     def __del__(self):
@@ -192,6 +192,6 @@ class TTSNarrator:
         if self.engine_type == "pyttsx3" and self.engine:
             try:
                 self.engine.stop()
-            except:
-                pass
+            except Exception:
+                pass  # TTS engine may already be torn down; ignore.
         self.clear_cache()
