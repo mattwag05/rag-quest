@@ -12,6 +12,13 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+### Added
+- **v0.7 foundation: `Base` entity** — new `rag_quest/engine/bases.py` with `Base`
+  dataclass (name, location_ref, storage `Inventory`, stationed NPCs, services,
+  upgrades) plus `World.bases: list[Base]` that round-trips through `to_dict` /
+  `from_dict`. Not yet wired into gameplay — scaffolding for `/base` claim, service
+  menus, and the `.rqworld` exporter. Old saves without `bases` load as empty.
+
 ### Fixed
 - State parser: strip Markdown emphasis markers (`**`, `__`, `*`, `_`) from extracted
   NPC names, item names, locations, and quest titles. Narrators that format proper nouns

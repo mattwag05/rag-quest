@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+from .bases import Base
+
 
 class TimeOfDay(Enum):
     """Time of day."""
@@ -42,6 +44,7 @@ class World:
     npcs_met: set[str] = field(default_factory=set)
     recent_events: list[str] = field(default_factory=list)
     discovered_items: list[str] = field(default_factory=list)
+    bases: list[Base] = field(default_factory=list)
 
     def advance_time(self) -> None:
         """Advance to next time period."""
@@ -90,6 +93,7 @@ class World:
             "npcs_met": list(self.npcs_met),
             "recent_events": self.recent_events,
             "discovered_items": self.discovered_items,
+            "bases": [b.to_dict() for b in self.bases],
         }
 
     @classmethod
@@ -100,4 +104,5 @@ class World:
         data["weather"] = Weather[data["weather"]]
         data["visited_locations"] = set(data.get("visited_locations", []))
         data["npcs_met"] = set(data.get("npcs_met", []))
+        data["bases"] = [Base.from_dict(b) for b in data.get("bases", [])]
         return cls(**data)
