@@ -30,42 +30,46 @@ RAG-Quest v0.5.0 End-to-End Playtest Log
 [World          ] Track NPCs                               PASS
 [World          ] Get context                              PASS
 [Combat         ] Create enemy                             PASS
-[Combat         ] Create enemy                             FAIL ('Enemy' object has no attribute 'hp')
+[Combat         ] Enemy basic attributes                   PASS
+[Combat         ] Create encounter                         PASS
+[Combat         ] Roll initiative                          PASS
+[Combat         ] Attack roll                              FAIL ('<=' not supported between instances of 'int' and 'dict')
+[Combat         ] Calculate damage                         FAIL ('CombatEncounter' object has no attribute 'calculate_damage')
+[Combat         ] Resolve encounter                        FAIL ('CombatEncounter' object has no attribute 'resolve')
 [Progression    ] Set experience                           PASS
 [Progression    ] Get abilities                            PASS
 [Progression    ] Character attributes                     PASS
 [Party          ] Add members                              PASS
 [Party          ] Members loyalty                          PASS
 [Relationships  ] Add NPCs                                 PASS
-[Relationships  ] Disposition method exists                FAIL
-[Relationships  ] Faction method exists                    FAIL
-[Quests         ] Create and add quest                     FAIL (QuestReward.__init__() got an unexpected keyword argument 'experience')
+[Relationships  ] Disposition method exists                PASS
+[Relationships  ] Faction method exists                    PASS
+[Quests         ] Create and add quest                     PASS
 [Quests         ] Get active quests                        PASS
-[Events         ] Create Weather event                     FAIL (WorldEvent.__init__() got an unexpected keyword argument 'title')
-[Events         ] Create Combat event                      FAIL (WorldEvent.__init__() got an unexpected keyword argument 'title')
-[Events         ] Create Conflict event                    FAIL (WorldEvent.__init__() got an unexpected keyword argument 'title')
-[Events         ] Get active events                        FAIL ('EventManager' object has no attribute 'get_active_events')
+[Events         ] Create Weather event                     FAIL ('EventManager' object has no attribute 'add_event')
+[Events         ] Create Combat event                      FAIL ('EventManager' object has no attribute 'add_event')
+[Events         ] Create Conflict event                    FAIL ('EventManager' object has no attribute 'add_event')
+[Events         ] Get active events                        PASS
 [Achievements   ] Load achievements                        PASS (11 loaded)
-[Achievements   ] Check & get unlocked                     FAIL (AchievementManager.check_achievements() got an unexpected keyword argument 'player')
-[Dungeons       ] Generate easy                            FAIL ('DungeonGenerator' object has no attribute 'generate_level')
-[Dungeons       ] Generate normal                          FAIL ('DungeonGenerator' object has no attribute 'generate_level')
+[Achievements   ] Check & get unlocked                     FAIL ('Character' object has no attribute 'get')
+[Dungeons       ] Generate easy                            FAIL (DungeonGenerator.generate_level() missing 1 required positional argument: 'level')
+[Dungeons       ] Generate normal                          FAIL (DungeonGenerator.generate_level() missing 1 required positional argument: 'level')
 [Saves          ] SaveManager init                         PASS
-[Saves          ] Save game                                FAIL (SaveManager.save_game() takes from 2 to 3 positional arguments but 5 were given)
-[Saves          ] List saves                               FAIL (SaveManager.list_saves() takes 1 positional argument but 2 were given)
-[Saves          ] Load game                                FAIL (SaveManager.load_game() takes 2 positional arguments but 3 were given)
-[Worlds         ] Export world                             FAIL (WorldExporter.export_world() got an unexpected keyword argument 'world')
-[Multiplayer    ] Create session                           FAIL (MultiplayerSession.__init__() got an unexpected keyword argument 'world_name')
-[Integration    ] Serialize full state                     PASS (4291 bytes)
+[Saves          ] Save game                                PASS
+[Saves          ] List saves                               PASS (3 saves)
+[Saves          ] Load game                                PASS
+[Worlds         ] Export world                             FAIL (Object of type World is not JSON serializable)
+[Worlds         ] Import world                             FAIL
+[Multiplayer    ] Create session                           PASS
+[Multiplayer    ] Add players                              FAIL ('MultiplayerSession' object has no attribute 'add_player')
+[Multiplayer    ] Sync state                               FAIL ('MultiplayerSession' object has no attribute 'sync_state')
+[Integration    ] Serialize full state                     PASS (4527 bytes)
 [Integration    ] Deserialize full state                   PASS
 
 ================================================================================
 SUMMARY
 ================================================================================
-Total: 56
-Passed: 40
-Failed: 16
-Rate: 71%
-
-Bugs (2):
-  [P2] Relationships: Missing methods. Has: ['add_faction', 'add_npc', 'check_faction_standing', 'faction_reputation', 'factions', 'from_dict', 'get_available_interactions', 'get_disposition', 'get_or_create_relationship', 'get_relationship_summary', 'modify_faction_reputation', 'modify_relationship', 'npcs', 'relationship_summary', 'relationships', 'to_dict']
-  [P2] Quests: Quest API: QuestReward.__init__() got an unexpected keyword argument 'experience'
+Total: 64
+Passed: 51
+Failed: 13
+Rate: 79%
