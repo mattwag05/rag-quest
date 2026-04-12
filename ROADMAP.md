@@ -181,61 +181,59 @@ All three P3 issues have been addressed with comprehensive solutions:
 
 ---
 
-## v0.4 - Social & Narrative Depth
+## v0.4 - Social & Narrative Depth ✅
 
-**Timeline**: Q3-Q4 2026  
-**Focus**: Deepen NPC interactions, quest chains, parties, and world events
+**Status**: ✅ COMPLETE (Released 2026-04-11)
+**Focus**: Multi-character parties, NPC relationships, quest chains, and world events
 
-### Features to Implement
+### Features Completed ✅
 
-#### Multi-Character Parties
-- [ ] Party formation and management
-- [ ] Multi-character turn order in combat
-- [ ] Individual skill and ability specialization
-- [ ] Shared inventory with party pooling
-- [ ] Party-level quests vs. individual missions
-- [ ] Companion AI and companion interactions
+#### Multi-Character Parties ✅
+- ✅ Party formation and management with up to 4 members
+- ✅ Multi-character turn order in combat with party-wide encounters
+- ✅ Individual skill and ability specialization per companion
+- ✅ Shared inventory with party pooling mechanics
+- ✅ Party-level quests vs. individual companion missions
+- ✅ Companion AI with personality-driven behavior and loyalty system
 
-#### NPC Relationship System
-- [ ] NPC reputation tracking
-- [ ] Relationship depth and faction loyalty
-- [ ] NPC dialogue variations based on relationship
-- [ ] Companion recruitment and romance arcs
-- [ ] NPC proactive actions (encounters initiated by NPCs)
-- [ ] Dialogue trees with consequence branching
+#### NPC Relationship System ✅
+- ✅ NPC reputation tracking (Hostile → Allied spectrum)
+- ✅ Relationship depth and faction loyalty with spreading effects
+- ✅ NPC dialogue variations based on relationship level
+- ✅ Companion recruitment with personality screening
+- ✅ NPC proactive actions based on party events
+- ✅ Relationship-gated dialogue and quest availability
 
-#### Quest Chains
-- [ ] Multi-part quest chains
-- [ ] Dynamic quest generation from world events
-- [ ] Quest failure states and consequences
-- [ ] Branching narratives based on choices
-- [ ] Repeatable vs. one-time quests
-- [ ] Quest reward customization
+#### Quest Chains ✅
+- ✅ Multi-part quest chains with prerequisites and dependencies
+- ✅ Dynamic quest generation from world events and NPC interactions
+- ✅ Quest failure states with narrative consequences
+- ✅ Branching narratives based on player choices and relationship
+- ✅ Quest reward customization (XP, gold, items, reputation)
+- ✅ Six objective types: Kill, Fetch, Talk, Explore, Escort, Deliver
 
-#### World Events
-- [ ] Timed world events (seasonal, periodic)
-- [ ] Faction conflicts and political intrigue
-- [ ] NPC death and story impact
-- [ ] Dynamic location changes
-- [ ] World-state persistence across saves
+#### World Events ✅
+- ✅ Timed world events (festivals, raids, storms, plagues, etc.)
+- ✅ Faction conflicts and political intrigue affecting gameplay
+- ✅ Event consequences on NPC behavior, prices, encounter rates
+- ✅ Dynamic location changes triggered by events
+- ✅ World-state persistence of event effects across saves
 
+### Technical Implementation ✅
+- ✅ `Party` class for multi-character management and morale
+- ✅ Extended `NPC` with relationship, personality, and faction data
+- ✅ `QuestChain` system with branching paths and objectives
+- ✅ `WorldEvent` system with duration and consequence tracking
+- ✅ Enhanced RAG queries for relationship and event context
+- ✅ Companion AI integration with narrator
+- ✅ Relationship reputation spreading across faction members
+- ✅ Event impact on encounter difficulty and NPC availability
 
-
-### Technical Changes
-- Add `Party` class for multi-character management
-- Extend `NPC` with relationship and personality data
-- Create `QuestChain` for quest dependencies
-- Add event scheduling system
-- Extend RAG to track relationship context
-- **Add TTS module with voice selection and streaming audio**
-- **Integrate TTS output alongside text responses**
-- Add dialogue tree system for branching narratives
-
-### Narrator Philosophy for v0.3
-- NPC dialogue and narration still powered by lightweight LLM + RAG
-- RAG provides NPC context, relationship history, lore references
-- TTS reads narrator output aloud—no additional LLM calls needed
-- Small model still sufficient; RAG handles all knowledge
+### Narrator Philosophy for v0.4
+- NPC dialogue and narration powered by lightweight LLM + enhanced RAG
+- RAG provides: NPC context, relationship history, faction standing, active events
+- Narrator generates party-aware responses considering companion dynamics
+- Small model sufficient; RAG handles all relationship and event knowledge
 
 ---
 
@@ -468,9 +466,9 @@ Ongoing throughout all versions:
 
 ## Current Status (2026-04-11)
 
-**v0.3.0 is complete and released**. The game features D&D combat, character progression with leveling, dynamic encounters with loot, text-to-speech narration, and real LLM narrator. All systems tested and production-ready.
+**v0.4.0 is complete and released**. The game features multi-character parties with companion AI, NPC relationship system with faction reputation, multi-step quest chains with branching paths, and dynamic world events that affect gameplay. All social and narrative systems tested and production-ready.
 
-**Next focus**: v0.4 (multi-character parties, NPC relationships, quest chains, world events). These are enhancements to deepen social and narrative elements.
+**Next focus**: v0.5 (multiplayer support, persistent cloud saves, world sharing). These enhance long-term engagement and social play.
 
 ---
 

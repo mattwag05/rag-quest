@@ -10,9 +10,9 @@ This document provides AI assistants (Claude, GPT, etc.) with a comprehensive un
 
 **Why this matters**: A Gemma 4 model with excellent RAG context beats much larger models without RAG. The knowledge graph is the "long-term memory"; the LLM is just the "narrator."
 
-**Current Version**: v0.3.0 (Combat, progression, encounters, TTS narration)
+**Current Version**: v0.4.0 (Social dynamics, parties, relationships, quest chains, world events)
 
-**Status**: v0.3 complete. Game loop fully functional with D&D combat system, character progression with leveling, dynamic encounter generation, text-to-speech narration, and real LLM narrator. All core gameplay mechanics verified and production-ready.
+**Status**: v0.4 complete. Game now features multi-character parties with companion AI, NPC relationship system with faction reputation, multi-step quest chains with branching paths, and dynamic world events that affect gameplay. All social and narrative systems integrated with LightRAG for consistency.
 
 **Technology Stack**:
 - **Python 3.11+** - Core language
@@ -154,7 +154,10 @@ rag-quest/
 │   │   ├── character.py         # Player character with attributes & progression
 │   │   ├── world.py             # World state
 │   │   ├── inventory.py         # Item management
-│   │   ├── quests.py            # Quest tracking
+│   │   ├── quests.py            # Quest chains, branching narratives, objectives
+│   │   ├── party.py             # Multi-character parties, companion management
+│   │   ├── relationships.py     # NPC relationships, trust, faction reputation
+│   │   ├── events.py            # Dynamic world events with consequences
 │   │   ├── combat.py            # D&D combat system with dice rolls & mechanics
 │   │   ├── encounters.py        # Encounter generation & loot tables
 │   │   ├── narrator.py          # Lightweight AI narrator & response generation

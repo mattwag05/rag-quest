@@ -165,8 +165,14 @@ Type naturally or use commands:
 | **Combat** | `I attack the goblin with my sword` |
 | **Dialogue** | `Ask Vera about the bunker` |
 | **Inventory** | `/i` or `/inventory` |
-| **Quests** | `/q` or `/quests` |
+| **Quests** | `/q` or `/quests` — see quest chains and choices |
 | **Status** | `/s` or `/status` |
+| **Party** | `/party` — view party roster and morale |
+| **Recruit** | `/recruit <NPC name>` — add companion to party |
+| **Dismiss** | `/dismiss <companion name>` — remove from party |
+| **Relationships** | `/relationships` — view trust and disposition with NPCs |
+| **Factions** | `/factions` — see faction reputation and standing |
+| **Events** | `/events` — view active world events and consequences |
 | **Look** | `/look` or `/examine` |
 | **Map** | `/map` to see discovered locations |
 | **Save** | `/save` to save progress |
@@ -280,13 +286,30 @@ Valid classes: FIGHTER, MAGE, ROGUE, RANGER, CLERIC (case-sensitive)
 - ✅ Auto-save every turn with error recovery
 - ✅ Works with Ollama, OpenAI, and OpenRouter
 
-## What's Coming in v0.3
+## What's New in v0.3.0
 
-- Multi-character parties
-- NPC relationship system
-- Quest chains and branching narratives
-- **Text-to-speech narrator** (voice narration for immersion)
-- World events and faction dynamics
+- ✅ D&D combat with dice rolls, initiative, and critical hits
+- ✅ Character progression with 6 attributes and leveling to 10
+- ✅ Equipment system with weapon, armor, and accessory slots
+- ✅ Dynamic encounter generation with loot and difficulty scaling
+- ✅ Text-to-speech narrator (pyttsx3 and gTTS support)
+- ✅ Real LLM narrator with context injection
+
+## What's New in v0.4.0
+
+- ✅ Multi-character parties (recruit NPCs, up to 4 members)
+- ✅ NPC relationship system (trust, disposition, faction reputation)
+- ✅ Quest chains with branching paths and player choices
+- ✅ Dynamic world events affecting gameplay (10+ event types)
+- ✅ Companion AI with personality and loyalty system
+- ✅ Relationship-gated dialogue and quests
+
+## What's Coming in v0.5
+
+- Multiplayer support with shared worlds
+- Cloud save synchronization
+- Community world sharing and templates
+- Procedural dungeon generation
 
 ## Have Fun!
 

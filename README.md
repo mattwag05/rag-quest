@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Version 0.3.0](https://img.shields.io/badge/version-0.3.0-brightgreen.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.3.0)
+[![Version 0.4.0](https://img.shields.io/badge/version-0.4.0-brightgreen.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.4.0)
 
 > **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone.**
 
@@ -89,8 +89,12 @@ in these woods. There's been talk of a dragon in the mountains..."
 - **Location Tracking** — Your character's position matters; locations persist and evolve
 - **Dynamic Encounters** — Location-based enemy tables, difficulty scaling, boss encounters with 5x XP rewards
 - **Inventory Management** — Find, carry, use, and lose items during gameplay
-- **Quest System** — Receive quests from NPCs, track objectives, earn rewards
+- **Quest System** — Multi-step quest chains with branching paths and NPC-specific storylines
 - **Save System** — Auto-save every turn; load and resume any time
+- **Multi-Character Parties** — Recruit NPCs as companions (up to 4 party members), companion AI with personality-driven behaviors
+- **NPC Relationship System** — Trust and disposition tracking, faction reputation, relationship-gated dialogue and quests
+- **World Events** — Dynamic world events (festivals, raids, storms, plagues, etc.) that affect game mechanics
+- **Companion Mechanics** — Loyalty system affecting behavior, shared party objectives, inter-party dynamics
 
 ### LightRAG Knowledge Graph
 - **Dual-Level Retrieval** — Entity matching + vector similarity for precise context injection
@@ -106,6 +110,9 @@ in these woods. There's been talk of a dragon in the mountains..."
 - **Natural Actions** — Type what you want to do; the AI understands intent and context
 - **Real LLM Narrator** — No hardcoded responses; actual LLM calls generate dynamic narration based on game state
 - **Text-to-Speech** — Optional narrator voice narration (pyttsx3 or gTTS)
+- **Party UI** — Party roster with individual HP and status
+- **Relationship Display** — NPC trust, disposition, and reputation metrics
+- **Event Notifications** — Real-time alerts for world events and consequences
 
 ### LLM Providers (All First-Class Citizens)
 | Provider | Best For | Cost | Speed | Setup |
@@ -235,50 +242,62 @@ Game saves are stored at: `~/.local/share/rag-quest/saves/{world_name}.json`
 
 RAG databases live at: `~/.local/share/rag-quest/worlds/{world_name}/`
 
-## v0.3.0 Changelog
+## v0.4.0 Changelog
 
-### New in v0.3.0 - Combat, Progression & TTS
+### New in v0.4.0 - Social Dynamics, Parties & World Events
 
-**D&D Combat System** ✅
-- Dice rolling (d4, d6, d8, d10, d12, d20) with configurable rolls
-- Initiative system for encounter order
-- Attack rolls vs AC with hit/miss resolution
-- Damage calculation with weapon bonuses
-- Critical hits on natural 20s
-- 20+ enemy types with scaled stats
-- Boss encounters with 5x XP rewards
+**Multi-Character Parties** ✅
+- Recruit NPCs as companions (up to 4 party members total)
+- Companion AI with personality-driven combat styles
+- Loyalty system: companions have morale/loyalty that affects behavior
+- Party management commands: `/party`, `/recruit`, `/dismiss`
+- Shared party resources and combined encounter difficulty
 
-**Character Progression** ✅
-- Six attributes: STR, DEX, CON, INT, WIS, CHA
-- XP and leveling system (up to level 10)
-- Class abilities unlocked at milestone levels
-- Equipment slots: weapon, armor, accessory
-- Character sheet and attribute viewing
+**NPC Relationship System** ✅
+- Trust and disposition tracking (Hostile → Allied spectrum)
+- Faction reputation that spreads across faction members
+- Relationship-gated dialogue, quests, and shop prices
+- NPC unique personalities affecting interaction outcomes
+- Commands: `/relationships`, `/factions`
 
-**Dynamic Encounter Generation** ✅
-- Location-based enemy tables
-- Difficulty scaling (easy/normal/hard/deadly)
-- Level-scaled enemy stats
-- Loot tables with rarity tiers
-- Contextual enemy selection
+**Quest Chains & Branching Narratives** ✅
+- Multi-step quests with dependencies and prerequisites
+- Branching quest paths based on player choices
+- Six objective types: Kill, Fetch, Talk, Explore, Escort, Deliver
+- Quest templates for rapid generation
+- Quest rewards: XP, gold, items, reputation changes
+- Failed quest states with narrative consequences
 
-**Text-to-Speech Narration** ✅
-- pyttsx3 (offline) and gTTS (online) engine support
-- Voice selection and customization
-- Audio caching for repeated narration
-- Toggle with /voice command or TTS_ENABLED env var
+**Dynamic World Events** ✅
+- 10+ event types: festivals, raids, storms, plagues, etc.
+- Events affect game mechanics (encounter rates, prices, morale)
+- Duration-based events with automatic expiration
+- Event consequences that persist in world state
+- Command: `/events`
 
-**Real LLM Narrator** ✅
-- Narrator now calls the actual LLM instead of hardcoded responses
-- Builds context from game state, RAG knowledge, and conversation history
-- 30-second timeout with retry logic
-- Graceful fallback for failures
+**Enhanced Companion AI** ✅
+- Personality profiles affect dialogue and combat decisions
+- Loyalty degradation for morally inconsistent actions
+- Companion proactive actions and suggestions
+- Inter-party relationships and dynamics
+- Recruitment conditions and unique companion storylines
 
 **New Commands** ✅
-- `/abilities` — Show character abilities unlocked at current level
-- `/equipment` — View and manage equipped items
-- `/voice` — Toggle TTS on/off, select voice, adjust settings
-- `/combat` — View combat stats and history
+- `/party` — View party roster, status, and morale
+- `/relationships` — See trust/disposition with NPCs and factions
+- `/factions` — View faction reputation and allegiances
+- `/recruit` — Invite NPC to party
+- `/dismiss` — Remove companion from party
+- `/events` — View active world events and their effects
+- `/quests` — Enhanced to show multi-step chains and choices
+
+### Inherited from v0.3.0
+- D&D Combat System with dice rolls, initiative, and critical hits
+- Character Progression with six attributes, leveling to 10, class abilities
+- Equipment System with weapon, armor, and accessory slots
+- Text-to-Speech Narration with pyttsx3 and gTTS support
+- Real LLM Narrator with context injection and error recovery
+- Dynamic Encounter Generation with loot tables and scaling
 
 ### v0.2.0 Features (Inherited)
 

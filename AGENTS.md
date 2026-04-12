@@ -8,7 +8,7 @@ RAG-Quest uses a **provider-agnostic** architecture that treats OpenAI, OpenRout
 
 **The Architectural Philosophy**: The LLM is not expected to be a large or sophisticated model. LightRAG's knowledge graph retrieval injects all necessary context per query. A 2-4B parameter model (Ollama Gemma 4 E2B or E4B) paired with strong RAG context performs as well as much larger models running blind. This enables consumer-hardware deployment and dramatically reduces costs.
 
-**v0.3.0 Release (2026-04-11)**: All LLM providers verified working in production with real narrator. Narrator now makes actual LLM calls instead of hardcoded responses. Synchronous architecture proven stable for turn-based gameplay. All three providers (Ollama, OpenRouter, OpenAI) tested with dynamic narration. Recommended setup: Ollama Gemma 4 E4B on GPU or E2B on CPU.
+**v0.4.0 Release (2026-04-11)**: All LLM providers verified working with enhanced social narrator. Narrator now includes party context, NPC relationship history, faction reputation, and world events when generating dynamic responses. Synchronous architecture stable for complex multi-character gameplay. All three providers tested with party and social mechanics. Recommended setup: Ollama Gemma 4 E4B on GPU or E2B on CPU.
 
 ## LLM Provider Architecture
 
