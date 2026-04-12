@@ -21,6 +21,7 @@ class DifficultyLevel(Enum):
     """Dungeon difficulty."""
     EASY = "easy"
     NORMAL = "normal"
+    MEDIUM = "normal"  # Alias for NORMAL for backwards compatibility
     HARD = "hard"
 
 

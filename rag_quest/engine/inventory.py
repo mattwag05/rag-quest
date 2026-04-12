@@ -99,14 +99,19 @@ class Inventory:
     def to_dict(self) -> dict:
         """Convert inventory to dictionary."""
         return {
-            name: item.to_dict() for name, item in self.items.items()
+            'items': {
+                name: item.to_dict() for name, item in self.items.items()
+            },
+            'max_weight': self.max_weight
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "Inventory":
         """Create inventory from dictionary."""
-        inv = cls()
-        for item_data in data.values():
+        max_weight = data.get('max_weight', 100.0)
+        inv = cls(max_weight=max_weight)
+        items_data = data.get('items', data)  # Support both old and new formats
+        for item_data in items_data.values():
             item = Item.from_dict(item_data)
             inv.items[item.name] = item
         return inv
