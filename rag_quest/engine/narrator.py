@@ -201,22 +201,19 @@ class Narrator:
                         f"\n{msg['role'].upper()}: {msg['content'][:100]}"
                     )
 
-            # Query RAG for relevant lore if available
+            # Query RAG for relevant lore if available. `WorldRAG.query_world`
+            # returns a string (LightRAG does its own chunking/synthesis),
+            # which we cap to ~800 chars to keep the LLM context budget sane.
             rag_context = ""
             if self.world_rag:
                 try:
-                    rag_results = self.world_rag.query(player_input)
-                    if rag_results:
-                        rag_context = "\n\n=== RELEVANT WORLD LORE ===\n"
-                        for result in rag_results[:2]:
-                            content = (
-                                result.get("content", "")[:200]
-                                if isinstance(result, dict)
-                                else str(result)[:200]
-                            )
-                            rag_context += f"- {content}\n"
-                except Exception as e:
-                    pass  # Silently fail if RAG is unavailable
+                    rag_lore = self.world_rag.query_world(player_input)
+                    if rag_lore:
+                        rag_context = (
+                            "\n\n=== RELEVANT WORLD LORE ===\n" + str(rag_lore)[:800]
+                        )
+                except Exception:
+                    pass  # RAG unavailable — continue without lore context.
 
             # Build the full system context
             system_content = f"""{system_prompt}

@@ -12,6 +12,21 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+### Fixed
+- **Critical:** narrator now actually pulls world lore from `WorldRAG` on
+  every LLM call. The previous code (`narrator.py:208`) called
+  `self.world_rag.query(...)` — a method that does not exist on `WorldRAG`
+  — and the resulting `AttributeError` was silently swallowed by a bare
+  `except Exception: pass` block. As a result, the narrator's LLM prompt
+  never included RAG-fetched lore, defeating the core design principle
+  (*"LightRAG does the heavy lifting"*) for an unknown span of releases.
+  Fixed to call `query_world()` and treat the returned string correctly.
+  Regression tests in `tests/test_narrator_rag_context.py`.
+- Tightened two bare `except:` clauses in `engine/combat.py` (dice parse
+  fallback) and `engine/tts.py` (voice switch) so they no longer swallow
+  `KeyboardInterrupt` / `SystemExit` alongside the actual errors they're
+  meant to catch.
+
 ## [0.7.0] — Modular Adventures & Hub Bases
 
 ### Added

@@ -10,7 +10,44 @@ This philosophy shapes every version.
 
 ---
 
-## v0.6.0 (Current) — Campaign Memory
+## v0.7.0 (Current) — Modular Adventures & Hub Bases
+
+**Status**: ✅ Complete — the full v0.7 epic shipped as save format v3 with 55+ new tests.
+
+### What's New in v0.7.0
+
+**Hub Bases**
+- ✅ `Base` entity in `engine/bases.py` with storage Inventory, stationed NPCs, service roles, upgrades
+- ✅ `/base claim [name]` escape hatch + narrator-driven claim detection (`StateChange.claim_base` rule)
+- ✅ `/base here` Rich panel grouping stationed NPCs by service (`Base.npcs_by_service()`)
+- ✅ `/base station <npc> [as <service>]` binds NPCs to canonical service roles (smith, healer, innkeeper, storage, stable, library)
+- ✅ `/base talk <npc> <message>` — scoped conversation with a deterministic narrator system addendum via `build_service_prompt_addendum()`
+- ✅ `/base deposit` / `/base withdraw` move items between player Inventory and the base's own storage
+
+**Modular Adventures**
+- ✅ `modules.yaml` manifest format + `ModuleRegistry` + `Module` dataclass with `ModuleStatus` enum
+- ✅ `load_modules()` validates schema and ingests referenced lore files via `WorldRAG.ingest_file()`
+- ✅ `ModuleRegistry.reevaluate(quest_log)` runs post-turn, transitions module statuses monotonically, surfaces unlock/completion notifications
+- ✅ `/modules` command lists declared modules by lifecycle status
+
+**Author Tooling**
+- ✅ `rag-quest validate-module <dir>` — non-interactive sanity checker with DFS cycle detection on the completion-quest → unlock dependency graph
+- ✅ `rag-quest new-module <dir>` — interactive Rich-prompt manifest author with auto-slug, prereq auto-wiring, lore-stub generation, and rollback-on-validation-failure
+
+**`.rqworld` Packaging**
+- ✅ Exporter `source_dir` parameter bundles `modules.yaml` + referenced lore with Zip-Slip guard
+- ✅ `WorldImporter.extract_to()` unpacks to disk with matching Zip-Slip guard
+- ✅ Metadata `version` now tracks `rag_quest.__version__` (was hardcoded `0.5.0` since v0.5)
+
+**Save format v3**
+- ✅ `save_version` → 3; `world.bases` and `world.module_registry` round-trip through `World.to_dict` / `from_dict`
+- ✅ v2 saves load with empty collections (clean-break policy)
+
+**Dependency**: pyyaml>=6.0
+
+---
+
+## v0.6.0 — Campaign Memory
 
 **Status**: ✅ Complete — AI Notetaker, Lore Encyclopedia, Player Journal & Timeline shipped as pure additive layers over existing GameState, LightRAG, and state_parser.
 
@@ -304,18 +341,6 @@ This philosophy shapes every version.
 
 ## Future Roadmap
 
-### v0.7 — Modular Adventures & Hub Bases
-
-**Planned**:
-- `modules.yaml` manifest format inside world directories
-- Quest-gated module transitions reusing QuestLog
-- `Base` entity with per-base storage, stationed NPCs, services
-- `/base` hybrid menu + conversation routing for service NPCs
-- `rag-quest new-module` interactive CLI module authoring tool
-- `rag-quest validate-module` sanity checker
-- Save format bump to v3 (adds bases + module registry)
-- Status: Pre-development
-
 ### v0.8 — Web UI & Streaming
 
 **Planned** (shifted from v0.6):
@@ -378,4 +403,4 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-**Last Updated**: April 12, 2026
+**Last Updated**: April 12, 2026 (v0.7.0 shipped)
