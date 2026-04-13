@@ -14,7 +14,7 @@ Per-version history lives in [`docs/CHANGELOG.md`](docs/CHANGELOG.md). For anyth
 captured there, `git log --oneline` is the source of truth.
 
 Forward-looking version plans live in [`docs/ROADMAP.md`](docs/ROADMAP.md). The editable
-"Future Roadmap" section holds pre-development v0.6+ slots — update it when scoping new
+"Future Roadmap" section holds pre-development v0.9+ slots — update it when scoping new
 features, not CHANGELOG.md (CHANGELOG is for shipped work).
 
 ### Updating the changelog
@@ -56,7 +56,8 @@ rag-quest/
 │   │   ├── base.py              # BaseLLMProvider
 │   │   ├── ollama_provider.py   # Local Ollama (recommended)
 │   │   ├── openai_provider.py   # OpenAI integration
-│   │   └── openrouter_provider.py # OpenRouter integration
+│   │   ├── openrouter_provider.py # OpenRouter integration
+│   │   └── _sse.py              # stream_openai_chat — OpenAI-compatible SSE parser
 │   ├── knowledge/               # LightRAG integration
 │   │   ├── __init__.py
 │   │   ├── world_rag.py         # WorldRAG wrapper
@@ -83,6 +84,9 @@ rag-quest/
 │   │   ├── notetaker.py         # v0.6: AI Notetaker — incremental JSON summary + canonize
 │   │   ├── encyclopedia.py      # v0.6: LoreEncyclopedia — browse-then-RAG-query
 │   │   ├── bases.py             # v0.7: Base entity — hub stronghold with storage/services
+│   │   ├── turn.py              # v0.8: shared CLI/web turn helpers
+│   │   ├── _debug.py            # log_swallowed_exc
+│   │   ├── _serialization.py    # safe_enum / filter_init_kwargs
 │   │   └── saves.py             # Save/load & serialization
 │   ├── multiplayer/             # Local multiplayer
 │   │   ├── __init__.py
@@ -94,6 +98,11 @@ rag-quest/
 │   │   ├── exporter.py          # Export to .rqworld
 │   │   ├── importer.py          # Import from .rqworld
 │   │   └── templates.py         # Built-in templates
+│   ├── web/                     # v0.8: optional FastAPI wrapper
+│   │   ├── app.py               # FastAPI app, SessionStore, run()
+│   │   ├── sessions.py          # load_session_from_slot
+│   │   └── static/              # Vanilla-JS browser client
+│   │       └── index.html
 │   ├── prompts/                 # System prompts
 │   │   ├── __init__.py
 │   │   └── templates.py         # Prompt templates
@@ -355,7 +364,7 @@ subsystem goes here so CLI and web stay in sync automatically.
 - **MagicMock subsystems in web tests** — the shared turn helper
   touches `game_state.events`, `game_state.party`, `game_state.world`,
   `game_state.timeline`, `game_state.achievements`. Test fixtures
-  must wire all five to safe mocks via `_wire_turn_subsystems(gs)`,
+  must wire all five to safe mocks via `wire_turn_subsystems(gs)` from `tests/conftest.py`,
   otherwise MagicMock auto-creates return values that blow up
   `json.dumps` in the streaming endpoint (and jsonable_encoder
   sometimes silently stringifies them in the non-streaming path,
@@ -525,9 +534,7 @@ v0.6+ feature silently stops working — it's the one-command check for
 `engine.quests.QuestStatus` inside `ModuleRegistry.reevaluate` rather than
 at module top. Hoisting creates a cycle: `engine/__init__.py → game.py
 → worlds.modules → engine.quests → engine/__init__.py`. Leave the lazy
-import in place. Service
-menus and save-format v3 bump land in follow-up beads (`rag-quest-cxp`,
-`rag-quest-vei`).
+import in place.
 
 **Encyclopedia (`engine/encyclopedia.py`)** — Pure wrapper. `LoreEncyclopedia.list_entries()`
 reads from `World.visited_locations`, `World.npcs_met`,
@@ -626,16 +633,20 @@ python -m rag_quest
 # With specific world/character
 export WORLD_NAME="My World" CHARACTER_NAME="Hero"
 python -m rag_quest
+
+# Web UI (requires [web] extras)
+.venv/bin/pip install -e '.[web]'
+rag-quest serve --host 127.0.0.1 --port 8000
 ```
 
 ### Testing
 
 ```bash
-# Run all tests
-pytest -v
+# Run all tests (use python -m pytest, not the shim — see Session Gotchas)
+.venv/bin/python -m pytest
 
 # Run a specific test file
-pytest path/to/test_file.py -v
+.venv/bin/python -m pytest path/to/test_file.py -v
 
 # With coverage
 pytest --cov=rag_quest --cov-report=html
@@ -665,7 +676,7 @@ python -m py_compile rag_quest/**/*.py
 - **Character HP roundtrip**: `Character.__init__` recomputes `max_hp` / `current_hp` / `damage_dice` from race+class+level. `to_dict` → `from_dict` preserves identity fields (name, race, class, level, xp, location) but NOT combat stats. Roundtrip tests should only assert on identity.
 - **PostToolUse hook auto-runs `black` + `isort`** on `.py` files after every Edit/Write. Don't manually format between edits — it's wasted work. The "file state is current in your context" note means the hook ran.
 - **Rich `Live` can fail** in non-interactive / subshell contexts. Any new streaming UI helper must wrap the `with Live(...)` block in `try/except` and fall back to a plain `console.print(Panel(...))` (see `ui.stream_narrator_response` for the pattern).
-- **Pre-push gate requires `/simplify` approval**: run the skill, then `touch /tmp/.claude-simplify-approved` before `git commit` AND again before `git push` (both fire the hook). For doc-only commits, the flag may be set manually per the global CLAUDE.md exception.
+- **Pre-push gate requires `/simplify` approval**: run the skill, then in a separate Bash call `touch /tmp/.claude-simplify-approved`, then push. The hook fires on `git push` only (not `git commit`). For doc-only commits, the flag may be set manually per the global CLAUDE.md exception.
 - **Keep pyflakes clean** (rag-quest-dt4 + rag-quest-720): `pyflakes rag_quest/` currently exits 0 — zero warnings. Before committing anything in `rag_quest/`, run `.venv/bin/python -m pyflakes rag_quest/` (install with `.venv/bin/pip install pyflakes` if needed). Targets: no unused imports, no unused locals, no empty-prefix f-strings. If you add an `except ... as e:` block, actually log or re-raise `e` — otherwise drop the `as e`. The clean baseline is the easiest time to enforce this; pyflakes once it grows warnings again is painful to clean up.
 - **`log_swallowed_exc("<dotted.context>")`** is the canonical swallow-silence idiom for any non-critical `except Exception: pass` site (timeline, module gating, narrator RAG, `game.cleanup.*`). Context strings are dotted namespaces like `game.cleanup.world_rag` or `timeline.record` — match the module + call site, not the error message. Normal runs stay silent; `RAG_QUEST_DEBUG=1` surfaces the tagged traceback. Local-import `from .._debug import log_swallowed_exc` inside the `except` block to keep startup cost zero.
 - **Multi-edit-same-file gotcha**: firing multiple `Edit` calls targeting the same file in a single message — the PostToolUse auto-format hook reformats the file after each edit, so the *second* edit's `old_string` may no longer match. Safe pattern: one Edit per file per message, OR serialize (sequential tool calls). Parallel Edits are fine across *different* files.
