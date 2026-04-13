@@ -1,11 +1,33 @@
 """Ollama LLM provider."""
 
 import json
+import re
 from typing import Iterator, Optional
 
 import httpx
 
 from .base import BaseLLMProvider, LLMConfig
+
+# Strip reasoning / chain-of-thought that some models embed directly in
+# content rather than in the structured ``thinking`` field.
+#
+# Covers:
+#   - <think>...</think>  (Qwen 3.5, DeepSeek-R1, QwQ)
+#   - <reasoning>...</reasoning>
+#   - <channel|> delimiter used by some Gemma variants — everything
+#     before the delimiter is internal reasoning.
+_THINK_TAG_RE = re.compile(
+    r"<(?:think|reasoning)>.*?</(?:think|reasoning)>",
+    re.DOTALL | re.IGNORECASE,
+)
+_CHANNEL_DELIM_RE = re.compile(r".*?<channel\|>", re.DOTALL)
+
+
+def _strip_thinking(text: str) -> str:
+    """Remove embedded thinking / reasoning blocks from LLM output."""
+    text = _THINK_TAG_RE.sub("", text)
+    text = _CHANNEL_DELIM_RE.sub("", text)
+    return text.strip()
 
 
 class OllamaProvider(BaseLLMProvider):
@@ -55,6 +77,11 @@ class OllamaProvider(BaseLLMProvider):
 
         content = data["message"]["content"]
 
+        # Strip embedded thinking / reasoning from content (Gemma 4,
+        # Qwen 3.5, DeepSeek-R1 may ignore think=False and inline their
+        # chain-of-thought directly in the content field).
+        content = _strip_thinking(content)
+
         # Safety net: if content is still empty and thinking was present
         # (model ignored think=False), fall back to the thinking text.
         if not content.strip() and data["message"].get("thinking"):
@@ -97,6 +124,11 @@ class OllamaProvider(BaseLLMProvider):
 
         thinking_buffer: list[str] = []
         yielded_any_content = False
+        # Buffer content tokens until we're sure embedded thinking has
+        # ended.  Models like Gemma 4 inline reasoning before a
+        # ``<channel|>`` delimiter — we must not stream that preamble.
+        content_buffer: list[str] = []
+        thinking_cleared = False
 
         with self.client.stream(
             "POST", f"{self.base_url}/api/chat", json=payload
@@ -113,12 +145,45 @@ class OllamaProvider(BaseLLMProvider):
                 content = message.get("content", "")
                 thinking = message.get("thinking", "")
                 if content:
-                    yielded_any_content = True
-                    yield content
+                    if thinking_cleared:
+                        # Already past any thinking — stream directly.
+                        yielded_any_content = True
+                        yield content
+                    else:
+                        content_buffer.append(content)
+                        joined = "".join(content_buffer)
+                        # Check whether a thinking block has closed or a
+                        # channel delimiter has appeared.
+                        cleaned = _strip_thinking(joined)
+                        if cleaned != joined:
+                            # Thinking was present and stripped — flush
+                            # whatever remains as clean narrative.
+                            thinking_cleared = True
+                            if cleaned:
+                                yielded_any_content = True
+                                yield cleaned
+                            content_buffer.clear()
+                        elif len(content_buffer) > 80:
+                            # After ~80 tokens with no thinking markers
+                            # the model isn't reasoning — flush the
+                            # buffer and stream normally.
+                            thinking_cleared = True
+                            yielded_any_content = True
+                            yield joined
+                            content_buffer.clear()
                 if thinking:
                     thinking_buffer.append(thinking)
                 if chunk.get("done"):
                     break
+
+        # Flush any remaining buffered content (short responses that
+        # never hit the 80-token threshold).
+        if content_buffer:
+            joined = "".join(content_buffer)
+            cleaned = _strip_thinking(joined)
+            if cleaned:
+                yielded_any_content = True
+                yield cleaned
 
         if not yielded_any_content and thinking_buffer:
             combined = "".join(thinking_buffer)

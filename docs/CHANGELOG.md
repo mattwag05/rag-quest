@@ -12,6 +12,16 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+### Fixed
+- **Ollama thinking content leaking into narrator** — models like Gemma 4
+  E2B that ignore `think=False` and inline chain-of-thought directly in
+  the content field (using `<think>`, `<reasoning>`, or `<channel|>`
+  delimiters) now have their reasoning stripped before the narrative
+  reaches the player. Both `complete()` and `stream_complete()` are
+  covered. The streaming path buffers tokens until thinking markers are
+  resolved, then flushes clean narrative. 18 new tests in
+  `tests/test_ollama_thinking_strip.py`.
+
 ## [0.8.2] — 2026-04-13
 
 ### Added
