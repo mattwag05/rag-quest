@@ -260,32 +260,37 @@ class EventManager:
         return event
 
     def apply_effects(self, game_state) -> Dict[str, int]:
-        """
-        Apply effects from all active events to game state.
+        """Sum the ``effects`` dicts of every active event.
 
-        Returns:
-            Dictionary of applied effects
-        """
-        cumulative_effects = {}
+        **Status: stub / authoring contract.** The built-in event
+        templates declare ``effects`` dicts (``shop_prices``,
+        ``enemy_difficulty``, ``npc_friendliness``, ``item_variety``,
+        etc.) describing what an event *would like* to modify. No game
+        subsystem consumes the returned map yet — shops, encounters,
+        and NPC disposition don't read from it, and this method is not
+        called from the turn loop.
 
+        The keys are preserved rather than deleted because:
+
+        1. They document author intent and make the built-in event
+           templates self-describing.
+        2. A future pass (tracked via a follow-up bead) can wire them
+           into the shop / encounter / relationship subsystems without
+           touching the event definitions.
+
+        When that pass lands, add the corresponding hooks here (e.g.
+        ``Shop.price_multiplier = 1 + cumulative_effects['shop_prices']
+        / 100``) and call ``apply_effects`` from
+        ``rag_quest.engine.turn.collect_pre_turn_effects`` so the
+        modifiers propagate on every turn.
+        """
+        cumulative_effects: Dict[str, int] = {}
         for event in self.active_events:
             if event.is_active:
                 for effect_key, effect_value in event.effects.items():
                     cumulative_effects[effect_key] = (
                         cumulative_effects.get(effect_key, 0) + effect_value
                     )
-
-        # Apply specific effects
-        if "shop_prices" in cumulative_effects:
-            # Would affect merchant prices
-            pass
-        if "enemy_difficulty" in cumulative_effects:
-            # Would increase enemy stats
-            pass
-        if "npc_friendliness" in cumulative_effects:
-            # Would improve NPC relationships
-            pass
-
         return cumulative_effects
 
     def expire_events(self) -> List[str]:
