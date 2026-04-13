@@ -1,23 +1,27 @@
 """Tests for GET /session/{id}/turn/stream (SSE streaming turn).
 
 Covers:
-- happy path: yields chunk events and a terminal done event with
-  state_change + state, increments turn_number
+- happy path: yields pre_turn + chunk + done events, increments turn_number
 - 404 when the session id is unknown (no stream opens)
 - 400 when the input query param is empty/whitespace (no stream)
 - done event still fires when the underlying stream raises mid-way
   (exception is swallowed via log_swallowed_exc and the done payload
   reflects whatever state the narrator ended up in)
 - skips empty chunks that the narrator yields
+- parity with the CLI: pre_turn carries world events, post_turn carries
+  module transitions + achievements, timeline is recorded
 """
 
 import json
+from types import SimpleNamespace
 
 import pytest
 
 pytest.importorskip("fastapi")
 
 from unittest.mock import MagicMock  # noqa: E402
+
+from conftest import wire_turn_subsystems  # noqa: E402
 
 from rag_quest.engine.state_parser import StateChange  # noqa: E402
 from rag_quest.web.app import SessionStore, app  # noqa: E402
@@ -61,6 +65,7 @@ def _game_state_with_streaming_narrator(
     gs.narrator = MagicMock(name="narrator")
     gs.narrator.last_change = state_change
     gs.to_dict.return_value = state_dict or {"turn_number": turn_number + 1}
+    wire_turn_subsystems(gs)
 
     def _streamer(_input):
         for i, chunk in enumerate(chunks):
@@ -161,3 +166,96 @@ def test_stream_skips_empty_chunks(client):
     assert "" not in chunk_texts
     assert "real" in chunk_texts
     assert "also real" in chunk_texts
+
+
+# ----- CLI parity: SSE must carry the same side effects as POST /turn -----
+
+
+def test_stream_emits_pre_turn_event_before_chunks(client):
+    fake_event = SimpleNamespace(
+        name="Dark Storm",
+        description="A storm rolls in from the east.",
+    )
+    gs = _game_state_with_streaming_narrator(chunks=["You", " look."])
+    gs.events.check_for_events.return_value = fake_event
+    gs.events.expire_events.return_value = ["Festival of Light"]
+    gs.party.check_loyalty_departures.return_value = ["Gus"]
+    app.state.sessions.put("alpha", gs)
+
+    response = client.get("/session/alpha/turn/stream", params={"input": "look"})
+    assert response.status_code == 200
+
+    events = _parse_sse_events(response.text)
+    pre_events = [e for e in events if e["type"] == "pre_turn"]
+    chunk_events = [e for e in events if e["type"] == "chunk"]
+    done_events = [e for e in events if e["type"] == "done"]
+
+    assert len(pre_events) == 1
+    pre = pre_events[0]
+    assert pre["new_event"] == {
+        "name": "Dark Storm",
+        "description": "A storm rolls in from the east.",
+    }
+    assert pre["expired_events"] == ["Festival of Light"]
+    assert pre["departed_party_members"] == ["Gus"]
+
+    # ordering: pre_turn arrives before any chunks and before done
+    all_types = [e["type"] for e in events]
+    assert all_types.index("pre_turn") < all_types.index("chunk")
+    assert all_types.index("chunk") < all_types.index("done")
+    assert len(chunk_events) == 2
+    assert len(done_events) == 1
+
+
+def test_stream_done_payload_carries_module_and_achievement_transitions(client):
+    unlocked_module = SimpleNamespace(
+        id="tomb",
+        title="The Lost Tomb",
+        status=SimpleNamespace(value="available"),
+    )
+    unlocked_ach = SimpleNamespace(id="explorer", name="Explorer", icon="🗺️")
+
+    change = StateChange(location="Deep Woods")
+    gs = _game_state_with_streaming_narrator(chunks=["You go."], state_change=change)
+    gs.world.module_registry.reevaluate.return_value = [unlocked_module]
+    gs.achievements.check_achievements.return_value = [unlocked_ach]
+    app.state.sessions.put("alpha", gs)
+
+    response = client.get("/session/alpha/turn/stream", params={"input": "go"})
+    assert response.status_code == 200
+
+    events = _parse_sse_events(response.text)
+    done = next(e for e in events if e["type"] == "done")
+
+    assert done["post_turn"]["module_transitions"] == [
+        {"id": "tomb", "title": "The Lost Tomb", "status": "available"}
+    ]
+    assert done["post_turn"]["achievements_unlocked"] == [
+        {"id": "explorer", "name": "Explorer", "icon": "🗺️"}
+    ]
+    assert done["state_change"]["location"] == "Deep Woods"
+    gs.timeline.record_from_state_change.assert_called_once()
+
+
+def test_stream_post_turn_still_fires_when_narrator_crashes(client):
+    """Mid-stream crash swallowed via log_swallowed_exc — post-turn
+    subsystems (module gating, achievements) must still run so a web
+    player doesn't lose progress on a flaky LLM."""
+    gs = _game_state_with_streaming_narrator(
+        chunks=["A", "B", "C"], raise_mid=True, turn_number=0
+    )
+    unlocked_module = SimpleNamespace(
+        id="m", title="m", status=SimpleNamespace(value="completed")
+    )
+    gs.world.module_registry.reevaluate.return_value = [unlocked_module]
+    app.state.sessions.put("alpha", gs)
+
+    response = client.get("/session/alpha/turn/stream", params={"input": "x"})
+    assert response.status_code == 200
+
+    events = _parse_sse_events(response.text)
+    done = next(e for e in events if e["type"] == "done")
+    assert done["post_turn"]["module_transitions"] == [
+        {"id": "m", "title": "m", "status": "completed"}
+    ]
+    gs.world.module_registry.reevaluate.assert_called_once()

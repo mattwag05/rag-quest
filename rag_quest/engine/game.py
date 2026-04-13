@@ -28,6 +28,7 @@ from .quests import QuestLog
 from .relationships import RelationshipManager
 from .timeline import Bookmark, Timeline
 from .tts import TTSNarrator
+from .turn import collect_post_turn_effects, collect_pre_turn_effects
 from .world import World
 
 SAVE_FORMAT_VERSION = 3
@@ -190,35 +191,24 @@ def run_game(
                     break
                 continue
 
-            # Check for world events and advance turn
-            game_state.turn_number += 1
-            new_event = game_state.events.check_for_events(
-                game_state.turn_number, event_chance=0.08
-            )
-            if new_event:
+            # Shared turn mechanics — see engine/turn.py.
+            pre = collect_pre_turn_effects(game_state)
+            if pre.new_event is not None:
                 ui.print_world_event(
-                    f"[bold cyan]WORLD EVENT:[/bold cyan] {new_event.name}\n{new_event.description}"
+                    f"[bold cyan]WORLD EVENT:[/bold cyan] {pre.new_event.name}\n{pre.new_event.description}"
                 )
-
-            # Expire old events
-            expired = game_state.events.expire_events()
-            for event_name in expired:
+            for event_name in pre.expired_events:
                 ui.print_world_event(f"[cyan]Event ended:[/cyan] {event_name}")
-
-            # Check for party loyalty departures
-            departing = game_state.party.check_loyalty_departures()
-            for member_name in departing:
+            for member_name in pre.departed_party_members:
                 ui.print_warning(
                     f"{member_name} has left the party due to low loyalty!"
                 )
 
-            # Process action through narrator with error recovery. v0.8:
-            # streams chunks in place via Rich Live so the player sees prose
-            # unfold; the narrator's state parser still runs on the full
-            # joined response after the stream completes so mechanics stay
-            # deterministic.
+            # Narrator streaming stays on the CLI side because Rich Live
+            # is a terminal concern. Web streaming composes pre/post with
+            # Narrator.stream_action directly for the same semantics.
             try:
-                response = ui.stream_narrator_response(
+                ui.stream_narrator_response(
                     game_state.narrator.stream_action(player_input)
                 )
                 errors_in_row = 0  # Reset error counter on success
@@ -251,54 +241,22 @@ def run_game(
                         "The world seems unstable. You should find a safe place to rest "
                         "before continuing your adventure."
                     )
+                    # Fallback text rendered as a plain panel since nothing
+                    # has been streamed yet.
+                    ui.print_narrator_response(response)
                 else:
                     continue
-                # If we hit the error ceiling, render the fallback text
-                # in a normal panel since nothing has been streamed yet.
-                ui.print_narrator_response(response)
 
-            # v0.6: record a structured timeline entry from the just-applied StateChange.
-            try:
-                change = getattr(game_state.narrator, "last_change", None)
-                if change is not None:
-                    game_state.timeline.record_from_state_change(
-                        turn=game_state.turn_number,
-                        change=change,
-                        player_input=player_input,
-                        location=game_state.character.location or "",
+            post = collect_post_turn_effects(game_state, player_input)
+            for module in post.module_transitions:
+                if module.status == ModuleStatus.AVAILABLE:
+                    ui.print_info(
+                        f"[bold cyan]Module unlocked:[/bold cyan] {module.title}"
                     )
-            except Exception:
-                # Timeline is additive — never block the game loop. Visible in
-                # RAG_QUEST_DEBUG=1 so future regressions don't hide silently.
-                from .._debug import log_swallowed_exc
-
-                log_swallowed_exc("timeline.record_from_state_change")
-
-            # v0.7: re-evaluate module gating — quest status may have changed.
-            try:
-                transitioned = game_state.world.module_registry.reevaluate(
-                    game_state.quest_log
-                )
-                for module in transitioned:
-                    if module.status == ModuleStatus.AVAILABLE:
-                        ui.print_info(
-                            f"[bold cyan]Module unlocked:[/bold cyan] {module.title}"
-                        )
-                    elif module.status == ModuleStatus.COMPLETED:
-                        ui.print_success(f"Module completed: {module.title}")
-            except Exception:
-                # Module gating is additive — never block the game loop.
-                from .._debug import log_swallowed_exc
-
-                log_swallowed_exc("module_registry.reevaluate")
-
-            # Check for new achievements
-            if game_state.achievements:
-                new_achievements = game_state.achievements.check_achievements(
-                    game_state.to_dict()
-                )
-                for achievement in new_achievements:
-                    ui.print_achievement_unlocked(achievement.name, achievement.icon)
+                elif module.status == ModuleStatus.COMPLETED:
+                    ui.print_success(f"Module completed: {module.title}")
+            for achievement in post.achievements_unlocked:
+                ui.print_achievement_unlocked(achievement.name, achievement.icon)
 
             # Auto-save frequently to protect progress
             action_count += 1

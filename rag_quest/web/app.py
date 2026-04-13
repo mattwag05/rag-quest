@@ -32,6 +32,74 @@ _INSTALL_HINT = (
 )
 
 
+def _serialize_state_change(change) -> dict:
+    """Safely turn a StateChange into a JSON-friendly dict.
+
+    Returns ``{}`` when there is no change — matches the pre-v0.8 wire
+    format so existing clients/tests stay green."""
+    if change is None:
+        return {}
+    try:
+        return dataclasses.asdict(change)
+    except TypeError:
+        # Not a dataclass instance (e.g. test mock) — fall back to a
+        # best-effort dict view so the payload stays serializable.
+        return dict(getattr(change, "__dict__", {}))
+
+
+def _serialize_pre_turn(pre) -> dict:
+    """Serialize PreTurnEffects for the wire.
+
+    ``new_event`` is a ``WorldEvent`` (or ``None``); we surface only the
+    name + description because those are all the web client needs to
+    render a banner. Full event state is available via
+    ``game_state.events`` if a caller needs it.
+    """
+    event = pre.new_event
+    new_event = None
+    if event is not None:
+        new_event = {
+            "name": event.name,
+            "description": event.description,
+        }
+    return {
+        "new_event": new_event,
+        "expired_events": list(pre.expired_events),
+        "departed_party_members": list(pre.departed_party_members),
+    }
+
+
+def _serialize_post_turn(post) -> dict:
+    """Serialize PostTurnEffects for the wire.
+
+    Modules and achievements are projected to the minimum fields a
+    client needs — the full state is always available via
+    ``/session/{id}/state`` if a UI wants to drill in.
+    """
+    modules = []
+    for m in post.module_transitions:
+        modules.append(
+            {
+                "id": m.id,
+                "title": m.title,
+                "status": m.status.value,
+            }
+        )
+    achievements = []
+    for a in post.achievements_unlocked:
+        achievements.append(
+            {
+                "id": a.id,
+                "name": a.name,
+                "icon": a.icon,
+            }
+        )
+    return {
+        "module_transitions": modules,
+        "achievements_unlocked": achievements,
+    }
+
+
 def _require_fastapi() -> None:
     from importlib.util import find_spec
 
@@ -86,10 +154,18 @@ class SessionStore:
 def _build_app() -> "FastAPI":
     _require_fastapi()
     import json
+    from pathlib import Path
 
     from fastapi import FastAPI, HTTPException, Query
     from fastapi.responses import StreamingResponse
+    from fastapi.staticfiles import StaticFiles
     from pydantic import BaseModel
+
+    from ..engine.turn import (
+        advance_one_turn,
+        collect_post_turn_effects,
+        collect_pre_turn_effects,
+    )
 
     instance = FastAPI(
         title="RAG-Quest",
@@ -155,18 +231,19 @@ def _build_app() -> "FastAPI":
         if not payload.input.strip():
             raise HTTPException(status_code=400, detail="Input cannot be empty")
 
-        # Narrator.process_action swallows its own exceptions and returns a
-        # fallback string on failure — the web endpoint never sees a
-        # traceback and the client always gets a valid response body.
-        response = game_state.narrator.process_action(payload.input)
-        game_state.turn_number += 1
-
-        change = game_state.narrator.last_change
-        change_dict = dataclasses.asdict(change) if change is not None else {}
+        # Full parity with the CLI turn loop via the shared helper:
+        # turn increment → event check/expire → party loyalty → narrator
+        # → timeline → module gating → achievements. Narrator.process_action
+        # swallows its own exceptions and returns a fallback string on
+        # failure, so the web endpoint never sees a traceback and the
+        # client always gets a valid response body.
+        result = advance_one_turn(game_state, payload.input)
 
         return {
-            "response": response,
-            "state_change": change_dict,
+            "response": result.response,
+            "state_change": _serialize_state_change(result.post.state_change),
+            "pre_turn": _serialize_pre_turn(result.pre),
+            "post_turn": _serialize_post_turn(result.post),
             "state": game_state.to_dict(),
         }
 
@@ -189,6 +266,12 @@ def _build_app() -> "FastAPI":
             raise HTTPException(status_code=400, detail="Input cannot be empty")
 
         def _event_stream():
+            # Pre-turn side effects fire before the first chunk so the
+            # client can render world-event banners up top.
+            pre = collect_pre_turn_effects(game_state)
+            pre_payload = {"type": "pre_turn", **_serialize_pre_turn(pre)}
+            yield f"data: {json.dumps(pre_payload)}\n\n"
+
             try:
                 for chunk in game_state.narrator.stream_action(player_input):
                     if not chunk:
@@ -199,17 +282,30 @@ def _build_app() -> "FastAPI":
 
                 log_swallowed_exc("web.turn.stream")
 
-            game_state.turn_number += 1
-            change = game_state.narrator.last_change
-            change_dict = dataclasses.asdict(change) if change is not None else {}
+            # Post-turn runs whether or not the stream raised — matching
+            # the CLI contract that timeline/module/achievement checks
+            # are additive and never blocked by a flaky narrator.
+            post = collect_post_turn_effects(game_state, player_input)
             done_payload = {
                 "type": "done",
-                "state_change": change_dict,
+                "state_change": _serialize_state_change(post.state_change),
+                "post_turn": _serialize_post_turn(post),
                 "state": game_state.to_dict(),
             }
             yield f"data: {json.dumps(done_payload)}\n\n"
 
         return StreamingResponse(_event_stream(), media_type="text/event-stream")
+
+    # Mount the static web client last so it cannot shadow API routes.
+    # FastAPI matches routes in definition order, and StaticFiles with
+    # ``html=True`` serves ``index.html`` at the mount point.
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.is_dir():
+        instance.mount(
+            "/",
+            StaticFiles(directory=str(static_dir), html=True),
+            name="static",
+        )
 
     return instance
 
