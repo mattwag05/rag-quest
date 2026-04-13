@@ -180,6 +180,15 @@ def _build_app() -> "FastAPI":
     class TurnRequest(BaseModel):
         input: str
 
+    class NewSessionRequest(BaseModel):
+        character_name: str
+        race: str
+        character_class: str
+        template_id: Optional[str] = None
+        world_name: Optional[str] = None
+        world_setting: Optional[str] = None
+        world_tone: Optional[str] = None
+
     @instance.get("/healthz")
     def healthz() -> dict:
         return {"status": "ok", "version": __version__}
@@ -309,6 +318,53 @@ def _build_app() -> "FastAPI":
             yield f"data: {json.dumps(done_payload)}\n\n"
 
         return StreamingResponse(_event_stream(), media_type="text/event-stream")
+
+    # ---- Onboarding endpoints (new game creation) ----
+
+    @instance.get("/onboarding/races")
+    def list_races() -> list[dict]:
+        from .onboarding import RACES
+
+        return RACES
+
+    @instance.get("/onboarding/classes")
+    def list_classes() -> list[dict]:
+        from .onboarding import CLASSES
+
+        return CLASSES
+
+    @instance.get("/onboarding/templates")
+    def list_templates() -> list[dict]:
+        from .onboarding import TEMPLATES
+
+        return TEMPLATES
+
+    @instance.post("/session/new")
+    def create_session(payload: NewSessionRequest) -> dict:
+        from .onboarding import OnboardingError, create_new_session
+
+        try:
+            game_state = create_new_session(
+                character_name=payload.character_name,
+                race=payload.race,
+                character_class=payload.character_class,
+                template_id=payload.template_id,
+                world_name=payload.world_name,
+                world_setting=payload.world_setting,
+                world_tone=payload.world_tone,
+            )
+        except OnboardingError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        session_id = game_state.world.name
+        store: SessionStore = instance.state.sessions
+        store.put(session_id, game_state)
+        return {
+            "session_id": session_id,
+            "world": game_state.world.name,
+            "character": game_state.character.name,
+            "turn_number": game_state.turn_number,
+        }
 
     # Mount the static web client last so it cannot shadow API routes.
     # FastAPI matches routes in definition order, and StaticFiles with

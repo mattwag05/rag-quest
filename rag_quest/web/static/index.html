@@ -377,6 +377,173 @@
         cursor: not-allowed;
       }
 
+      /* ----- Onboarding overlay ----------------------------------------- */
+      #onboarding-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+        padding: 16px;
+      }
+
+      #onboarding-overlay.hidden {
+        display: none;
+      }
+
+      .onboarding-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 28px 32px;
+        max-width: 520px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      .onboarding-card h2 {
+        margin: 0 0 6px 0;
+        font-size: 16px;
+        color: var(--accent-narrator);
+        letter-spacing: 0.06em;
+      }
+
+      .onboarding-card .step-label {
+        color: var(--fg-dim);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 16px;
+      }
+
+      .onboarding-card .option-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 12px 0;
+      }
+
+      .onboarding-card .option-btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: var(--bg-input);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        padding: 10px 14px;
+        font-family: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        border-radius: var(--radius);
+        transition: border-color var(--transition), background var(--transition);
+      }
+
+      .onboarding-card .option-btn:hover,
+      .onboarding-card .option-btn:focus-visible {
+        border-color: var(--accent-narrator);
+        background: var(--bg-hover);
+      }
+
+      .onboarding-card .option-btn.selected {
+        border-color: var(--accent-narrator);
+        background: rgba(107, 203, 119, 0.1);
+      }
+
+      .onboarding-card .option-btn .opt-name {
+        color: var(--accent-narrator);
+        font-weight: bold;
+      }
+
+      .onboarding-card .option-btn .opt-desc {
+        color: var(--fg-dim);
+        font-size: 12px;
+      }
+
+      .onboarding-card .option-btn .opt-detail {
+        color: var(--fg-dim);
+        font-size: 11px;
+        margin-top: 2px;
+      }
+
+      .onboarding-card input[type="text"] {
+        width: 100%;
+        background: var(--bg-input);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        font-family: inherit;
+        font-size: 14px;
+        border-radius: var(--radius);
+        margin: 8px 0 16px 0;
+      }
+
+      .onboarding-card input[type="text"]:focus {
+        outline: none;
+        border-color: var(--accent-player);
+      }
+
+      .onboarding-nav {
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+        justify-content: flex-end;
+      }
+
+      .onboarding-nav button {
+        background: var(--bg-input);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        padding: 8px 18px;
+        font-family: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        border-radius: var(--radius);
+        transition: border-color var(--transition), background var(--transition);
+      }
+
+      .onboarding-nav button:hover {
+        border-color: var(--accent-narrator);
+        background: var(--bg-hover);
+      }
+
+      .onboarding-nav button.primary {
+        background: var(--accent-narrator);
+        color: var(--bg);
+        border-color: var(--accent-narrator);
+        font-weight: bold;
+      }
+
+      .onboarding-nav button.primary:hover {
+        opacity: 0.9;
+      }
+
+      .onboarding-nav button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .onboarding-preview {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px 14px;
+        margin: 12px 0;
+        font-size: 13px;
+      }
+
+      .onboarding-preview .preview-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+      }
+
+      .onboarding-preview .preview-key {
+        color: var(--fg-dim);
+      }
+
       /* ----- Responsive: stack sidebar on narrow screens --------------- */
       @media (max-width: 768px) {
         main {
@@ -414,6 +581,9 @@
   </head>
   <body>
     <a class="skip-link" href="#turn-input">Skip to input</a>
+    <div id="onboarding-overlay" class="hidden" role="dialog" aria-label="New game setup">
+      <div class="onboarding-card" id="onboarding-card"></div>
+    </div>
     <div id="app">
       <header>
         <h1>RAG-QUEST</h1>
@@ -422,6 +592,9 @@
         </select>
         <button id="load-btn" type="button" aria-label="Load selected save">
           Load
+        </button>
+        <button id="new-game-btn" type="button" aria-label="Start a new game">
+          New Game
         </button>
         <div class="spacer"></div>
         <span id="status" role="status" aria-live="polite">no session</span>
@@ -954,6 +1127,399 @@
         els.turnInput.value = "";
         sendTurn(text);
       });
+
+      // ----- Onboarding flow -----------------------------------------------
+      const onboarding = {
+        step: 0,
+        templates: [],
+        races: [],
+        classes: [],
+        // Selections:
+        mode: null, // "template" | "fresh"
+        templateId: null,
+        worldName: "",
+        worldSetting: "",
+        worldTone: "",
+        characterName: "",
+        raceId: null,
+        classId: null,
+      };
+
+      const overlayEl = document.getElementById("onboarding-overlay");
+      const cardEl = document.getElementById("onboarding-card");
+
+      async function fetchOnboardingData() {
+        const [racesRes, classesRes, templatesRes] = await Promise.all([
+          fetch("/onboarding/races"),
+          fetch("/onboarding/classes"),
+          fetch("/onboarding/templates"),
+        ]);
+        onboarding.races = await racesRes.json();
+        onboarding.classes = await classesRes.json();
+        onboarding.templates = await templatesRes.json();
+      }
+
+      function openOnboarding() {
+        onboarding.step = 1;
+        onboarding.mode = null;
+        onboarding.templateId = null;
+        onboarding.characterName = "";
+        onboarding.raceId = null;
+        onboarding.classId = null;
+        fetchOnboardingData().then(() => renderOnboardingStep());
+        overlayEl.classList.remove("hidden");
+      }
+
+      function closeOnboarding() {
+        overlayEl.classList.add("hidden");
+      }
+
+      function renderOnboardingStep() {
+        removeAllChildren(cardEl);
+        if (onboarding.step === 1) renderStep1_Mode();
+        else if (onboarding.step === 2) renderStep2_Character();
+        else if (onboarding.step === 3) renderStep3_Confirm();
+      }
+
+      // Step 1: Choose mode (template or fresh)
+      function renderStep1_Mode() {
+        const label = makeEl("div", {
+          cls: "step-label",
+          text: "Step 1 of 3",
+        });
+        cardEl.appendChild(label);
+        cardEl.appendChild(
+          makeEl("h2", { text: "Choose Your World" }),
+        );
+
+        const grid = makeEl("div", { cls: "option-grid" });
+
+        // Template options
+        for (const tpl of onboarding.templates) {
+          const btn = makeEl("button", { cls: "option-btn" });
+          btn.type = "button";
+          const nameEl = makeEl("div", { cls: "opt-name", text: tpl.name });
+          const descEl = makeEl("div", {
+            cls: "opt-desc",
+            text: tpl.description,
+          });
+          const detEl = makeEl("div", {
+            cls: "opt-detail",
+            text: tpl.setting + " \u00B7 " + tpl.tone + " \u00B7 " + tpl.difficulty,
+          });
+          btn.appendChild(nameEl);
+          btn.appendChild(descEl);
+          btn.appendChild(detEl);
+          btn.addEventListener("click", () => {
+            onboarding.mode = "template";
+            onboarding.templateId = tpl.id;
+            onboarding.step = 2;
+            renderOnboardingStep();
+          });
+          grid.appendChild(btn);
+        }
+
+        // Fresh adventure option
+        const freshBtn = makeEl("button", { cls: "option-btn" });
+        freshBtn.type = "button";
+        freshBtn.appendChild(
+          makeEl("div", { cls: "opt-name", text: "Fresh Adventure" }),
+        );
+        freshBtn.appendChild(
+          makeEl("div", {
+            cls: "opt-desc",
+            text: "Describe your own world and the AI will bring it to life.",
+          }),
+        );
+        freshBtn.addEventListener("click", () => {
+          onboarding.mode = "fresh";
+          onboarding.templateId = null;
+          onboarding.step = 2;
+          renderOnboardingStep();
+        });
+        grid.appendChild(freshBtn);
+
+        cardEl.appendChild(grid);
+
+        const nav = makeEl("div", { cls: "onboarding-nav" });
+        const cancelBtn = makeEl("button", { text: "Cancel" });
+        cancelBtn.type = "button";
+        cancelBtn.addEventListener("click", closeOnboarding);
+        nav.appendChild(cancelBtn);
+        cardEl.appendChild(nav);
+      }
+
+      // Step 2: Character creation (name, race, class + optional world fields)
+      function renderStep2_Character() {
+        const label = makeEl("div", {
+          cls: "step-label",
+          text: "Step 2 of 3",
+        });
+        cardEl.appendChild(label);
+        cardEl.appendChild(
+          makeEl("h2", { text: "Create Your Character" }),
+        );
+
+        // Fresh mode: world fields
+        if (onboarding.mode === "fresh") {
+          cardEl.appendChild(
+            makeEl("label", { text: "World Name" }),
+          );
+          const wnInput = document.createElement("input");
+          wnInput.type = "text";
+          wnInput.placeholder = "e.g. The Sunken Isles";
+          wnInput.value = onboarding.worldName;
+          wnInput.addEventListener("input", (e) => {
+            onboarding.worldName = e.target.value;
+          });
+          cardEl.appendChild(wnInput);
+
+          cardEl.appendChild(
+            makeEl("label", { text: "Setting" }),
+          );
+          const wsInput = document.createElement("input");
+          wsInput.type = "text";
+          wsInput.placeholder = "e.g. Dark medieval fantasy";
+          wsInput.value = onboarding.worldSetting;
+          wsInput.addEventListener("input", (e) => {
+            onboarding.worldSetting = e.target.value;
+          });
+          cardEl.appendChild(wsInput);
+
+          cardEl.appendChild(
+            makeEl("label", { text: "Tone" }),
+          );
+          const wtInput = document.createElement("input");
+          wtInput.type = "text";
+          wtInput.placeholder = "Dark, Heroic, or Whimsical";
+          wtInput.value = onboarding.worldTone;
+          wtInput.addEventListener("input", (e) => {
+            onboarding.worldTone = e.target.value;
+          });
+          cardEl.appendChild(wtInput);
+        }
+
+        // Character name
+        cardEl.appendChild(
+          makeEl("label", { text: "Character Name" }),
+        );
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.id = "onboarding-name";
+        nameInput.placeholder = "e.g. Kael, Lyra, Grimjaw";
+        nameInput.value = onboarding.characterName;
+        nameInput.addEventListener("input", (e) => {
+          onboarding.characterName = e.target.value;
+        });
+        cardEl.appendChild(nameInput);
+
+        // Race selection
+        cardEl.appendChild(
+          makeEl("label", { text: "Race" }),
+        );
+        const raceGrid = makeEl("div", { cls: "option-grid" });
+        for (const r of onboarding.races) {
+          const btn = makeEl("button", {
+            cls:
+              "option-btn" +
+              (onboarding.raceId === r.id ? " selected" : ""),
+          });
+          btn.type = "button";
+          btn.appendChild(
+            makeEl("span", { cls: "opt-name", text: r.name }),
+          );
+          btn.appendChild(
+            document.createTextNode(" -- " + r.description + " "),
+          );
+          btn.appendChild(
+            makeEl("span", { cls: "opt-detail", text: r.bonuses }),
+          );
+          btn.addEventListener("click", () => {
+            onboarding.raceId = r.id;
+            renderOnboardingStep();
+          });
+          raceGrid.appendChild(btn);
+        }
+        cardEl.appendChild(raceGrid);
+
+        // Class selection
+        cardEl.appendChild(
+          makeEl("label", { text: "Class" }),
+        );
+        const classGrid = makeEl("div", { cls: "option-grid" });
+        for (const c of onboarding.classes) {
+          const btn = makeEl("button", {
+            cls:
+              "option-btn" +
+              (onboarding.classId === c.id ? " selected" : ""),
+          });
+          btn.type = "button";
+          const row1 = makeEl("div");
+          row1.appendChild(
+            makeEl("span", { cls: "opt-name", text: c.name }),
+          );
+          row1.appendChild(
+            document.createTextNode(
+              " -- " + c.description + " (HP: " + c.hp + ")",
+            ),
+          );
+          btn.appendChild(row1);
+          btn.appendChild(
+            makeEl("div", {
+              cls: "opt-detail",
+              text: c.abilities,
+            }),
+          );
+          btn.addEventListener("click", () => {
+            onboarding.classId = c.id;
+            renderOnboardingStep();
+          });
+          classGrid.appendChild(btn);
+        }
+        cardEl.appendChild(classGrid);
+
+        // Nav
+        const nav = makeEl("div", { cls: "onboarding-nav" });
+        const backBtn = makeEl("button", { text: "Back" });
+        backBtn.type = "button";
+        backBtn.addEventListener("click", () => {
+          onboarding.step = 1;
+          renderOnboardingStep();
+        });
+        nav.appendChild(backBtn);
+
+        const nextBtn = makeEl("button", {
+          cls: "primary",
+          text: "Next",
+        });
+        nextBtn.type = "button";
+        nextBtn.disabled =
+          !onboarding.characterName.trim() ||
+          !onboarding.raceId ||
+          !onboarding.classId;
+        nextBtn.addEventListener("click", () => {
+          onboarding.step = 3;
+          renderOnboardingStep();
+        });
+        nav.appendChild(nextBtn);
+        cardEl.appendChild(nav);
+
+        // Focus the name input if empty
+        if (!onboarding.characterName) {
+          nameInput.focus();
+        }
+      }
+
+      // Step 3: Confirmation + create
+      function renderStep3_Confirm() {
+        const label = makeEl("div", {
+          cls: "step-label",
+          text: "Step 3 of 3",
+        });
+        cardEl.appendChild(label);
+        cardEl.appendChild(
+          makeEl("h2", { text: "Confirm Your Adventure" }),
+        );
+
+        const tpl = onboarding.templates.find(
+          (t) => t.id === onboarding.templateId,
+        );
+        const raceName =
+          (onboarding.races.find((r) => r.id === onboarding.raceId) || {})
+            .name || onboarding.raceId;
+        const className =
+          (
+            onboarding.classes.find((c) => c.id === onboarding.classId) || {}
+          ).name || onboarding.classId;
+
+        const preview = makeEl("div", { cls: "onboarding-preview" });
+        function addRow(key, val) {
+          const row = makeEl("div", { cls: "preview-row" });
+          row.appendChild(makeEl("span", { cls: "preview-key", text: key }));
+          row.appendChild(makeEl("span", { text: val }));
+          preview.appendChild(row);
+        }
+        addRow(
+          "World",
+          tpl ? tpl.name : onboarding.worldName || "Generated World",
+        );
+        if (tpl) {
+          addRow("Setting", tpl.setting);
+          addRow("Tone", tpl.tone);
+        } else {
+          if (onboarding.worldSetting) addRow("Setting", onboarding.worldSetting);
+          if (onboarding.worldTone) addRow("Tone", onboarding.worldTone);
+        }
+        addRow("Character", onboarding.characterName);
+        addRow("Race", raceName);
+        addRow("Class", className);
+        cardEl.appendChild(preview);
+
+        const nav = makeEl("div", { cls: "onboarding-nav" });
+        const backBtn = makeEl("button", { text: "Back" });
+        backBtn.type = "button";
+        backBtn.addEventListener("click", () => {
+          onboarding.step = 2;
+          renderOnboardingStep();
+        });
+        nav.appendChild(backBtn);
+
+        const createBtn = makeEl("button", {
+          cls: "primary",
+          text: "Start Adventure",
+        });
+        createBtn.type = "button";
+        createBtn.addEventListener("click", () => submitNewGame(createBtn));
+        nav.appendChild(createBtn);
+        cardEl.appendChild(nav);
+      }
+
+      async function submitNewGame(btn) {
+        btn.disabled = true;
+        btn.textContent = "Creating...";
+        try {
+          const body = {
+            character_name: onboarding.characterName.trim(),
+            race: onboarding.raceId,
+            character_class: onboarding.classId,
+          };
+          if (onboarding.mode === "template") {
+            body.template_id = onboarding.templateId;
+          } else {
+            body.world_name = onboarding.worldName || undefined;
+            body.world_setting = onboarding.worldSetting || undefined;
+            body.world_tone = onboarding.worldTone || undefined;
+          }
+          const res = await fetch("/session/new", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) {
+            const detail = await res.text();
+            throw new Error(detail);
+          }
+          const data = await res.json();
+          state.sessionId = data.session_id;
+          closeOnboarding();
+          removeAllChildren(els.narrator);
+          setStatus(
+            `${data.character} -- ${data.world} (turn ${data.turn_number})`,
+          );
+          appendLine(
+            `Welcome, ${data.character}! Your adventure in ${data.world} begins.`,
+            "system",
+          );
+          await refreshState();
+          await loadSavesList();
+          setInputEnabled(true);
+        } catch (err) {
+          appendLine(`[new game failed: ${err.message}]`, "error");
+          closeOnboarding();
+        }
+      }
+
+      document.getElementById("new-game-btn").addEventListener("click", openOnboarding);
 
       loadSavesList();
       showWelcome();

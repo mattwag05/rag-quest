@@ -12,6 +12,29 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+## [0.8.2] — 2026-04-13
+
+### Added
+- **WebUI game onboarding flow** — new players can now create a character
+  and start a game entirely from the browser, without touching the CLI.
+  A 3-step wizard (world template selection → character creation with
+  race/class picker → confirmation) is accessed via the "New Game" button
+  in the header. The overlay uses `role="dialog"` for accessibility and
+  all DOM construction is XSS-safe (`createElement`/`textContent` only).
+- **Onboarding API endpoints** — `GET /onboarding/races`,
+  `GET /onboarding/classes`, `GET /onboarding/templates` serve static
+  character-creation data; `POST /session/new` validates inputs, builds
+  engine objects, persists the initial save, and returns a ready-to-play
+  session. Input validation rejects empty names, names > 50 chars,
+  unknown races/classes/templates with descriptive 400 errors.
+- **`rag_quest/web/onboarding.py`** — new module containing `RACES`,
+  `CLASSES`, `TEMPLATES` data (synced with engine enums and
+  `worlds/templates.py`) and the `create_new_session()` factory that
+  mirrors the CLI new-game path without Rich prompts.
+- 21 new tests in `tests/test_v082_onboarding.py` covering data
+  endpoints, input validation, static HTML elements, JS function
+  presence, XSS safety, and data integrity against engine enums.
+
 ## [0.8.1] — 2026-04-13
 
 ### Added

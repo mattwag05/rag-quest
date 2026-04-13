@@ -10,7 +10,7 @@ This philosophy shapes every version.
 
 ---
 
-## v0.8.2 (Next) — Web UI Command Menus
+## v0.8.3 (Next) — Web UI Command Menus
 
 **Status**: Planned
 
@@ -25,7 +25,31 @@ This philosophy shapes every version.
 
 ---
 
-## v0.8.1 (Current) — WebUI Design Polish
+## v0.8.2 (Current) — Web Onboarding Flow
+
+**Status**: ✅ Complete — new players can create a character and start a game from the browser without CLI.
+
+### What's New in v0.8.2
+
+**Game Onboarding Wizard**
+- ✅ 3-step overlay wizard: world template selection → character creation → confirmation
+- ✅ "New Game" button in header opens the onboarding dialog
+- ✅ Race and class pickers with stat previews and descriptions
+- ✅ 4 built-in world templates (Classic Dungeon, Enchanted Forest, Port City, War-Torn Kingdom)
+- ✅ `role="dialog"` accessibility, XSS-safe DOM construction
+
+**Onboarding API**
+- ✅ `GET /onboarding/races`, `/classes`, `/templates` data endpoints
+- ✅ `POST /session/new` creates a full game session with validation
+- ✅ Input validation: empty names, long names, unknown race/class/template → 400
+
+**Data Integrity**
+- ✅ Onboarding RACES/CLASSES match engine enums
+- ✅ Onboarding TEMPLATES match `worlds/templates.py` STARTER_WORLDS
+
+---
+
+## v0.8.1 — WebUI Design Polish
 
 **Status**: ✅ Complete — responsive layout, HP bar, quest sidebar, loading indicator, welcome panel, accessibility improvements.
 
