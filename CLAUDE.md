@@ -320,8 +320,13 @@ the web endpoints call:
 - `collect_post_turn_effects(game_state, player_input) -> PostTurnEffects`:
   reads `narrator.last_change`, feeds it to
   `timeline.record_from_state_change`, runs
-  `world.module_registry.reevaluate(quest_log)` and
-  `achievements.check_achievements(game_state.to_dict())`.
+  `world.module_registry.reevaluate(quest_log)`, serializes
+  `game_state.to_dict()` **once** into `PostTurnEffects.state_dict`,
+  then passes that cached dict to
+  `achievements.check_achievements()`. If achievements unlock, only
+  the achievements subtree is refreshed in place — the rest of the
+  state is not re-serialized. The web layer reuses `.state_dict` for
+  the done payload (rag-quest-dqr).
 - `advance_one_turn(game_state, player_input) -> TurnResult`: non-
   streaming flow (`pre → narrator.process_action → post`) used by
   `POST /turn`. Streaming callers (CLI `run_game` and
@@ -703,6 +708,12 @@ python -m py_compile rag_quest/**/*.py
    positives. The combat gate must use word-boundary matching via `_combat_regex`; raw
    `any(word in text for word in keyword_set)` substring checks false-positive on
    "stable"→"stab" and similar (rag-quest-0gp).
+
+   **Healing subject-guard**: the same discipline applies to `healing_patterns`.
+   Every pattern requires the player ("you") as explicit subject/object, an
+   artefact subject ("potion"), or passive voice with no enemy agent.  Without
+   this, enemy self-healing ("the troll regenerates and heals 15 hp") silently
+   adds HP to the player. Covered by `tests/test_state_parser_healing.py`.
 
 2. **RAG Query Latency** — First query takes 30-60 seconds (LightRAG initialization).
    Typical query 1-3 seconds.
