@@ -18,9 +18,11 @@ changelog" for the full convention.
   the content field (using `<think>`, `<reasoning>`, or `<channel|>`
   delimiters) now have their reasoning stripped before the narrative
   reaches the player. Both `complete()` and `stream_complete()` are
-  covered. The streaming path buffers tokens until thinking markers are
-  resolved, then flushes clean narrative. 18 new tests in
-  `tests/test_ollama_thinking_strip.py`.
+  covered. The streaming path uses a three-phase state machine
+  (detection → full-buffer → passthrough) with heuristic meta-commentary
+  detection to buffer thinking tokens indefinitely until a delimiter
+  arrives, while still flushing clean narrative promptly. 24 new tests
+  in `tests/test_ollama_thinking_strip.py`.
 
 ## [0.8.2] — 2026-04-13
 

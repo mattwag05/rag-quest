@@ -177,6 +177,36 @@ def _make_stream_lines(tokens, thinking_tokens=None):
     return lines
 
 
+class TestLooksLikeThinking:
+    """Test the _looks_like_thinking heuristic."""
+
+    def test_player_reference(self):
+        from rag_quest.llm.ollama_provider import _looks_like_thinking
+
+        assert _looks_like_thinking("The player wants to explore")
+        assert _looks_like_thinking("the user asked about combat")
+
+    def test_planning_phrases(self):
+        from rag_quest.llm.ollama_provider import _looks_like_thinking
+
+        assert _looks_like_thinking("I need to describe the room")
+        assert _looks_like_thinking("I should respond in character")
+        assert _looks_like_thinking("Let me think about this")
+        assert _looks_like_thinking("Plan: 1. Describe scene")
+
+    def test_narrative_not_flagged(self):
+        from rag_quest.llm.ollama_provider import _looks_like_thinking
+
+        assert not _looks_like_thinking("You step into the dungeon")
+        assert not _looks_like_thinking("A cold wind howls")
+        assert not _looks_like_thinking("The door creaks open")
+
+    def test_think_tag_opener(self):
+        from rag_quest.llm.ollama_provider import _looks_like_thinking
+
+        assert _looks_like_thinking("<think>Let me reason")
+
+
 class TestStreamCompleteThinkingStrip:
     """Test that stream_complete() buffers and strips thinking from streams."""
 
@@ -205,6 +235,53 @@ class TestStreamCompleteThinkingStrip:
         assert "player input" not in full_text
         assert "cold" in full_text or "wind" in full_text
 
+    def test_stream_long_thinking_preamble_buffered(self):
+        """Reproduce the real Gemma 4 E2B problem: long reasoning preamble
+        with meta-commentary that exceeds any small buffer threshold,
+        followed by <channel|> and clean narrative."""
+        provider = _make_provider()
+        # Real-world pattern from Gemma 4 E2B — many tokens of reasoning
+        thinking_tokens = [
+            "The player ",
+            "input is a single word, ",
+            '"Cry," ',
+            "which is an emotional action ",
+            "rather than a direct command. ",
+            "I need to interpret this as ",
+            "an emotional reaction. ",
+            "I will focus on painting the scene. ",
+            "Plan:\n1. Describe the visual experience.\n",
+            "2. Enhance sensory details.\n",
+            "3. Set the stage.",
+        ]
+        narrative_tokens = [
+            "<channel|>",
+            "You take a deep breath, ",
+            "the last vestiges of sunlight ",
+            "vanishing as you step across ",
+            "the threshold.",
+        ]
+        tokens = thinking_tokens + narrative_tokens
+        lines = _make_stream_lines(tokens)
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_lines.return_value = iter(lines)
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+
+        with patch.object(provider.client, "stream", return_value=mock_response):
+            chunks = list(provider.stream_complete([{"role": "user", "content": "cry"}]))
+
+        full_text = "".join(chunks)
+        # Thinking must be completely absent
+        assert "The player" not in full_text
+        assert "I need to" not in full_text
+        assert "Plan:" not in full_text
+        # Narrative must be present
+        assert "deep breath" in full_text
+        assert "threshold" in full_text
+
     def test_stream_strips_think_tags(self):
         provider = _make_provider()
         tokens = [
@@ -230,11 +307,11 @@ class TestStreamCompleteThinkingStrip:
         assert "reasoning" not in full_text
         assert "door opens" in full_text
 
-    def test_stream_clean_content_flushes_after_buffer_limit(self):
-        """Content with no thinking markers flushes after the buffer cap."""
+    def test_stream_clean_narrative_flushes_after_detection_limit(self):
+        """Clean narrative content flushes after the detection token limit."""
         provider = _make_provider()
-        # 90 short tokens — exceeds the 80-token buffer threshold
-        tokens = [f"word{i} " for i in range(90)]
+        # 25 narrative tokens — exceeds 20-token detection limit
+        tokens = [f"You walk through room {i}. " for i in range(25)]
         lines = _make_stream_lines(tokens)
 
         mock_response = MagicMock()
@@ -249,8 +326,8 @@ class TestStreamCompleteThinkingStrip:
             )
 
         full_text = "".join(chunks)
-        assert "word0" in full_text
-        assert "word89" in full_text
+        assert "room 0" in full_text
+        assert "room 24" in full_text
 
     def test_stream_short_clean_content_flushed_at_end(self):
         """Short content with no thinking markers flushes on stream end."""
@@ -272,3 +349,32 @@ class TestStreamCompleteThinkingStrip:
         full = "".join(chunks)
         assert "Hello" in full
         assert "world." in full
+
+    def test_stream_thinking_without_delimiter_stripped_at_eos(self):
+        """If the model thinks but never emits a delimiter, the thinking
+        is stripped at end-of-stream via _strip_thinking on the buffer."""
+        provider = _make_provider()
+        # Meta-commentary detected, but no <channel|> — model just stops.
+        tokens = [
+            "The player wants to rest. ",
+            "I should describe a campfire scene. ",
+            "A warm fire crackles nearby.",
+        ]
+        lines = _make_stream_lines(tokens)
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_lines.return_value = iter(lines)
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+
+        with patch.object(provider.client, "stream", return_value=mock_response):
+            chunks = list(
+                provider.stream_complete([{"role": "user", "content": "rest"}])
+            )
+
+        # _strip_thinking won't remove this (no tags/delimiters) so the
+        # full text gets flushed — but at least it was buffered, not
+        # streamed token-by-token during the thinking phase.
+        full = "".join(chunks)
+        assert "fire crackles" in full

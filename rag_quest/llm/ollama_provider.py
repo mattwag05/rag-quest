@@ -22,12 +22,44 @@ _THINK_TAG_RE = re.compile(
 )
 _CHANNEL_DELIM_RE = re.compile(r".*?<channel\|>", re.DOTALL)
 
+# Heuristic patterns that signal the model is emitting meta-commentary /
+# chain-of-thought rather than in-character narrative.  Checked against
+# the first ~20 buffered tokens to decide whether to stay in full-buffer
+# mode (waiting for a delimiter) or flush early as clean narrative.
+_THINKING_INDICATOR_RE = re.compile(
+    r"(?:"
+    r"[Tt]he player\b"
+    r"|[Tt]he user\b"
+    r"|I (?:need to|should|will|must|have to|want to)\b"
+    r"|Let me\b"
+    r"|Plan\s*:"
+    r"|Step \d"
+    r"|My (?:plan|approach|goal|response)\b"
+    r"|First,? I"
+    r"|Okay,? (?:so|let)"
+    r"|Hmm"
+    r"|<think"
+    r"|<reasoning"
+    r")",
+    re.IGNORECASE,
+)
+
 
 def _strip_thinking(text: str) -> str:
     """Remove embedded thinking / reasoning blocks from LLM output."""
     text = _THINK_TAG_RE.sub("", text)
     text = _CHANNEL_DELIM_RE.sub("", text)
     return text.strip()
+
+
+def _has_thinking_markers(text: str) -> bool:
+    """Return True if *text* contains any thinking/delimiter patterns."""
+    return bool(_THINK_TAG_RE.search(text) or _CHANNEL_DELIM_RE.search(text))
+
+
+def _looks_like_thinking(text: str) -> bool:
+    """Return True if *text* looks like model meta-commentary."""
+    return bool(_THINKING_INDICATOR_RE.search(text))
 
 
 class OllamaProvider(BaseLLMProvider):
@@ -124,11 +156,26 @@ class OllamaProvider(BaseLLMProvider):
 
         thinking_buffer: list[str] = []
         yielded_any_content = False
-        # Buffer content tokens until we're sure embedded thinking has
-        # ended.  Models like Gemma 4 inline reasoning before a
-        # ``<channel|>`` delimiter — we must not stream that preamble.
+
+        # --- Streaming thinking-strip state machine ---
+        #
+        # Phase 1 ("detection"): buffer the first ~20 tokens while we
+        #   decide whether the model is emitting chain-of-thought.
+        #   • If a delimiter (<channel|>, </think>, </reasoning>) appears
+        #     → strip everything before it, flush the rest, go to phase 3.
+        #   • If the buffered text looks like meta-commentary (heuristic)
+        #     → enter phase 2 (full-buffer).
+        #   • If 20 tokens pass with no indicators → flush buffer, phase 3.
+        #
+        # Phase 2 ("full-buffer"): the model IS thinking.  Keep
+        #   buffering indefinitely until a delimiter or end-of-stream.
+        #
+        # Phase 3 ("passthrough"): thinking is resolved.  Yield every
+        #   subsequent token directly.
+
         content_buffer: list[str] = []
-        thinking_cleared = False
+        phase = "detection"  # "detection" | "full_buffer" | "passthrough"
+        _DETECTION_LIMIT = 20  # tokens to inspect before deciding
 
         with self.client.stream(
             "POST", f"{self.base_url}/api/chat", json=payload
@@ -144,40 +191,45 @@ class OllamaProvider(BaseLLMProvider):
                 message = chunk.get("message", {}) or {}
                 content = message.get("content", "")
                 thinking = message.get("thinking", "")
+
                 if content:
-                    if thinking_cleared:
-                        # Already past any thinking — stream directly.
+                    if phase == "passthrough":
                         yielded_any_content = True
                         yield content
                     else:
                         content_buffer.append(content)
                         joined = "".join(content_buffer)
-                        # Check whether a thinking block has closed or a
-                        # channel delimiter has appeared.
-                        cleaned = _strip_thinking(joined)
-                        if cleaned != joined:
-                            # Thinking was present and stripped — flush
-                            # whatever remains as clean narrative.
-                            thinking_cleared = True
+
+                        # Always check for a completed delimiter.
+                        if _has_thinking_markers(joined):
+                            cleaned = _strip_thinking(joined)
+                            phase = "passthrough"
                             if cleaned:
                                 yielded_any_content = True
                                 yield cleaned
                             content_buffer.clear()
-                        elif len(content_buffer) > 80:
-                            # After ~80 tokens with no thinking markers
-                            # the model isn't reasoning — flush the
-                            # buffer and stream normally.
-                            thinking_cleared = True
-                            yielded_any_content = True
-                            yield joined
-                            content_buffer.clear()
+                            continue
+
+                        if phase == "detection":
+                            if _looks_like_thinking(joined):
+                                # Meta-commentary detected — commit to
+                                # full buffering until delimiter or EOS.
+                                phase = "full_buffer"
+                            elif len(content_buffer) >= _DETECTION_LIMIT:
+                                # Enough clean tokens — this is genuine
+                                # narrative.  Flush and stream directly.
+                                phase = "passthrough"
+                                yielded_any_content = True
+                                yield joined
+                                content_buffer.clear()
+                        # phase == "full_buffer": keep accumulating.
+
                 if thinking:
                     thinking_buffer.append(thinking)
                 if chunk.get("done"):
                     break
 
-        # Flush any remaining buffered content (short responses that
-        # never hit the 80-token threshold).
+        # Flush any remaining buffered content through the stripper.
         if content_buffer:
             joined = "".join(content_buffer)
             cleaned = _strip_thinking(joined)
