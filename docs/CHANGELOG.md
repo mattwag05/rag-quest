@@ -12,6 +12,36 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-04-13
+
+### Added
+- **WebUI responsive layout** — the browser client now adapts to narrow
+  screens (phones, tablets). Below 768px the sidebar stacks below the
+  narrator pane instead of beside it, and touch targets are enlarged.
+- **WebUI HP bar** — a color-coded health bar (green / yellow / red) now
+  renders below the character stats in the sidebar, updating live after
+  each turn.
+- **WebUI quest sidebar** — active quests now appear in the sidebar panel
+  with title and truncated description, sourced from the `quest_log`
+  in the done payload.
+- **WebUI loading indicator** — a pulsing "Thinking..." animation appears
+  in the narrator pane while waiting for the LLM response, replacing the
+  previous blank gap between player input and narrator output.
+- **WebUI welcome panel** — a centered welcome message with game
+  description now greets players before they load a save, replacing the
+  previous bare system line.
+- **WebUI accessibility improvements** — skip-to-content link for keyboard
+  navigation, `role="log"` on the narrator pane, `role="status"` with
+  `aria-live="polite"` on the status bar, `aria-label` attributes on all
+  interactive elements and landmark regions, and visible `:focus-visible`
+  outlines.
+- **WebUI visual polish** — consistent border-radius and transition CSS
+  custom properties, hover states on header controls, player input prefix
+  moved to a CSS `::before` pseudo-element, and smooth HP bar transitions.
+- 22 new tests in `tests/test_v081_web_ui.py` covering accessibility
+  attributes, HP bar, quest sidebar, loading indicator, welcome panel,
+  responsive breakpoint, visual polish, and XSS safety invariants.
+
 ### Fixed
 - **WebUI turn counter display** — the turn number now displays correctly
   in the browser client after each turn. Previously the counter was

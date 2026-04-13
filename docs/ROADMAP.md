@@ -10,7 +10,60 @@ This philosophy shapes every version.
 
 ---
 
-## v0.8.0 (Current) — Web UI & Streaming
+## v0.8.2 (Next) — Web UI Command Menus
+
+**Status**: Planned
+
+### Planned Features
+
+**Slash Command Button Menus**
+- Clickable button bar or dropdown menu in the WebUI footer exposing available slash commands (`/inventory`, `/stats`, `/quests`, `/party`, `/relationships`, `/help`, `/save`, `/base`, `/modules`, `/timeline`, `/lore`, `/notes`, `/bookmark`)
+- Removes the need for players to memorize or type slash commands in the browser
+- Contextual visibility: base commands only shown when a base is claimed, module commands only when modules are loaded
+- Mobile-friendly: touch targets sized for phone use
+- Status: Pre-development
+
+---
+
+## v0.8.1 (Current) — WebUI Design Polish
+
+**Status**: ✅ Complete — responsive layout, HP bar, quest sidebar, loading indicator, welcome panel, accessibility improvements.
+
+### What's New in v0.8.1
+
+**Responsive Layout**
+- ✅ Mobile breakpoint at 768px stacks sidebar below narrator
+- ✅ Enlarged touch targets and spacing for phone/tablet use
+
+**HP Bar Visualization**
+- ✅ Color-coded health bar (green > 60%, yellow > 30%, red below)
+- ✅ Smooth animated transitions on HP changes
+
+**Quest Sidebar**
+- ✅ Active quests displayed with title and truncated description
+- ✅ Sourced from `quest_log` in the done payload state
+
+**Loading Indicator**
+- ✅ Pulsing "Thinking..." animation during LLM response wait
+
+**Welcome Panel**
+- ✅ Centered welcome message before a save is loaded
+
+**Accessibility**
+- ✅ Skip-to-content link for keyboard navigation
+- ✅ `role="log"` on narrator, `role="status"` on header status
+- ✅ `aria-label` on all interactive elements and landmark regions
+- ✅ Visible `:focus-visible` outlines for keyboard users
+
+**Visual Polish**
+- ✅ CSS custom properties for consistent border-radius and transitions
+- ✅ Hover states on header controls
+- ✅ Player input prefix via CSS `::before` pseudo-element
+- ✅ 22 new tests in `tests/test_v081_web_ui.py`
+
+---
+
+## v0.8.0 — Web UI & Streaming
 
 **Status**: ✅ Complete — FastAPI web server, streaming SSE turns, static browser client, cross-device save sync, turn-loop parity, from_dict hardening.
 
@@ -431,4 +484,4 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-**Last Updated**: April 13, 2026 (v0.8.0 shipped)
+**Last Updated**: April 13, 2026 (v0.8.1 shipped)
