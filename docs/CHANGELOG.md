@@ -12,6 +12,15 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+### Fixed
+- **Healing false-positive bug** — narrator descriptions of enemy self-healing
+  ("The troll regenerates and heals 15 hp") no longer credit the player with
+  HP recovery. All five healing patterns in `StateParser` now require either
+  the player ("you") as an explicit subject/object, an artefact subject
+  ("potion"), or passive voice with no enemy agent — mirroring the subject-guard
+  discipline applied to damage extraction in rag-quest-0gp. Covered by 13 new
+  tests in `tests/test_state_parser_healing.py`.
+
 ## [0.8.0] — 2026-04-12
 
 ### Added

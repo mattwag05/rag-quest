@@ -113,14 +113,38 @@ class StateParser:
             re.IGNORECASE,
         )
 
-        # Healing patterns
+        # Healing patterns.
+        # Each pattern requires either the player ("you") as explicit subject
+        # or an unambiguous artefact subject ("potion") so that enemy
+        # self-healing ("the troll regenerates and heals 15 hp") is never
+        # credited to the player.  Mirrors the subject-guard philosophy applied
+        # to damage_patterns (rag-quest-0gp).
         self.healing_patterns = [
-            re.compile(p, re.IGNORECASE)
-            for p in (
-                r"(?:heal|restore)[s]?\s+(\d+)\s*(?:hp|health|hit points)",
-                r"(?:recover|regain)\s+(\d+)\s*(?:health|hp|hit points)",
+            # "you heal/restore N hp" — player is explicit subject
+            re.compile(
+                r"you\s+(?:heal|restore)[s]?\s+(\d+)\s*(?:hp|health|hit\s+points)",
+                re.IGNORECASE,
+            ),
+            # "heal/restore you [for] N hp" — player is direct object
+            re.compile(
+                r"(?:heal|restore)[s]?\s+you\s+(?:for\s+)?(\d+)\s*(?:hp|health|hit\s+points)",
+                re.IGNORECASE,
+            ),
+            # "you recover/regain N health" — player is explicit subject
+            re.compile(
+                r"you\s+(?:recover|regain)\s+(\d+)\s*(?:health|hp|hit\s+points)",
+                re.IGNORECASE,
+            ),
+            # passive: "N hp is/are restored/healed/recovered" — no enemy subject
+            re.compile(
+                r"(\d+)\s*(?:hp|health|hit\s+points)\s+(?:is\s+|are\s+)?(?:restored|healed|recovered)",
+                re.IGNORECASE,
+            ),
+            # "potion heals/restores N" — potion subject is unambiguous
+            re.compile(
                 r"potion\s+(?:heal[s]?|restore[s]?)\s+(\d+)",
-            )
+                re.IGNORECASE,
+            ),
         ]
 
         # Inventory patterns
