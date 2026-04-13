@@ -164,3 +164,16 @@ V052_BUG_FIX_SUMMARY.md
 
 # Claude Code machine-local config
 .mcp.json
+
+# macOS
+.DS_Store
+
+# Claude worktrees, agents, skills, remember
+.claude/agents/
+.claude/skills/
+.claude/worktrees/
+.remember/
+
+# Session artifacts
+OVERNIGHT_LOG.md
+homelab-security-audit.md
