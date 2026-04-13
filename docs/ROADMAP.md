@@ -10,7 +10,44 @@ This philosophy shapes every version.
 
 ---
 
-## v0.7.0 (Current) — Modular Adventures & Hub Bases
+## v0.8.0 (Current) — Web UI & Streaming
+
+**Status**: ✅ Complete — FastAPI web server, streaming SSE turns, static browser client, cross-device save sync, turn-loop parity, from_dict hardening.
+
+### What's New in v0.8.0
+
+**Web UI**
+- ✅ `FastAPI` app with `/healthz`, `/saves`, `/session/load`, `/session/{id}/state` endpoints
+- ✅ `/session/{id}/turn` (non-streaming) and `/session/{id}/turn/stream` (SSE streaming)
+- ✅ Static vanilla-JS browser client with dark-mode terminal aesthetic
+- ✅ Left-side auto-scrolling narrator pane, right-side state panel, bottom input
+- ✅ `rag-quest serve --host 127.0.0.1 --port 8000` CLI launcher
+
+**Streaming Narrator**
+- ✅ `Narrator.stream_action()` yields tokens for live prose rendering
+- ✅ `BaseLLMProvider.stream_complete()` with safe single-chunk fallback
+- ✅ OllamaProvider streams line-delimited JSON; OpenAI/OpenRouter use shared SSE parser
+- ✅ Rich `Live` panel for CLI, `EventSource` for browser
+
+**Cross-Device Save Sync (v0.8)**
+- ✅ `WorldExporter.export_world(..., save_file=...)` bundles player save into `.rqworld`
+- ✅ `WorldImporter.extract_campaign()` unpacks world + save to `~/.local/share/rag-quest/`
+- ✅ `rag-quest export-campaign <name> [out.rqworld]` and `rag-quest import-campaign <file>` CLI subcommands
+
+**Turn-Loop Parity**
+- ✅ Shared `rag_quest/engine/turn.py` helpers: `collect_pre_turn_effects()`, `collect_post_turn_effects()`, `advance_one_turn()`
+- ✅ Web endpoints and CLI loop call the same mechanics (world events, party loyalty, timeline, module gating, achievements)
+- ✅ Pre-turn and post-turn payloads in all turn endpoints
+
+**Hardening**
+- ✅ `from_dict` deserializers guard against corrupted saves via `safe_enum()` and `filter_init_kwargs()`
+- ✅ WebUI bug fixes: turn counter display, markdown rendering in narrator panel, inventory sidebar state
+- ✅ State parser healing patterns guard against false-positives (enemy self-healing no longer credits player)
+- ✅ State parser damage extraction uses word-boundary matching
+
+---
+
+## v0.7.0 — Modular Adventures & Hub Bases
 
 **Status**: ✅ Complete — the full v0.7 epic shipped as save format v3 with 55+ new tests.
 
@@ -341,15 +378,6 @@ This philosophy shapes every version.
 
 ## Future Roadmap
 
-### v0.8 — Web UI & Streaming
-
-**Planned** (shifted from v0.6):
-- Web interface for browser-based play
-- Streaming responses (see narration as it's generated)
-- Cloud deployment option
-- Save sync across devices
-- Status: Pre-development
-
 ### v0.9 — iOS App & Offline Distribution
 
 **Planned** (shifted from v0.7):
@@ -403,4 +431,4 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-**Last Updated**: April 12, 2026 (v0.7.0 shipped)
+**Last Updated**: April 13, 2026 (v0.8.0 shipped)

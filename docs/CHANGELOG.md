@@ -12,6 +12,36 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+### Fixed
+- **WebUI turn counter display** — the turn number now displays correctly
+  in the browser client after each turn. Previously the counter was
+  derived from `state.turn_number` but the web layer's turn endpoints
+  were incrementing the game state turn AFTER the state was serialized
+  for the done payload, so the counter always lagged by 1. Fixed by
+  moving the `turn_number` increment to occur BEFORE the final state
+  serialization in `collect_post_turn_effects` (rag-quest-dqr).
+- **WebUI markdown rendering** — narrator responses now render correctly
+  when they contain markdown formatting. Previous releases had a bug where
+  markdown emphasis markers (`**`, `*`, `__`, `_`) were being stripped
+  from the state but not from the UI text, leaving broken markup visible
+  to the player. Markdown is now preserved in the narrator panel and
+  rendered via the browser's built-in text handling (rag-quest-dqr).
+- **WebUI inventory sidebar state** — the right-side state panel now
+  properly refreshes inventory display after items are picked up, dropped,
+  or used. Previously the sidebar cached the initial state and never
+  re-rendered even when `state_change` indicated inventory mutations.
+  Fixed by always re-rendering the sidebar from the current `GameState`
+  on every turn (rag-quest-dqr).
+- **`GameState.from_dict()` hardening** — deserializers for `Character`,
+  `World`, `NPC`, `NPCRelationship`, `Faction`, `Quest`, `QuestObjective`,
+  and `QuestReward` now handle corrupted or partial saves gracefully.
+  New `safe_enum()` helper collapses unknown/malformed enum values to
+  canonical defaults instead of raising `KeyError`; new `filter_init_kwargs()`
+  strips unrecognized dict keys so newer saves don't break older builds.
+  Saves that were previously fatal with tracebacks now load with sensible
+  defaults. Covered by comprehensive new tests in
+  `tests/test_from_dict_hardening.py`.
+
 ### Changed
 - **Per-turn state serialization halved** — `collect_post_turn_effects`
   now serializes `GameState.to_dict()` once per turn and reuses the

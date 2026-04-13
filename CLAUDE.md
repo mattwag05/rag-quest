@@ -379,6 +379,21 @@ subsystem goes here so CLI and web stay in sync automatically.
   route. `tests/test_v08_web_static.py::test_api_routes_still_resolve_with_static_mount`
   is the regression guard.
 
+**Recent Fixes (April 13, 2026)**:
+- **Turn counter lag** — the web client's turn number display was always
+  off-by-one because `collect_post_turn_effects` was incrementing
+  `game_state.turn_number` AFTER calling `GameState.to_dict()` for the
+  done payload. Reordered to increment FIRST so the done payload includes
+  the updated counter.
+- **Markdown escaping in narrator panel** — state parser was stripping
+  markdown emphasis from narrator text (to clean up `**NPC names**` in
+  inventory), but the UI was rendering stripped text. Now markdown is
+  preserved in the narrator pane and rendered through `textContent`
+  (safe, no-HTML rendering).
+- **Inventory sidebar refresh** — the right-side state panel was caching
+  the initial `GameState` and never re-rendering inventory after items
+  changed. Now the sidebar re-renders from current state on every turn.
+
 ### Knowledge Layer (knowledge/)
 
 **WorldRAG** — LightRAG wrapper. Key methods: `initialize(world_name)`, `ingest_text(text, source)`, `ingest_file(path)` (.txt/.md/.pdf), `query_world(question, context) -> str`, `record_event(event)`.

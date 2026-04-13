@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Version 0.6.0](https://img.shields.io/badge/version-0.6.0-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.6.0)
+[![Version 0.8.0](https://img.shields.io/badge/version-0.8.0-green.svg)](https://github.com/mattwag05/rag-quest/releases/tag/v0.8.0)
 [![Status: Stable](https://img.shields.io/badge/status-stable-green.svg)](docs/TEST_REPORT.md)
 
 > **An AI-powered D&D-style text RPG where a lightweight LLM narrator brings your world to life, powered by LightRAG's knowledge graph backbone.**
@@ -47,6 +47,16 @@
 - **Canonize** — `/canonize` promotes player-approved notes into LightRAG with a `canonized` tag. Hard boundary between local notes and the canonical knowledge graph keeps AI hallucinations out of retrieval.
 - **Lore Encyclopedia** — `/lore` browses NPCs, locations, factions, and items you've encountered. Drill down with `/lore <category> <name>` to run an on-demand RAG query for rich detail.
 - **Timeline & Bookmarks** — `/timeline` shows a filtered chronological event log built from every turn's state changes. `/bookmark [note]` saves a highlight's full prose; `/bookmarks` lists them later.
+
+### Hub Bases & Modular Adventures (v0.7)
+- **Hub Bases** — Claim strongholds, recruit NPCs into service roles (smith, healer, innkeeper, storage, stable, library). `/base here` shows stationed NPCs; `/base talk <npc>` has scoped conversations. Deposit/withdraw items into base storage for safekeeping.
+- **Modular Adventures** — Authors declare hub-and-spoke quest chains in a `modules.yaml` manifest. Unlock adventures by completing prerequisites; track them in `/modules`. Full author tooling: `rag-quest validate-module` and `rag-quest new-module` CLI for manifest creation and validation.
+- **Cross-Device Save Sync** (v0.8) — Export a campaign with `rag-quest export-campaign <name>` to get a `.rqworld` file. Import it on another machine with `rag-quest import-campaign <file>` — your world, bases, modules, AND character save restore everywhere.
+
+### Web UI & Streaming (v0.8)
+- **Browser-Based Play** — Launch `rag-quest serve` and play in your browser. Single-page vanilla-JS client with dark-mode terminal aesthetic. Same game loop as the CLI, same features.
+- **Streaming Narration** — Watch the narrator's prose render token-by-token as they write. Faster perceived response and more immersive storytelling.
+- **Full Parity** — Web and CLI share the same turn loop, so world events, party loyalty, module gating, timeline recording, and achievements all work in the browser.
 
 ### Accessibility & Polish
 - **Interactive Tutorial** — `/tutorial` launches a 10-step guided TUI walkthrough for new players
@@ -134,6 +144,8 @@ You walk into the dimly lit tavern. The smell of ale and roasted meat fills your
 | `/notes` | `/n` | View or refresh AI campaign summary |
 | `/canonize` | | Promote notes into permanent world lore |
 | `/lore` | `/l` | Browse lore encyclopedia with RAG detail |
+| `/base` | | Manage claimed bases (show, claim, station NPCs, deposit/withdraw) |
+| `/modules` | | View modular adventure status and gating |
 | `/achievements` | | View all achievements and progress |
 | `/factions` | | See faction standings |
 | `/dungeon` | | Generate and explore procedural dungeons |
@@ -278,11 +290,11 @@ Make sure you've ingested lore (upload during setup). RAG needs knowledge to wor
 
 ## Roadmap
 
-- **v0.5.3** ✓ Complete — Interactive TUI tutorial, downloadable user guide, 25-turn automated test suite
-- **v0.5.2** ✓ Complete — Polished UX for non-developers, zero tracebacks, command shortcuts, friendly setup
-- **v0.6** — Web UI, cloud deployment, streaming responses
-- **v0.7** — iOS/SwiftUI app, offline package distribution
-- **v0.8** — Apple Intelligence integration, voice I/O
+- **v0.8.0** ✓ Complete — FastAPI web UI, streaming narrator, cross-device save sync, turn-loop parity, from_dict hardening
+- **v0.7.0** ✓ Complete — Hub bases, modular adventures, author tooling (`validate-module`, `new-module`)
+- **v0.6.0** ✓ Complete — Campaign memory (notetaker, timeline, bookmarks, encyclopedia)
+- **v0.5.3+** ✓ Complete — Interactive tutorial, downloadable user guide, multiplayer, persistent saves
+- **v0.9** — iOS/SwiftUI app, offline package distribution
 - **v1.0** — Stable API, community mod support, advanced RAG features
 
 ## License
