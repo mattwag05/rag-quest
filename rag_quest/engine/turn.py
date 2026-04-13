@@ -22,7 +22,7 @@ turn — the CLI loop uses the same additive pattern today.
 """
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from .._debug import log_swallowed_exc
 
@@ -47,6 +47,11 @@ class PostTurnEffects:
     state_change: Optional["StateChange"] = None
     module_transitions: List[Any] = field(default_factory=list)
     achievements_unlocked: List[Any] = field(default_factory=list)
+    # Cached ``GameState.to_dict()`` produced inside
+    # ``collect_post_turn_effects`` so web callers can emit the done
+    # payload without re-serializing the whole state. The CLI loop
+    # ignores this field. ``None`` when the serialization itself raised.
+    state_dict: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -131,19 +136,39 @@ def collect_post_turn_effects(
     except Exception:
         log_swallowed_exc("turn.post.module_reevaluate")
 
+    # Serialize the full state ONCE after timeline + module mutations
+    # have landed. ``check_achievements`` reads from this same dict, and
+    # the web layer reuses it for the non-streaming done payload so we
+    # don't pay for a second full ``to_dict()`` per turn (rag-quest-dqr).
+    state_dict: Optional[Dict[str, Any]] = None
+    try:
+        state_dict = game_state.to_dict()
+    except Exception:
+        log_swallowed_exc("turn.post.state_dict")
+
     achievements_unlocked: List[Any] = []
     if getattr(game_state, "achievements", None) is not None:
         try:
             achievements_unlocked = list(
-                game_state.achievements.check_achievements(game_state.to_dict()) or []
+                game_state.achievements.check_achievements(state_dict) or []
             )
         except Exception:
             log_swallowed_exc("turn.post.check_achievements")
+        # ``check_achievements`` mutates ``game_state.achievements`` in
+        # place when it unlocks something. Refresh just the achievements
+        # subtree so the cached dict reflects the newly unlocked entries
+        # without re-serializing character/world/inventory/etc.
+        if achievements_unlocked and state_dict is not None:
+            try:
+                state_dict["achievements"] = game_state.achievements.to_dict()
+            except Exception:
+                log_swallowed_exc("turn.post.state_dict_refresh")
 
     return PostTurnEffects(
         state_change=change,
         module_transitions=module_transitions,
         achievements_unlocked=achievements_unlocked,
+        state_dict=state_dict,
     )
 
 

@@ -39,3 +39,9 @@ def wire_turn_subsystems(
 
     gs.achievements = MagicMock(name="achievements")
     gs.achievements.check_achievements.return_value = achievements_unlocked or []
+    # ``collect_post_turn_effects`` refreshes the achievements subtree
+    # of the cached state dict by calling ``achievements.to_dict()``
+    # whenever anything unlocked. Return a JSON-safe default so web-
+    # layer tests that serialize the done payload don't choke on a
+    # MagicMock child.
+    gs.achievements.to_dict.return_value = {"achievements": {}}

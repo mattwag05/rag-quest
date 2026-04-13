@@ -12,6 +12,16 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+### Changed
+- **Per-turn state serialization halved** — `collect_post_turn_effects`
+  now serializes `GameState.to_dict()` once per turn and reuses the
+  cached dict for both the achievements check and the web layer's
+  non-streaming / streaming done payload. Previously each turn paid for
+  two full serializations of the state (character + world + inventory
+  + quests + party + relationships + events + timeline + achievements
+  + bases + modules). On long-running saves this was the dominant
+  per-turn CPU cost after the narrator call itself (rag-quest-dqr).
+
 ### Fixed
 - **Healing false-positive bug** — narrator descriptions of enemy self-healing
   ("The troll regenerates and heals 15 hp") no longer credit the player with

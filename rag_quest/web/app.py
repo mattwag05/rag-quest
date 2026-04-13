@@ -239,12 +239,20 @@ def _build_app() -> "FastAPI":
         # client always gets a valid response body.
         result = advance_one_turn(game_state, payload.input)
 
+        # Reuse the state dict that ``collect_post_turn_effects`` already
+        # serialized for ``check_achievements`` instead of calling
+        # ``game_state.to_dict()`` a second time (rag-quest-dqr). Fall
+        # back to a fresh serialization only if the cached dict failed.
+        state_payload = result.post.state_dict
+        if state_payload is None:
+            state_payload = game_state.to_dict()
+
         return {
             "response": result.response,
             "state_change": _serialize_state_change(result.post.state_change),
             "pre_turn": _serialize_pre_turn(result.pre),
             "post_turn": _serialize_post_turn(result.post),
-            "state": game_state.to_dict(),
+            "state": state_payload,
         }
 
     @instance.get("/session/{session_id}/turn/stream")
@@ -286,11 +294,17 @@ def _build_app() -> "FastAPI":
             # the CLI contract that timeline/module/achievement checks
             # are additive and never blocked by a flaky narrator.
             post = collect_post_turn_effects(game_state, player_input)
+            # Same optimization as the non-streaming path: reuse the
+            # state dict that post-turn effects already computed for
+            # the achievements check (rag-quest-dqr).
+            state_payload = post.state_dict
+            if state_payload is None:
+                state_payload = game_state.to_dict()
             done_payload = {
                 "type": "done",
                 "state_change": _serialize_state_change(post.state_change),
                 "post_turn": _serialize_post_turn(post),
-                "state": game_state.to_dict(),
+                "state": state_payload,
             }
             yield f"data: {json.dumps(done_payload)}\n\n"
 

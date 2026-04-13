@@ -199,6 +199,47 @@ def test_post_turn_swallows_subsystem_exceptions():
     assert post.achievements_unlocked == []
 
 
+def test_post_turn_caches_state_dict_and_serializes_once(monkeypatch):
+    """rag-quest-dqr: ``collect_post_turn_effects`` must serialize the
+    game state exactly once per turn. Previously achievements.check and
+    the web done payload each called ``game_state.to_dict()``, doubling
+    the serialization cost on long-running saves."""
+    gs = _make_game_state(
+        achievements_unlocked=[
+            SimpleNamespace(id="explorer", name="Explorer", icon="🗺️")
+        ]
+    )
+    cached_dict = {"turn_number": 1, "achievements": {"achievements": {}}}
+    gs.to_dict.return_value = cached_dict
+    # Simulate the achievements manager mutating state during the check
+    # so the refresh path has something meaningful to write.
+    fresh_achievements = {"achievements": {"explorer": {"unlocked": True}}}
+    gs.achievements.to_dict.return_value = fresh_achievements
+
+    post = collect_post_turn_effects(gs, "travel north")
+
+    # Exactly one serialization of the full game state per turn.
+    assert gs.to_dict.call_count == 1
+    # The cached dict is exposed on PostTurnEffects for web callers.
+    assert post.state_dict is cached_dict
+    # check_achievements receives the same cached dict (not a copy).
+    call_arg = gs.achievements.check_achievements.call_args[0][0]
+    assert call_arg is cached_dict
+    # Because an achievement unlocked, the achievements subtree was
+    # refreshed in place so the done payload reflects the new state.
+    assert post.state_dict["achievements"] is fresh_achievements
+
+
+def test_post_turn_skips_achievements_refresh_when_nothing_unlocks():
+    """If ``check_achievements`` returns an empty list, there's nothing
+    to refresh — skip the extra ``AchievementManager.to_dict()`` call."""
+    gs = _make_game_state(achievements_unlocked=[])
+
+    collect_post_turn_effects(gs, "wait")
+
+    gs.achievements.to_dict.assert_not_called()
+
+
 # ----- advance_one_turn ----------------------------------------------------
 
 
