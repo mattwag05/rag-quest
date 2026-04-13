@@ -271,3 +271,80 @@ def test_quest_reward_from_dict_ignores_unknown_keys():
     reward = QuestReward.from_dict({"xp": 100, "gold": 50, "future_field": [1, 2, 3]})
     assert reward.xp == 100
     assert reward.gold == 50
+
+
+# ---------------------------------------------------------------------------
+# GameState.from_dict — missing top-level keys (BUG-007 regression guard)
+# ---------------------------------------------------------------------------
+
+def _make_minimal_game_state_deps():
+    """Return (narrator, world_rag, llm) mocks for GameState.from_dict."""
+    from unittest.mock import MagicMock
+
+    narrator = MagicMock()
+    narrator.last_change = None
+    narrator.last_response = ""
+    narrator.last_player_input = ""
+    narrator.conversation_history = []
+    world_rag = MagicMock()
+    llm = MagicMock()
+    return narrator, world_rag, llm
+
+
+def _base_save_dict():
+    """Minimal valid save dict with all expected top-level keys."""
+    return {
+        "save_version": 3,
+        "character": {
+            "name": "Test",
+            "race": "HUMAN",
+            "character_class": "FIGHTER",
+            "level": 1,
+            "xp": 0,
+            "location": "Start",
+        },
+        "world": {"name": "TestWorld"},
+        "inventory": {"items": {}},
+        "quest_log": {"quests": [], "quest_chains": {}},
+        "turn_number": 0,
+    }
+
+
+def test_from_dict_missing_quest_log():
+    from rag_quest.engine.game import GameState
+
+    d = _base_save_dict()
+    del d["quest_log"]
+    narrator, world_rag, llm = _make_minimal_game_state_deps()
+    gs = GameState.from_dict(d, narrator, world_rag, llm)
+    assert gs.quest_log is not None
+
+
+def test_from_dict_missing_inventory():
+    from rag_quest.engine.game import GameState
+
+    d = _base_save_dict()
+    del d["inventory"]
+    narrator, world_rag, llm = _make_minimal_game_state_deps()
+    gs = GameState.from_dict(d, narrator, world_rag, llm)
+    assert gs.inventory is not None
+
+
+def test_from_dict_missing_character():
+    from rag_quest.engine.game import GameState
+
+    d = _base_save_dict()
+    del d["character"]
+    narrator, world_rag, llm = _make_minimal_game_state_deps()
+    gs = GameState.from_dict(d, narrator, world_rag, llm)
+    assert gs.character is not None
+
+
+def test_from_dict_missing_world():
+    from rag_quest.engine.game import GameState
+
+    d = _base_save_dict()
+    del d["world"]
+    narrator, world_rag, llm = _make_minimal_game_state_deps()
+    gs = GameState.from_dict(d, narrator, world_rag, llm)
+    assert gs.world is not None

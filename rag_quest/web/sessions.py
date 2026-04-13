@@ -91,11 +91,11 @@ def load_session_from_slot(slot_id: str) -> "GameState":
     # game_state.character. Build preliminary instances here to satisfy
     # Narrator's constructor, then rebind the four attributes to the
     # hydrated instances below so narrator and GameState share references.
-    character = Character.from_dict(save_dict["character"])
-    world = World.from_dict(save_dict["world"])
+    character = Character.from_dict(save_dict.get("character", {}))
+    world = World.from_dict(save_dict.get("world", {"name": "Unknown"}))
     inventory = Inventory.from_dict(save_dict.get("inventory", {"items": {}}))
     quest_log = QuestLog.from_dict(
-        save_dict.get("quest_log", {"quests": [], "completed": []})
+        save_dict.get("quest_log", {"quests": [], "quest_chains": {}})
     )
     narrator = Narrator(llm_provider, world_rag, character, world, inventory, quest_log)
 

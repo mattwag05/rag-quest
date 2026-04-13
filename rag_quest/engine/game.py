@@ -95,10 +95,12 @@ class GameState:
         tts_enabled: bool = False,
     ) -> "GameState":
         """Deserialize game state."""
-        character = Character.from_dict(data["character"])
-        world = World.from_dict(data["world"])
-        inventory = Inventory.from_dict(data["inventory"])
-        quest_log = QuestLog.from_dict(data["quest_log"])
+        character = Character.from_dict(data.get("character", {}))
+        world = World.from_dict(data.get("world", {"name": "Unknown"}))
+        inventory = Inventory.from_dict(data.get("inventory", {"items": {}}))
+        quest_log = QuestLog.from_dict(
+            data.get("quest_log", {"quests": [], "quest_chains": {}})
+        )
         party = Party.from_dict(data.get("party", {"members": [], "max_size": 4}))
         relationships = RelationshipManager.from_dict(
             data.get(

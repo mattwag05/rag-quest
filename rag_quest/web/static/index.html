@@ -271,6 +271,7 @@
       const state = {
         sessionId: null,
         currentNarratorLine: null, // live element being streamed into
+        narratorBuffer: "", // accumulated text for markdown re-render
       };
 
       const els = {
@@ -315,6 +316,43 @@
         els.narrator.appendChild(p);
         scrollNarratorToBottom();
         return p;
+      }
+
+      // -- Safe markdown-to-DOM (no innerHTML) --------------------------------
+      // Converts **bold** and *italic* markers into <strong>/<em> elements.
+      // Everything is created via createElement/textContent so LLM output
+      // can never inject HTML.
+      const _MD_PATTERN =
+        /\*\*(.+?)\*\*|__(.+?)__|(?<!\w)\*(.+?)\*(?!\w)|(?<!\w)_(.+?)_(?!\w)/g;
+
+      function appendMarkdownText(parentEl, text) {
+        _MD_PATTERN.lastIndex = 0;
+        let lastIndex = 0;
+        let match;
+        while ((match = _MD_PATTERN.exec(text)) !== null) {
+          if (match.index > lastIndex) {
+            parentEl.appendChild(
+              document.createTextNode(text.substring(lastIndex, match.index)),
+            );
+          }
+          const bold = match[1] || match[2];
+          const italic = match[3] || match[4];
+          if (bold) {
+            const el = document.createElement("strong");
+            el.textContent = bold;
+            parentEl.appendChild(el);
+          } else if (italic) {
+            const el = document.createElement("em");
+            el.textContent = italic;
+            parentEl.appendChild(el);
+          }
+          lastIndex = _MD_PATTERN.lastIndex;
+        }
+        if (lastIndex < text.length) {
+          parentEl.appendChild(
+            document.createTextNode(text.substring(lastIndex)),
+          );
+        }
       }
 
       function setStatus(text) {
@@ -364,15 +402,28 @@
         els.locField.appendChild(makeEl("span", { cls: "key", text: locLabel }));
 
         const inv = stateDict.inventory || {};
-        const items = Array.isArray(inv.items) ? inv.items : [];
+        // Inventory.to_dict() returns {items: {name: {...}, ...}} (dict), but
+        // older formats may use a list. Normalise to an array of item objects.
+        let items;
+        if (Array.isArray(inv.items)) {
+          items = inv.items;
+        } else if (inv.items && typeof inv.items === "object") {
+          items = Object.values(inv.items);
+        } else {
+          items = [];
+        }
         removeAllChildren(els.invList);
         if (items.length === 0) {
           els.invList.appendChild(makeEl("li", { cls: "dim", text: "(empty)" }));
         } else {
           for (const item of items.slice(0, 20)) {
-            const name =
-              typeof item === "string" ? item : item.name || JSON.stringify(item);
-            els.invList.appendChild(makeEl("li", { text: name }));
+            const label =
+              typeof item === "string"
+                ? item
+                : item.name
+                  ? `${item.name}${item.quantity > 1 ? " x" + item.quantity : ""}`
+                  : JSON.stringify(item);
+            els.invList.appendChild(makeEl("li", { text: label }));
           }
         }
       }
@@ -470,13 +521,18 @@
         if (payload.type === "chunk") {
           if (!state.currentNarratorLine) {
             state.currentNarratorLine = appendLine("", "narrator-text");
+            state.narratorBuffer = "";
           }
-          state.currentNarratorLine.textContent += payload.text || "";
+          state.narratorBuffer += payload.text || "";
+          // Re-render the full buffer so markdown split across chunks works.
+          removeAllChildren(state.currentNarratorLine);
+          appendMarkdownText(state.currentNarratorLine, state.narratorBuffer);
           scrollNarratorToBottom();
           return;
         }
         if (payload.type === "done") {
           state.currentNarratorLine = null;
+          state.narratorBuffer = "";
           const post = payload.post_turn || {};
           for (const mod of post.module_transitions || []) {
             const verb = mod.status === "completed" ? "completed" : "unlocked";
@@ -488,7 +544,31 @@
               "achievement",
             );
           }
-          renderState(payload.state);
+          // Render state from the done payload first (fast path).
+          if (payload.state) {
+            renderState(payload.state);
+            const ch = payload.state.character || {};
+            const wd = payload.state.world || {};
+            const tn = payload.state.turn_number;
+            if (tn !== undefined) {
+              setStatus(`${ch.name || "?"} — ${wd.name || "?"} (turn ${tn})`);
+            }
+          }
+          // Then fetch fresh state from API to guarantee sidebar + header sync.
+          refreshState().then(() => {
+            if (state.sessionId) {
+              fetch(`/session/${encodeURIComponent(state.sessionId)}/state`)
+                .then((r) => r.json())
+                .then((s) => {
+                  const ch = s.character || {};
+                  const wd = s.world || {};
+                  setStatus(
+                    `${ch.name || "?"} — ${wd.name || "?"} (turn ${s.turn_number ?? "?"})`,
+                  );
+                })
+                .catch(() => {});
+            }
+          });
           setInputEnabled(true);
           return;
         }
