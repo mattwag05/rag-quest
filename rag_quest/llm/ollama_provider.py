@@ -8,58 +8,81 @@ import httpx
 
 from .base import BaseLLMProvider, LLMConfig
 
-# Strip reasoning / chain-of-thought that some models embed directly in
-# content rather than in the structured ``thinking`` field.
+# ---------------------------------------------------------------------------
+# Thinking / chain-of-thought stripping
+# ---------------------------------------------------------------------------
 #
-# Covers:
-#   - <think>...</think>  (Qwen 3.5, DeepSeek-R1, QwQ)
-#   - <reasoning>...</reasoning>
-#   - <channel|> delimiter used by some Gemma variants — everything
-#     before the delimiter is internal reasoning.
+# Several models embed reasoning directly in the content field rather than
+# in the structured ``thinking`` field, even when ``think=False`` is set.
+#
+# Known patterns
+# ~~~~~~~~~~~~~~
+# Qwen 3.5 / DeepSeek-R1 / QwQ:
+#     <think>...reasoning...</think>answer
+#     <reasoning>...reasoning...</reasoning>answer
+#
+# Gemma 4 E2B / E4B (thought-channel format):
+#     <|channel>thought\n...reasoning...\n<channel|>answer
+#
+#   The ``<|channel>thought`` token opens the thought channel and
+#   ``<channel|>`` closes it.  Everything between is internal reasoning.
+#   See https://ai.google.dev/gemma/docs/capabilities/thinking
+#
+# For **non-streaming** (complete): we strip after the full response
+# arrives, so a single regex pass handles everything.
+#
+# For **streaming** (stream_complete): the delimiter tokens arrive mid-
+# stream.  We detect the ``<|channel>thought`` opener (or ``<think>`` /
+# ``<reasoning>`` tags) in early tokens and buffer until the matching
+# closer, then yield only the clean narrative that follows.
+
 _THINK_TAG_RE = re.compile(
     r"<(?:think|reasoning)>.*?</(?:think|reasoning)>",
     re.DOTALL | re.IGNORECASE,
 )
-_CHANNEL_DELIM_RE = re.compile(r".*?<channel\|>", re.DOTALL)
 
-# Heuristic patterns that signal the model is emitting meta-commentary /
-# chain-of-thought rather than in-character narrative.  Checked against
-# the first ~20 buffered tokens to decide whether to stay in full-buffer
-# mode (waiting for a delimiter) or flush early as clean narrative.
-_THINKING_INDICATOR_RE = re.compile(
-    r"(?:"
-    r"[Tt]he player\b"
-    r"|[Tt]he user\b"
-    r"|I (?:need to|should|will|must|have to|want to)\b"
-    r"|Let me\b"
-    r"|Plan\s*:"
-    r"|Step \d"
-    r"|My (?:plan|approach|goal|response)\b"
-    r"|First,? I"
-    r"|Okay,? (?:so|let)"
-    r"|Hmm"
-    r"|<think"
-    r"|<reasoning"
-    r")",
+# Gemma 4 thought-channel: everything from ``<|channel>thought`` up to
+# and including ``<channel|>``.  The ``<|channel>thought`` marker may be
+# followed by a newline or whitespace before the reasoning body.
+_THOUGHT_CHANNEL_RE = re.compile(
+    r"<\|channel>thought.*?<channel\|>",
+    re.DOTALL,
+)
+
+# Fallback: bare ``<channel|>`` without a matching ``<|channel>thought``
+# opener — strip everything before the delimiter.  This catches cases
+# where Ollama strips the opener but leaves the closer.
+_BARE_CHANNEL_CLOSE_RE = re.compile(r".*?<channel\|>", re.DOTALL)
+
+# Streaming opener detection: does the text contain a thinking-block
+# start marker?  Used to decide whether to enter full-buffer mode.
+_STREAM_OPENER_RE = re.compile(
+    r"<\|channel>thought|<think|<reasoning",
     re.IGNORECASE,
 )
 
 
 def _strip_thinking(text: str) -> str:
-    """Remove embedded thinking / reasoning blocks from LLM output."""
+    """Remove embedded thinking / reasoning blocks from LLM output.
+
+    Handles Qwen/DeepSeek ``<think>`` tags, Gemma 4 thought-channel
+    blocks, and bare ``<channel|>`` fallback.
+    """
     text = _THINK_TAG_RE.sub("", text)
-    text = _CHANNEL_DELIM_RE.sub("", text)
+    text = _THOUGHT_CHANNEL_RE.sub("", text)
+    # If a bare ``<channel|>`` remains (no matching opener was found),
+    # strip everything before it.
+    text = _BARE_CHANNEL_CLOSE_RE.sub("", text)
     return text.strip()
 
 
 def _has_thinking_markers(text: str) -> bool:
     """Return True if *text* contains any thinking/delimiter patterns."""
-    return bool(_THINK_TAG_RE.search(text) or _CHANNEL_DELIM_RE.search(text))
-
-
-def _looks_like_thinking(text: str) -> bool:
-    """Return True if *text* looks like model meta-commentary."""
-    return bool(_THINKING_INDICATOR_RE.search(text))
+    return bool(
+        _THINK_TAG_RE.search(text)
+        or _THOUGHT_CHANNEL_RE.search(text)
+        or _BARE_CHANNEL_CLOSE_RE.search(text)
+    )
 
 
 class OllamaProvider(BaseLLMProvider):
@@ -135,13 +158,25 @@ class OllamaProvider(BaseLLMProvider):
         """Stream chat completions from Ollama as they're generated.
 
         Ollama's streaming protocol is line-delimited JSON: each line is a
-        JSON object with `message.content` holding the next token chunk.
-        The final object has `done: true` with empty content.
+        JSON object with ``message.content`` holding the next token chunk.
+        The final object has ``done: true`` with empty content.
 
-        Same thinking-model safety net as `complete()`: if the model ignores
-        `think=False` and emits a reasoning block with empty content, we
-        fall back to the trailing paragraph of the thinking text so the
-        stream never produces an empty turn.
+        **Thinking-strip state machine** — models like Gemma 4 E2B may
+        ignore ``think=False`` and emit a thought-channel block::
+
+            <|channel>thought\\n...reasoning...\\n<channel|>narrative
+
+        The streamer detects the opener token (``<|channel>thought``,
+        ``<think>``, or ``<reasoning>``) within the first few tokens and
+        buffers everything until the matching closer (``<channel|>``,
+        ``</think>``, ``</reasoning>``).  Only the clean narrative after
+        the closer is yielded.  If no opener is detected within the first
+        ``_DETECTION_LIMIT`` tokens, the content is assumed clean and
+        streamed directly.
+
+        Same thinking-model safety net as ``complete()``: if the model
+        emits a reasoning block with empty content, we fall back to the
+        trailing paragraph of the thinking text.
         """
         temp = temperature if temperature is not None else self.config.temperature
         tokens = max_tokens if max_tokens is not None else self.config.max_tokens
@@ -159,23 +194,26 @@ class OllamaProvider(BaseLLMProvider):
 
         # --- Streaming thinking-strip state machine ---
         #
-        # Phase 1 ("detection"): buffer the first ~20 tokens while we
-        #   decide whether the model is emitting chain-of-thought.
-        #   • If a delimiter (<channel|>, </think>, </reasoning>) appears
-        #     → strip everything before it, flush the rest, go to phase 3.
-        #   • If the buffered text looks like meta-commentary (heuristic)
-        #     → enter phase 2 (full-buffer).
-        #   • If 20 tokens pass with no indicators → flush buffer, phase 3.
+        # Phase 1 ("detection"): buffer the first tokens while we decide
+        #   whether the model is emitting chain-of-thought.
+        #   • If an opener token (<|channel>thought, <think>, <reasoning>)
+        #     is detected → enter phase 2 (full-buffer).
+        #   • If a closer appears in the same window → strip and flush,
+        #     go to phase 3 (passthrough).
+        #   • If _DETECTION_LIMIT tokens pass with no opener → content is
+        #     clean; flush buffer and go to phase 3.
         #
-        # Phase 2 ("full-buffer"): the model IS thinking.  Keep
-        #   buffering indefinitely until a delimiter or end-of-stream.
+        # Phase 2 ("full_buffer"): opener was found, waiting for closer.
+        #   Buffer indefinitely until <channel|> / </think> / </reasoning>
+        #   appears.  On closer, strip the thinking block from the joined
+        #   buffer, yield whatever clean text remains, and go to phase 3.
         #
         # Phase 3 ("passthrough"): thinking is resolved.  Yield every
         #   subsequent token directly.
 
         content_buffer: list[str] = []
         phase = "detection"  # "detection" | "full_buffer" | "passthrough"
-        _DETECTION_LIMIT = 20  # tokens to inspect before deciding
+        _DETECTION_LIMIT = 10  # tokens to inspect before deciding
 
         with self.client.stream(
             "POST", f"{self.base_url}/api/chat", json=payload
@@ -200,7 +238,8 @@ class OllamaProvider(BaseLLMProvider):
                         content_buffer.append(content)
                         joined = "".join(content_buffer)
 
-                        # Always check for a completed delimiter.
+                        # Check for a completed thinking block (opener +
+                        # closer both present) — strip and flush.
                         if _has_thinking_markers(joined):
                             cleaned = _strip_thinking(joined)
                             phase = "passthrough"
@@ -211,18 +250,18 @@ class OllamaProvider(BaseLLMProvider):
                             continue
 
                         if phase == "detection":
-                            if _looks_like_thinking(joined):
-                                # Meta-commentary detected — commit to
-                                # full buffering until delimiter or EOS.
+                            # Look for an opener token to commit to
+                            # full buffering.
+                            if _STREAM_OPENER_RE.search(joined):
                                 phase = "full_buffer"
                             elif len(content_buffer) >= _DETECTION_LIMIT:
-                                # Enough clean tokens — this is genuine
-                                # narrative.  Flush and stream directly.
+                                # No opener found — clean narrative.
                                 phase = "passthrough"
                                 yielded_any_content = True
                                 yield joined
                                 content_buffer.clear()
-                        # phase == "full_buffer": keep accumulating.
+                        # phase == "full_buffer": keep accumulating
+                        # until the closer arrives.
 
                 if thinking:
                     thinking_buffer.append(thinking)
