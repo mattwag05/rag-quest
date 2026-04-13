@@ -83,6 +83,23 @@ pip install git+https://github.com/mattwag05/rag-quest.git
 python -m rag_quest
 ```
 
+### Web UI (v0.8, optional)
+
+Prefer playing in a browser? Install the optional `[web]` extras and
+launch the FastAPI server:
+
+```bash
+pip install 'rag-quest[web] @ git+https://github.com/mattwag05/rag-quest.git'
+rag-quest serve --host 127.0.0.1 --port 8000
+# → open http://127.0.0.1:8000/ in your browser
+```
+
+The web client is a single static page (no build step, no framework)
+that streams narrator responses live via Server-Sent Events. World
+events, achievement unlocks, and module gating all surface through the
+same shared turn loop the CLI uses, so you don't lose any gameplay
+features by playing in the browser.
+
 ### 4. Follow the Prompts
 The setup wizard will:
 - Detect Ollama automatically
@@ -202,7 +219,7 @@ RAG-Quest uses a novel architecture: **LightRAG does the heavy lifting, the LLM 
 
 **Why it works**: The knowledge graph is the "long-term memory." The LLM is the "storyteller." Separation of concerns = zero hallucinations.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed technical documentation.
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed technical documentation.
 
 ## Developers
 

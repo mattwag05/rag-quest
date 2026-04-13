@@ -12,7 +12,34 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-04-12
+
 ### Added
+- **v0.8 web: CLI turn-loop parity** — `POST /session/{id}/turn` and
+  `GET /session/{id}/turn/stream` now fire every side effect the CLI
+  loop runs per turn: world-event check/expire, party loyalty
+  departures, timeline recording, module-gating reevaluation, and
+  achievement unlocks. A shared pure helper in
+  `rag_quest/engine/turn.py` (`collect_pre_turn_effects`,
+  `collect_post_turn_effects`, `advance_one_turn`) owns the mechanics,
+  with zero Rich/console coupling, so CLI and web callers share one
+  implementation. Both endpoints now return `pre_turn` and `post_turn`
+  payloads alongside `response`/`state_change`/`state`; the streaming
+  endpoint emits a new `event: pre_turn` SSE frame before any narrator
+  chunks so clients can render world-event banners up top. 11 new
+  engine-turn unit tests + 9 new web parity tests. (rag-quest-1o2)
+- **v0.8 web: static browser client** — new
+  `rag_quest/web/static/index.html` + `README.md`. Single-page vanilla
+  JS (no build step, no framework, no CDN) with a dark-mode terminal
+  aesthetic — left-side auto-scrolling narrator pane, right-side state
+  panel (character / location / inventory), bottom input form. Talks
+  to the server over `fetch()` for `/saves` + `/session/load` +
+  `/session/{id}/state`, and `EventSource` for the streaming turn
+  endpoint. Mounted at `/` via `StaticFiles(html=True)` after all API
+  routes so it can't shadow them. All server-supplied text renders
+  through `textContent`/`createElement` — `innerHTML` is not used
+  anywhere, since LLM output and save-file data flow through the
+  page. 2 new tests pin the mount invariants. (rag-quest-dby)
 - **v0.8: Streaming narrator responses** — the game loop now renders
   narration token-by-token via Rich `Live` instead of waiting 2-10
   seconds for the complete response, so players see prose unfold
@@ -111,6 +138,16 @@ changelog" for the full convention.
   `/session/load`, `/session/{id}/state`, `POST /session/{id}/turn`,
   the SSE streaming variant, and a static HTML frontend. 5 new
   scaffold tests in `tests/test_v08_web_scaffold.py`. (rag-quest-9gx)
+
+### Changed
+- **`EventManager.apply_effects` documented as a stub.** The built-in
+  event templates declare `effects` dicts (`shop_prices`,
+  `enemy_difficulty`, `npc_friendliness`, `item_variety`, etc.)
+  describing what an event *would like* to modify. No game subsystem
+  reads the returned map yet, and the method is not called from the
+  turn loop. The keys are preserved as authoring intent; real wire-up
+  into shops/encounters/NPC disposition tracked in rag-quest-nen.
+  (rag-quest-702)
 
 ### Fixed
 - **`run_game` shutdown catches now route through `log_swallowed_exc`.**
