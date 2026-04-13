@@ -2,24 +2,46 @@
   "hooks": {
     "PreCompact": [
       {
+        "matcher": "",
         "hooks": [
           {
-            "command": "bd prime",
-            "type": "command"
+            "type": "command",
+            "command": "bd prime"
           }
-        ],
-        "matcher": ""
+        ]
       }
     ],
     "SessionStart": [
       {
+        "matcher": "",
         "hooks": [
           {
-            "command": "bd prime",
-            "type": "command"
+            "type": "command",
+            "command": "bd prime"
           }
-        ],
-        "matcher": ""
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import json,sys; d=json.load(sys.stdin); f=d.get('tool_input',{}).get('file_path',''); sys.exit(1) if f.endswith('/.env') else sys.exit(0)\" || { echo 'Blocked: .env is gitignored and contains real secrets. Edit .env.example instead.'; exit 1; }"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import json,sys,subprocess,os; d=json.load(sys.stdin); f=d.get('tool_input',{}).get('file_path',''); venv=os.path.join(os.path.dirname(f).split('.claude')[0].rstrip('/'), '') if '.claude' in f else ''; py='/Users/matthewwagner/Desktop/Projects/rag-quest/.venv/bin/python3'; (f.endswith('.py') and os.path.exists(f) and os.path.exists(py)) and [subprocess.run([py,'-m','black','--quiet',f],check=False), subprocess.run([py,'-m','isort','--quiet',f],check=False)]\" 2>/dev/null || true"
+          }
+        ]
       }
     ]
   }

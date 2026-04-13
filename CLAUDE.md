@@ -106,8 +106,8 @@ rag-quest/
 │   ├── QUICKSTART.md
 │   ├── CONTRIBUTING.md
 │   ├── ROADMAP.md
-│   └── RAG-Quest_User_Guide.docx  # Downloadable user guide
 ├── pyproject.toml               # Project config
+├── RAG-Quest_User_Guide.docx    # Downloadable user guide (root, not in docs/)
 ├── README.md                    # User-facing docs
 ├── AGENTS.md                    # LLM provider guide
 ├── LICENSE                      # MIT License
@@ -152,24 +152,7 @@ Config location: `~/.config/rag-quest/config.json`
 
 ### Game State
 
-**GameState** — Central state container:
-```python
-@dataclass
-class GameState:
-    character: Character
-    world: World
-    inventory: Inventory
-    quest_log: QuestLog
-    party: Party
-    relationships: RelationshipManager
-    conversation_history: list[dict]
-    
-    def to_dict(self) -> dict: ...
-    @classmethod
-    def from_dict(cls, data: dict) -> 'GameState': ...
-```
-
-All game objects are fully serializable. Saves are JSON at: `~/.local/share/rag-quest/saves/{world_name}.json`
+**GameState** — Central state container: `character`, `world`, `inventory`, `quest_log`, `party`, `relationships`, `conversation_history`. Fully serializable via `to_dict()` / `from_dict()`. Saves are JSON at: `~/.local/share/rag-quest/saves/{world_name}.json`
 
 ### Character System
 
@@ -215,16 +198,7 @@ All game objects are fully serializable. Saves are JSON at: `~/.local/share/rag-
 
 ### NPC & Relationship System
 
-**RelationshipManager** — Tracks NPC dispositions:
-```python
-def add_npc(self, name: str, role: str, disposition: float = 0.0):
-    # disposition: -1.0 (enemy) to +1.0 (ally)
-    pass
-
-def change_disposition(self, npc_name: str, delta: float):
-    # Modify trust level
-    pass
-```
+**RelationshipManager** — Tracks NPC dispositions. `add_npc(name, role, disposition)` (−1.0 enemy → +1.0 ally). `change_disposition(name, delta)` adjusts trust.
 
 **Faction System** — Faction reputation tracking with methods: `create_faction()`, `change_reputation()`, `get_reputation()`.
 
@@ -237,12 +211,6 @@ def change_disposition(self, npc_name: str, delta: float):
 4. Calls LLM provider (synchronous)
 5. Records event back to RAG
 6. Returns narrative response
-
-**Key Method**:
-```python
-def process_action(self, action: str, game_state: GameState) -> str:
-    # Returns narrated response
-```
 
 **State Parser (`engine/state_parser.py`)** — Post-processes narrator output into a `StateChange`:
 location moves, damage taken / healed, items gained/lost, quests offered/completed, NPCs
@@ -298,26 +266,108 @@ so players see prose render live.
 - **Version strings** — Always import from `rag_quest.__version__`. The ASCII banner, `--version`
   output, and any user-visible version must come from the package, never hardcoded.
 
+### Web stack (v0.8, `rag_quest/web/`)
+
+Optional FastAPI wrapper around the engine. The base install stays slim
+— `pip install -e '.[web]'` pulls in `fastapi` + `uvicorn`. Everything
+else is vanilla stdlib.
+
+**Layout**:
+- `rag_quest/web/app.py` — `_build_app()` returns a configured
+  `FastAPI` instance; module-level `app` is either that instance or
+  `None` when the extras are missing. `SessionStore` (module dataclass)
+  holds loaded `GameState` objects keyed by save name and closes the
+  previous session's `WorldRAG`/`llm` when re-loading the same slot.
+  `run(host, port)` launches uvicorn.
+- `rag_quest/web/sessions.py` — encapsulates the
+  "read save → build provider → build WorldRAG → build Narrator →
+  hydrate GameState" chain behind `load_session_from_slot(slot_id)`,
+  raising `SessionLoadError` on any failure.
+- `rag_quest/web/static/` — vanilla-JS single-page client
+  (`index.html` + `README.md`). Mounted at `/` via
+  `StaticFiles(html=True)` **after** every API route so it can't
+  shadow them. Server-supplied text renders through
+  `textContent`/`createElement` only — `innerHTML` is never used
+  because LLM output and save-file data flow through the page.
+
+**Endpoints**:
+- `GET /healthz` — health + version
+- `GET /saves` — list save slots (delegates to `sessions.list_save_slots`)
+- `POST /session/load` — hydrate a slot and park it in `SessionStore`
+- `GET /session/{id}/state` — `GameState.to_dict()` dump
+- `POST /session/{id}/turn` — non-streaming turn via `advance_one_turn`
+- `GET /session/{id}/turn/stream` — SSE streaming turn (GET + query
+  string because browser `EventSource` only speaks GET)
+
+**CLI turn-loop parity (v0.8, `rag_quest/engine/turn.py`)** — The pure
+mechanics of a turn live in three helpers that both the CLI loop and
+the web endpoints call:
+
+- `collect_pre_turn_effects(game_state) -> PreTurnEffects`: increments
+  `turn_number`, runs `events.check_for_events(event_chance=0.08)`,
+  `events.expire_events()`, and `party.check_loyalty_departures()`.
+  Each subsystem is individually wrapped in `log_swallowed_exc` so
+  one failure can't cascade.
+- `collect_post_turn_effects(game_state, player_input) -> PostTurnEffects`:
+  reads `narrator.last_change`, feeds it to
+  `timeline.record_from_state_change`, runs
+  `world.module_registry.reevaluate(quest_log)` and
+  `achievements.check_achievements(game_state.to_dict())`.
+- `advance_one_turn(game_state, player_input) -> TurnResult`: non-
+  streaming flow (`pre → narrator.process_action → post`) used by
+  `POST /turn`. Streaming callers (CLI `run_game` and
+  `GET /turn/stream`) compose pre + `Narrator.stream_action` + post
+  manually because streaming owns the narrator call.
+
+**Contract**: these helpers do **not** import Rich and do **not**
+print. All UI output lives in the `run_game` wrapper. Any new per-turn
+subsystem goes here so CLI and web stay in sync automatically.
+
+**SSE wire format**:
+
+```jsonc
+// pre_turn event (always first)
+{"type":"pre_turn","new_event":{"name","description"}|null,
+ "expired_events":[...],"departed_party_members":[...]}
+// chunk events (narrator tokens)
+{"type":"chunk","text":"..."}
+// done event (always last)
+{"type":"done","state_change":{...},
+ "post_turn":{"module_transitions":[...],"achievements_unlocked":[...]},
+ "state":{...}}
+```
+
+`POST /turn` returns the same shape flattened:
+`{response, state_change, pre_turn, post_turn, state}`.
+
+**Gotchas**:
+- **`SessionStore` and `_isolate_session_store` fixture** — tests
+  monkeypatch `app.state.sessions` per-test; mixing that with module-
+  level `app.state.sessions = SessionStore()` at import time means
+  anything storing a long-lived reference to `app.state.sessions`
+  (instead of re-fetching via `store: SessionStore = instance.state.sessions`
+  inside each handler) will silently break under test isolation.
+- **FastAPI + `from __future__ import annotations`** — do NOT add the
+  future import to `rag_quest/web/app.py`. FastAPI's body-parameter
+  detection needs real Pydantic classes at runtime, not string
+  forward references. Engine-type imports use explicit `TYPE_CHECKING`
+  blocks instead.
+- **MagicMock subsystems in web tests** — the shared turn helper
+  touches `game_state.events`, `game_state.party`, `game_state.world`,
+  `game_state.timeline`, `game_state.achievements`. Test fixtures
+  must wire all five to safe mocks via `_wire_turn_subsystems(gs)`,
+  otherwise MagicMock auto-creates return values that blow up
+  `json.dumps` in the streaming endpoint (and jsonable_encoder
+  sometimes silently stringifies them in the non-streaming path,
+  hiding the problem).
+- **Static mount ordering** — the `StaticFiles(html=True)` mount in
+  `_build_app()` must be registered **last** or it shadows every API
+  route. `tests/test_v08_web_static.py::test_api_routes_still_resolve_with_static_mount`
+  is the regression guard.
+
 ### Knowledge Layer (knowledge/)
 
-**WorldRAG** — LightRAG wrapper:
-```python
-class WorldRAG:
-    def initialize(self, world_name: str):  # Synchronous
-        # Lazy initialization, creates or loads RAG index
-    
-    def ingest_text(self, text: str, source: str = "manual"):
-        # Add knowledge to graph
-    
-    def ingest_file(self, path: str):
-        # Handle .txt, .md, .pdf files
-    
-    def query_world(self, question: str, context: str = "") -> str:
-        # Retrieve relevant knowledge
-    
-    def record_event(self, event: str):
-        # Insert event with metadata
-```
+**WorldRAG** — LightRAG wrapper. Key methods: `initialize(world_name)`, `ingest_text(text, source)`, `ingest_file(path)` (.txt/.md/.pdf), `query_world(question, context) -> str`, `record_event(event)`.
 
 **RAG Profiles** — Configurable chunking and query strategies:
 - **fast**: 4000-char chunks, vector-only search
@@ -369,15 +419,6 @@ class WorldRAG:
 9. Wealthy — Collect 1000 gold
 10. Legendary — Reach level 10
 11. Well-Connected — Meet 10 NPCs
-
-**Methods**:
-```python
-def check_achievements(self, player: Character, game_state: GameState):
-    # Called each turn, checks for achievement triggers
-    
-def get_achievements(self) -> list[Achievement]:
-    # Returns all achievements with progress
-```
 
 ### Campaign Memory (v0.6)
 
@@ -505,13 +546,7 @@ entity-shaped prompt, falling back to the GameState-side summary when RAG is una
 
 ### Dungeon Generation (dungeon.py)
 
-**DungeonGenerator** — Procedural dungeon creation:
-```python
-def generate_level(self, level: int) -> DungeonLevel:
-    # 5-15 rooms per level
-    # Room types: corridors, chambers, traps, treasure, boss
-    # Returns DungeonLevel with ASCII map
-```
+**DungeonGenerator** — `generate_level(level) -> DungeonLevel`. 5–15 rooms/level; types: corridors, chambers, traps, treasure, boss. Returns ASCII map.
 
 ### Multiplayer (multiplayer/)
 
@@ -538,55 +573,19 @@ def generate_level(self, level: int) -> DungeonLevel:
 
 ### Synchronous Architecture
 
-All I/O is now synchronous (v0.5.0+). No async/await in game loop:
-
-```python
-def process_action(action: str) -> str:
-    context = world_rag.query_world(action)  # Synchronous
-    response = llm_provider.complete(messages)  # Synchronous
-    return response
-```
-
-**Note**: LightRAG is still async internally. `WorldRAG._run_async()` uses `ThreadPoolExecutor` to bridge.
+All I/O is now synchronous (v0.5.0+). No async/await in game loop. **Note**: LightRAG is still async internally. `WorldRAG._run_async()` uses `ThreadPoolExecutor` to bridge.
 
 ### State Serialization
 
-All game objects implement round-trip serialization:
-
-```python
-# Save
-state_dict = game_state.to_dict()
-json_str = json.dumps(state_dict)
-
-# Load
-game_state = GameState.from_dict(json.loads(json_str))
-```
+All game objects implement round-trip serialization: `game_state.to_dict()` → `json.dumps()` to save; `GameState.from_dict(json.loads(...))` to restore.
 
 ### Prompt Building
 
-Prompts are composed at call-time, not templated:
-
-```python
-messages = [
-    {'role': 'system', 'content': NARRATOR_SYSTEM + world_context},
-    {'role': 'user', 'content': player_action},
-]
-response = llm_provider.complete(messages)
-```
+Prompts are composed at call-time, not templated: `[{"role": "system", "content": NARRATOR_SYSTEM + world_context}, {"role": "user", "content": player_action}]`.
 
 ### Terminal Output
 
-Always use Rich for formatting:
-
-```python
-from rich.console import Console
-from rich.panel import Panel
-
-console = Console()
-console.print(Panel(text, title="Narrator", style="blue"))
-```
-
-**Color convention**:
+Always use Rich (`Console`, `Panel`). **Color convention**:
 - Green: Success, gains
 - Red: Danger, loss
 - Blue: Narrative
@@ -672,6 +671,7 @@ python -m py_compile rag_quest/**/*.py
 - **Multi-edit-same-file gotcha**: firing multiple `Edit` calls targeting the same file in a single message — the PostToolUse auto-format hook reformats the file after each edit, so the *second* edit's `old_string` may no longer match. Safe pattern: one Edit per file per message, OR serialize (sequential tool calls). Parallel Edits are fine across *different* files.
 - **`Read` before `Edit`, not `bash cat/head`**: the `Edit` tool only tracks files viewed via the `Read` tool. Using `bash head -20 file.py` to preview a file and then calling `Edit` errors with "File has not been read yet". If you plan to edit, use `Read`.
 - **State parser regex compilation is uniform** (rag-quest-40q): every `*_patterns` list on `StateParser` is pre-compiled at `__init__` via `re.compile(p, re.IGNORECASE)` and call sites use `pattern.search(response)` / `pattern.finditer(response)` — no raw strings + `re.search(..., re.IGNORECASE)` on the hot path. `_strip_markdown` and the shared trailing-punct / leading-article cleanup regexes live as module-level compiled constants (`_MD_*`, `_TRAILING_PUNCT`, `_LEADING_ARTICLE`). When adding a new pattern or cleanup regex, follow the same idiom — don't drop a raw `re.sub(...)` or `re.search(...)` into an extractor.
+- **`innerHTML` is blocked by a PreToolUse security hook**: writing `innerHTML = ...` anywhere (HTML, JS, `.py` string templates) fails with an XSS warning from `security_reminder_hook.py`. Use `textContent` + `createElement` for all DOM construction. `rag_quest/web/static/index.html` uses a tiny `makeEl(tag, {cls, text})` + `removeAllChildren(node)` pair — copy that pattern rather than fighting the hook.
 
 ## Known Design Limitations
 
@@ -757,7 +757,7 @@ Current: `SAVE_FORMAT_VERSION = 3` in `rag_quest/engine/game.py`.
 7. Commit: atomic messages
 8. PR & review
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for full guidelines.
 
 ## Resources
 
