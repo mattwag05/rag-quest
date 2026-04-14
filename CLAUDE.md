@@ -2,6 +2,8 @@
 
 Guide for AI assistants working on RAG-Quest. Authoritative version lives in `rag_quest/__init__.py` — do not hardcode version strings elsewhere; import `rag_quest.__version__`.
 
+> **Read [Session Gotchas](#session-gotchas-rediscover-tax-savers) first** — it's the rediscover-tax savers list (pytest shim bug, `Read`-before-`Edit`, worktree path traps, PreToolUse security hooks, Bookmark six-field constructor, slot_id wiring, …). Skim before touching code.
+
 ## Project Overview
 
 **RAG-Quest** is an AI-powered D&D-style text RPG that uses LightRAG to eliminate hallucinations in narrative generation.
@@ -42,122 +44,28 @@ doc tweaks, formatting.
 
 ## Directory Structure
 
-```
-rag-quest/
-├── rag_quest/                    # Main package
-│   ├── __init__.py              # Single source of truth for __version__
-│   ├── __main__.py              # Entry point (python -m rag_quest)
-│   ├── startup.py               # Welcome screen & Ollama detection
-│   ├── config.py                # ConfigManager & setup wizard
-│   ├── ui.py                    # Terminal UI, help, commands
-│   ├── tutorial.py              # Interactive 9-step TUI tutorial
-│   ├── llm/                     # LLM provider implementations
-│   │   ├── __init__.py
-│   │   ├── base.py              # BaseLLMProvider
-│   │   ├── ollama_provider.py   # Local Ollama (recommended)
-│   │   ├── openai_provider.py   # OpenAI integration
-│   │   ├── openrouter_provider.py # OpenRouter integration
-│   │   └── _sse.py              # stream_openai_chat — OpenAI-compatible SSE parser
-│   ├── knowledge/               # LightRAG integration
-│   │   ├── __init__.py
-│   │   ├── world_rag.py         # WorldRAG wrapper
-│   │   ├── chunking.py          # RAG profile configs
-│   │   └── ingest.py            # PDF/txt/md ingestion
-│   ├── engine/                  # Game logic & state
-│   │   ├── __init__.py
-│   │   ├── character.py         # Player character (6 attributes, classes, races)
-│   │   ├── world.py             # World state
-│   │   ├── inventory.py         # Item management
-│   │   ├── quests.py            # Quest chains
-│   │   ├── party.py             # Multi-character parties
-│   │   ├── relationships.py     # NPC relationships & factions
-│   │   ├── events.py            # Dynamic world events
-│   │   ├── combat.py            # D&D combat with dice rolls
-│   │   ├── encounters.py        # Enemy generation & loot
-│   │   ├── narrator.py          # AI narrator & LLM integration
-│   │   ├── state_parser.py      # Extracts mechanical state changes from narrator text
-│   │   ├── tts.py               # Text-to-speech support
-│   │   ├── game.py              # Main game loop & commands
-│   │   ├── achievements.py      # 11 achievements
-│   │   ├── dungeon.py           # Procedural dungeon generation
-│   │   ├── timeline.py          # v0.6: TimelineEvent / Bookmark / Timeline container
-│   │   ├── notetaker.py         # v0.6: AI Notetaker — incremental JSON summary + canonize
-│   │   ├── encyclopedia.py      # v0.6: LoreEncyclopedia — browse-then-RAG-query
-│   │   ├── bases.py             # v0.7: Base entity — hub stronghold with storage/services
-│   │   ├── turn.py              # v0.8: shared CLI/web turn helpers
-│   │   ├── _debug.py            # log_swallowed_exc
-│   │   ├── _serialization.py    # safe_enum / filter_init_kwargs
-│   │   └── saves.py             # Save/load & serialization
-│   ├── multiplayer/             # Local multiplayer
-│   │   ├── __init__.py
-│   │   ├── session.py           # MultiplayerSession
-│   │   ├── trading.py           # Item trading between players
-│   │   └── sync.py              # State synchronization
-│   ├── worlds/                  # World sharing
-│   │   ├── __init__.py
-│   │   ├── exporter.py          # Export to .rqworld
-│   │   ├── importer.py          # Import from .rqworld
-│   │   └── templates.py         # Built-in templates
-│   ├── web/                     # v0.8: optional FastAPI wrapper
-│   │   ├── app.py               # FastAPI app, SessionStore, run()
-│   │   ├── sessions.py          # load_session_from_slot
-│   │   └── static/              # Vanilla-JS browser client
-│   │       └── index.html
-│   ├── prompts/                 # System prompts
-│   │   ├── __init__.py
-│   │   └── templates.py         # Prompt templates
-│   └── saves/                   # Save slot storage
-├── lore/                        # Example lore files
-│   └── EXAMPLE_WORLD.md
-├── docs/                        # Documentation
-│   ├── ARCHITECTURE.md
-│   ├── CHANGELOG.md             # Per-version history
-│   ├── QUICKSTART.md
-│   ├── CONTRIBUTING.md
-│   ├── ROADMAP.md
-├── pyproject.toml               # Project config
-├── RAG-Quest_User_Guide.docx    # Downloadable user guide (root, not in docs/)
-├── README.md                    # User-facing docs
-├── AGENTS.md                    # LLM provider guide
-├── LICENSE                      # MIT License
-└── CLAUDE.md                    # This file
-```
+`rag_quest/` top-level: `__init__.py` (version), `__main__.py` (entry),
+`startup.py`, `config.py`, `ui.py`, `tutorial.py`. Subpackages:
+
+- **`llm/`** — `base.py` (sync `BaseLLMProvider`), `{ollama,openai,openrouter}_provider.py`, `_sse.py` (shared OpenAI-compatible SSE parser).
+- **`knowledge/`** — `world_rag.py` (LightRAG wrapper), `chunking.py` (RAG profiles), `ingest.py` (PDF/txt/md), `world_db.py` (v0.9 SQLite entity registry + event log).
+- **`engine/`** — `character.py`, `world.py`, `inventory.py`, `quests.py`, `party.py`, `relationships.py`, `events.py`, `combat.py`, `encounters.py`, `narrator.py`, `state_parser.py`, `state_event_mapping.py` (v0.9 shared `StateChange→writes` translator), `tts.py`, `game.py` (CLI loop), `achievements.py`, `dungeon.py`, `timeline.py` (v0.6), `notetaker.py` (v0.6), `encyclopedia.py` (v0.6), `bases.py` (v0.7), `turn.py` (v0.8 shared CLI/web turn helpers), `_debug.py` (`log_swallowed_exc`), `_serialization.py` (`safe_enum` / `filter_init_kwargs`), `saves.py`.
+- **`multiplayer/`** — `session.py`, `trading.py`, `sync.py`.
+- **`worlds/`** — `exporter.py` / `importer.py` (`.rqworld`), `templates.py`, `modules.py` (v0.7 manifest loader), `validate.py` / `new_module.py` (author CLIs).
+- **`web/`** (v0.8, optional `[web]` extras) — `app.py` (FastAPI + SessionStore), `sessions.py`, `static/index.html` (vanilla-JS SPA), `onboarding.py`.
+- **`prompts/`** — `templates.py` + subsystem prompts (`notetaker.py`, etc.).
+- **`saves/`** — slot storage + `manager.py` (`SaveManager.save_game(slot_id=...)`).
+
+Top-level repo: `lore/`, `docs/` (ARCHITECTURE, CHANGELOG, QUICKSTART, CONTRIBUTING, ROADMAP, MEMORY_ARCHITECTURE), `tests/`, `pyproject.toml`, `README.md`, `AGENTS.md`, `LICENSE`, `CLAUDE.md`.
 
 ## Core Classes & Patterns
 
-### Startup & Welcome (startup.py)
+### Startup & Config (`startup.py`, `config.py`)
 
-**print_welcome_screen()** — Displays friendly ASCII art banner, version, and intro message.
-
-**check_ollama_health()** — Detects if Ollama is running on localhost:11434.
-
-**get_available_ollama_models()** — Lists available models in Ollama.
-
-**print_ollama_setup_needed()** — Displays helpful setup instructions if Ollama isn't running.
-
-### Configuration Management (config.py)
-
-**ConfigManager** — Persistent configuration with fallback to environment variables.
-
-```python
-class ConfigManager:
-    def get(self, key: str) -> Any:
-        # e.g., "llm.provider", "rag.profile"
-        return self._config[key]
-    
-    def set(self, key: str, value: Any) -> None:
-        self._config[key] = value
-        self._save()  # Immediately persist to file
-```
-
-**get_config()** — Returns singleton ConfigManager instance.
-
-**setup_first_run()** — Interactive setup wizard with three start modes:
-1. **Fresh Adventure** — Blank world, custom name
-2. **Quick Start** — Choose from 4 templates
-3. **Upload Lore** — Ingest custom files
-
-Config location: `~/.config/rag-quest/config.json`
+`startup.py` handles the welcome banner and Ollama health/model detection.
+`config.py` persists settings to `~/.config/rag-quest/config.json` via
+`ConfigManager` (env-var fallback), with a first-run wizard offering
+Fresh Adventure / Quick Start template / Upload Lore.
 
 ### Game State
 
@@ -175,89 +83,29 @@ Multi-write hot paths should wrap loops in `with world_db.transaction():` — in
 commits inside individual write methods become no-ops and the whole block commits
 once on exit (rolls back on exception). Collapses ~7 commits/turn to 1 fsync.
 
-### Character System
+### Engine subsystems (`engine/`)
 
-**Character** — Player character with:
-- Attributes: name, race, class, level, HP, XP
-- Six D&D attributes: STR, DEX, CON, INT, WIS, CHA
-- Location, inventory references, status effects
-- Methods: `take_damage()`, `heal()`, `level_up()`, `get_status()`
+One-line pointers — full API in the source. Touch these files directly,
+not this summary, when you need the contract.
 
-**Race & Class** — 5 races (Human, Elf, Dwarf, Orc, Halfling) and 5 classes (Fighter, Rogue, Mage, Cleric, Ranger) with stat bonuses.
+- **`character.py`** — `Character` with 5 races × 5 classes, six D&D attributes, HP/XP/level. Stat bonuses apply at init.
+- **`world.py`** — `World` tracks setting, tone, time/weather, visited locations, NPCs met, recent events; `Event` records consequences in the RAG graph.
+- **`combat.py` / `encounters.py`** — D&D-flavored combat (d4-d20, initiative, crits), location-based enemy tables, difficulty scaling, loot.
+- **`quests.py`** — `Quest` + `QuestLog` (pending/active/completed lifecycle, XP + item rewards).
+- **`relationships.py`** — `RelationshipManager` on −1.0 → +1.0 scale, plus faction reputation. No non-obvious invariants — just a keyed dict per subsystem.
 
-### World System
+### Narrator (`narrator.py`)
 
-**World** — World state container:
-- name, setting, tone, time_of_day, weather
-- visited_locations, npcs_met
-- recent_events (last 5 for narrative context)
-- Methods: `advance_time()`, `add_visited_location()`, `get_context()`
-
-**Events** — Dynamic world events with consequences, recorded in RAG knowledge graph.
-
-### Combat System
-
-**CombatEncounter** — Handles D&D combat:
-- Dice rolling (d4-d20, attack rolls vs AC)
-- Initiative calculation
-- Damage calculation with critical hits
-- Turn-based combat flow
-
-**Enemy** — NPC/monster with HP, attack, defense, loot drops.
-
-**Encounter Generation** — Location-based enemy tables, difficulty scaling, loot tables.
-
-### Quest System
-
-**Quest** — Quest object with:
-- title, description, objectives
-- status (pending, active, completed)
-- reward_xp, reward_items
-- Methods: `check_objectives()`, `complete()`
-
-**QuestLog** — Maintains active and completed quests, methods: `add_quest()`, `complete_quest()`, `get_active_quests()`
-
-### NPC & Relationship System
-
-**RelationshipManager** — Tracks NPC dispositions. `add_npc(name, role, disposition)` (−1.0 enemy → +1.0 ally). `change_disposition(name, delta)` adjusts trust.
-
-**Faction System** — Faction reputation tracking with methods: `create_faction()`, `change_reputation()`, `get_reputation()`.
-
-### Narrator (narrator.py)
-
-**Narrator** — Lightweight AI narrator that:
-1. Receives player action (natural language)
-2. Queries RAG for relevant world context
-3. Builds LLM prompt with game state + RAG context + conversation history
-4. Calls LLM provider (synchronous)
-5. Records event back to RAG
-6. Returns narrative response
+Per-turn flow: player action → RAG query for context → compose prompt (system + world context + history) → call LLM (sync) → record the event back to RAG → return prose. `last_response`, `last_change`, and `last_player_input` are the published contract that Timeline/Bookmark consumers read.
 
 **State Parser (`engine/state_parser.py`)** — Post-processes narrator output into a `StateChange`:
 location moves, damage taken / healed, items gained/lost, quests offered/completed, NPCs
 met/recruited, relationship deltas, world events. The game loop applies the `StateChange` to
 `GameState` after each turn so inventory/quest/location stay in sync with the narrative.
 
-### LLM Providers (llm/)
+### LLM Providers (`llm/`)
 
-All providers inherit from **BaseLLMProvider**:
-
-```python
-class BaseLLMProvider(ABC):
-    def complete(self,
-                messages: list[dict],
-                temperature: float = None,
-                max_tokens: int = None,
-                **kwargs) -> str:  # SYNCHRONOUS
-        """Call LLM and return response."""
-```
-
-**Implementations**:
-- **OllamaProvider** — Local inference via `http://localhost:11434/api/generate`
-- **OpenAIProvider** — OpenAI API, models like gpt-4, gpt-3.5-turbo
-- **OpenRouterProvider** — OpenRouter.ai, 100+ models
-
-All now **synchronous** (were async before v0.5.0).
+`BaseLLMProvider.complete(messages, **kw) -> str` is the **synchronous** contract (was async pre-v0.5.0). Implementations: `OllamaProvider` (local, recommended), `OpenAIProvider`, `OpenRouterProvider`.
 
 **Streaming (v0.8)** — `BaseLLMProvider.stream_complete(messages)` returns
 an iterator of text chunks. The base class has a safe fallback that
@@ -417,196 +265,37 @@ subsystem goes here so CLI and web stay in sync automatically.
 
 **Implementation Detail**: LightRAG is async internally. `WorldRAG` uses `ThreadPoolExecutor` to run async operations from synchronous code via `_run_async()` helper.
 
-### Game Loop (game.py)
+### Game Loop (`game.py`)
 
-**run_game()** — Main game loop:
-1. Print welcome banner
-2. Load or create character/world
-3. Initialize RAG knowledge graph
-4. Game loop:
-   - Print game state
-   - Prompt player
-   - Handle command (if `/...`)
-   - Otherwise: narrator.process_action()
-   - Update game state
-   - Auto-save every N turns
-   - Repeat
+`run_game()` owns the CLI side: welcome banner → load/create state → RAG init → loop (state panel → prompt → command dispatch or `narrator.process_action()` via the shared `turn.py` helpers → auto-save every N turns). Slash commands (`/i`, `/s`, `/q`, `/p`, `/rel`, `/h`, `/config`, `/new`, `/save`, `/exit`, `/base*`, `/bookmark*`, `/modules`) and their short aliases are defined on `run_game`; grep there when adding a new one.
 
-**Commands Implemented**:
-- `/i`, `/inventory` — Show inventory
-- `/s`, `/stats` — Show character stats
-- `/q`, `/quests` — Show quests
-- `/p`, `/party` — Show party
-- `/rel`, `/relationships` — Show NPC relationships
-- `/h`, `/help` — Show full help
-- `/config` — Change settings
-- `/new` — New game
-- `/save` — Manual save
-- `/exit` — Quit
+### Achievements (`achievements.py`)
 
-**All commands have short aliases** for quick access.
+`AchievementEngine.check_achievements(state_dict)` runs inside `collect_post_turn_effects`. Full list of 11 achievements lives in `ACHIEVEMENTS`; add a new one by appending a dataclass entry and a matching check method.
 
-### Achievements System (achievements.py)
+### Campaign Memory (v0.6+)
 
-**AchievementEngine** — Tracks 11 achievements:
-1. Explorer — Visit 10 locations
-2. Warrior — Win 5 combats
-3. Diplomat — Increase NPC disposition by 50 points
-4. Scholar — Complete 5 quests
-5. Treasure Hunter — Find 10 items
-6. Dragon Slayer — Defeat a boss
-7. Indestructible — Reach level 5 without dying
-8. Hoarder — Have 50 items
-9. Wealthy — Collect 1000 gold
-10. Legendary — Reach level 10
-11. Well-Connected — Meet 10 NPCs
+Additive subsystems layered over `GameState` / `WorldRAG` / `state_parser`.
+New-save-only (save_version bumped to 2 for memory, 3 for v0.7 bases + modules).
+Source is the contract — the pointers below are just where to look.
 
-### Campaign Memory (v0.6)
+- **Timeline (`engine/timeline.py`)** — `Timeline` holds `TimelineEvent` + `Bookmark` lists. `record_from_state_change(turn, change, player_input, location)` is called from `collect_post_turn_effects` and reads `Narrator.last_change`. Events rotate at `max_events=2000`; bookmarks never rotate. `/bookmark [note]` grabs `Narrator.last_response`.
+- **Notetaker (`engine/notetaker.py`, `prompts/notetaker.py`)** — Incremental LLM summarizer. JSON sidecar at `~/.local/share/rag-quest/notes/{world}.json`. Auto-refreshes on `_save_game()` unless `notetaker.auto_summary=false`. `/canonize N` promotes a `NoteEntry` into LightRAG via `WorldRAG.ingest_text(..., source="canonized")` — hard boundary so raw notes never silently touch retrieval.
+- **Encyclopedia (`engine/encyclopedia.py`)** — Pure wrapper over visited locations / npcs met / relationships / inventory. `detail()` runs an on-demand `WorldRAG.query_world()` with a GameState-side fallback.
+- **Hub Bases (v0.7, `engine/bases.py`)** — `Base` dataclass on `World.bases`; claim via `StateChange.claim_base` (narrator phrasing) or `/base claim` (deterministic escape hatch). `/base here|station|talk|deposit|withdraw` is the hybrid menu. `/base talk <npc>` sets `Narrator.service_context` for a single turn via `build_service_prompt_addendum()`.
+- **Modular Adventures (v0.7, `worlds/modules.py`)** — `modules.yaml` manifest → `load_modules(world_dir, world_rag)` → `ModuleRegistry` serialized on `World.module_registry`. Status enum `LOCKED / AVAILABLE / ACTIVE / COMPLETED`, monotonic transitions. `ModuleRegistry.reevaluate(quest_log)` runs each turn; unlock prereqs are `unlock_when_quests_completed` (case-insensitive on `Quest.title`), and `completion_quest` flips to COMPLETED. `ModuleManifestError` surfaces malformed manifests (zero-traceback). `rag-quest validate-module` / `rag-quest new-module` are the author CLIs.
+- **`.rqworld` packaging (v0.7/v0.8, `worlds/{exporter,importer}.py`)** — `WorldExporter.export_world(game_state, output_path, source_dir=, save_file=)` bundles `world.json` + `modules.yaml` + referenced lore + `save.json` (v0.8 cross-device save sync). Zip-Slip guard on both ends. `WorldImporter.extract_campaign(file, install_dir=)` restores to `install_dir/worlds/<name>/` + `install_dir/saves/<name>.json`; world name sanitized (non-alnum → `_`). CLI: `rag-quest export-campaign` / `import-campaign`. Metadata `version` always `rag_quest.__version__`.
+- **Dungeon (`engine/dungeon.py`)** — `DungeonGenerator.generate_level(level)` returns 5–15 rooms + ASCII map (corridors / chambers / traps / treasure / boss).
+- **Multiplayer (`multiplayer/`)** — Hot-seat shared world, per-player character, trading, coop/PvP combat.
 
-Three additive subsystems that layer over `GameState`, `WorldRAG`, and `state_parser`. No
-existing code is restructured; memory features are strictly new-save-only (save_version 2; bumped to 3 for v0.7 bases + modules).
+**Debugging silent fallbacks** — `RAG_QUEST_DEBUG=1` surfaces every `log_swallowed_exc` site as a tagged traceback. First check when a v0.6+ feature silently stops working.
 
-**Timeline (`engine/timeline.py`)** — `Timeline` container holds `TimelineEvent` and
-`Bookmark` lists. After each turn, the game loop calls
-`Timeline.record_from_state_change(turn, change, player_input, location)` which reads the
-`StateChange` produced by `StateParser.parse_narrator_response()` (now preserved on
-`Narrator.last_change`) and emits one or more structured events. Events rotate oldest-first
-at `max_events` (default 2000); bookmarks never rotate. `/bookmark [note]` grabs
-`Narrator.last_response` as full prose; `/bookmarks` lists saved highlights.
+**Import-graph trap** — `rag_quest.worlds.modules` lazy-imports `engine.quests.QuestStatus` inside `ModuleRegistry.reevaluate`. Hoisting creates a cycle (`engine/__init__ → game → worlds.modules → engine.quests`). Leave the lazy import in place.
 
-**Notetaker (`engine/notetaker.py`, `prompts/notetaker.py`)** — Incremental summarizer.
-`Notetaker.refresh(current_turn, history, timeline_events)` sends dialogue + structured
-events since `last_summarized_turn` to the configured LLM with `NOTETAKER_SYSTEM` and
-parses JSON output into a `NoteEntry`. Storage is a JSON sidecar at
-`~/.local/share/rag-quest/notes/{world}.json`. `_save_game()` auto-refreshes on every save
-unless `notetaker.auto_summary` is set false in config. `/canonize N` promotes an entry
-into LightRAG via `WorldRAG.ingest_text(body, source="canonized")` — hard boundary means
-raw notes never silently touch retrieval.
-
-**Hub Bases (v0.7, `engine/bases.py`)** — `Base` dataclass (name, location_ref,
-`storage: Inventory`, `stationed_npcs: list[str]`, `npc_service: dict[str, str]`,
-`services`, `upgrades`) lives on `World.bases: list[Base]` and serializes
-alongside the rest of world state.
-Claim flow: `StateChange.claim_base` fires when the narrator emits phrases like
-*"claim X as your stronghold"* or *"this shall be your hideout"*; the narrator's
-state-change handler calls `World.claim_base_at(location, name)`, which dedupes
-on `location_ref` and returns the new `Base` (or `None`). The `/base` command
-lists claimed bases; `/base claim [name]` is the deterministic escape hatch and
-calls the same `World` method directly. Full menu (v0.7 /base hybrid menu):
-`/base here` renders a Rich panel grouping stationed NPCs by service role
-(from `Base.npc_service`). `/base station <npc> [as <service>]` binds an
-NPC to a role and auto-registers the service. `/base talk <npc> <message>`
-sets `Narrator.service_context` to a `build_service_prompt_addendum()`
-string for a single turn — the addendum names the base, NPC, and canonical
-`SERVICE_DESCRIPTIONS` entry, routes the response back through
-`state_parser` as usual, and clears on exit. `/base deposit` / `/base
-withdraw` move items between player `Inventory` and `Base.storage`.
-
-**Modular Adventures (v0.7, `worlds/modules.py`)** — Worlds can declare
-hub-and-spoke adventures in a top-level `modules.yaml` manifest. Schema: `id`,
-`title`, `description`, `entry_location` (required); `unlock_when_quests_completed`,
-`completion_quest`, `lore_files`, `rewards` (optional). `load_modules(world_dir,
-world_rag)` parses + validates the manifest, ingests referenced lore via
-`WorldRAG.ingest_file()`, and returns a `ModuleRegistry`. `World.module_registry`
-holds the registry and round-trips via `to_dict`/`from_dict` (persisted
-statuses win over initial-state computation on reload — pass
-`compute_initial_states=False` to skip the recompute). `ModuleStatus` is an
-`Enum` (LOCKED / AVAILABLE / ACTIVE / COMPLETED). Malformed manifests raise
-`ModuleManifestError` (zero-traceback principle); `__main__.py` wraps the load
-in a Rich status spinner so first-boot ingestion doesn't look like a hang.
-`/modules` command lists declared modules by lifecycle status.
-`ModuleRegistry.reevaluate(quest_log)` runs after every turn in `run_game`:
-locked modules unlock when their `unlock_when_quests_completed` prereqs
-are all completed, and modules with a matching `completion_quest` flip to
-`COMPLETED`. Transitions are monotonic. Quest matching is case-insensitive
-on `Quest.title`.
-
-**`.rqworld` packaging (v0.7 / v0.8)** — `WorldExporter.export_world(game_state,
-output_path, source_dir=..., save_file=...)` bundles `world.json` (which
-already carries bases + serialized module registry via `World.to_dict`),
-the source `modules.yaml` with every referenced lore file when
-`source_dir` is set, and the player's save JSON as `save.json` when
-`save_file` is set (v0.8 cross-device save sync). Both sides apply a Zip-Slip guard (reject lore paths that
-escape `source_dir` on export; reject archive members that escape
-`target_dir` on extract). `WorldImporter.extract_to(file, target_dir)`
-unpacks the archive back to a world directory so the caller can run
-`load_modules(target_dir, world_rag)` to re-ingest lore.
-`WorldImporter.extract_campaign(file, install_dir=None)` is the v0.8
-save-sync restore path: it unpacks the world into
-`install_dir/worlds/<name>/` AND moves `save.json` to
-`install_dir/saves/<name>.json` (default `install_dir` is
-`~/.local/share/rag-quest/`). The world name from `metadata.json` is
-sanitized (non-alnum → `_`) so a malicious archive can't write outside
-the install dir. CLI subcommands `rag-quest export-campaign <name>
-[out.rqworld]` and `rag-quest import-campaign <file>` wrap the
-round-trip. Metadata `version` field is `rag_quest.__version__`
-(not a hardcode).
-Authors can validate a manifest before shipping with
-`rag-quest validate-module <world-dir>` — the subcommand calls
-`rag_quest.worlds.validate.validate_manifest()` which checks lore-file
-existence, warns on orphan unlock references, and detects prerequisite
-cycles in the completion-quest → unlock dependency graph. Exits 1 on any
-fatal error so CI can gate on it. `rag-quest new-module <world-dir>` is
-the matching creation tool: `rag_quest.worlds.new_module.run_interactive`
-walks the author through the schema with Rich prompts, appends a
-validated stanza via `write_module`, and rolls back on validator failure.
-All prompt/confirm callables are injectable so the CLI flow is unit
-testable without Rich.
-
-**Debugging silent fallbacks** — The game loop and narrator contain
-several additive `except Exception: pass` blocks (timeline recorder,
-module gating re-eval, narrator RAG query) so a flaky subsystem never
-kills the game. Set `RAG_QUEST_DEBUG=1` to make every swallowed
-exception print a tagged traceback via
-`rag_quest._debug.log_swallowed_exc(context)`. Use this first when a
-v0.6+ feature silently stops working — it's the one-command check for
-"is a catch eating something?"
-
-**Import-graph trap** — `rag_quest.worlds.modules` lazy-imports
-`engine.quests.QuestStatus` inside `ModuleRegistry.reevaluate` rather than
-at module top. Hoisting creates a cycle: `engine/__init__.py → game.py
-→ worlds.modules → engine.quests → engine/__init__.py`. Leave the lazy
-import in place.
-
-**Encyclopedia (`engine/encyclopedia.py`)** — Pure wrapper. `LoreEncyclopedia.list_entries()`
-reads from `World.visited_locations`, `World.npcs_met`,
-`RelationshipManager.{relationships,factions}`, and `Inventory.items`.
-`LoreEncyclopedia.detail(entry)` runs an on-demand `WorldRAG.query_world()` with an
-entity-shaped prompt, falling back to the GameState-side summary when RAG is unavailable.
-
-**Gotchas**:
-- `Narrator.last_change`, `last_response`, `last_player_input` are the contract Timeline /
-  Bookmark consumers rely on. Don't reset them on error paths — leave stale values rather
-  than wipe them.
-- Notetaker failures (LLM timeout, corrupt sidecar) are silenced in `_save_game()`. Never
-  let the notetaker block a save — campaign memory is additive, not load-bearing.
-- Canonization is one-way per entry (`entry.canonized = True`). `pending_for_canonization`
-  is the player-facing list.
-
-### Dungeon Generation (dungeon.py)
-
-**DungeonGenerator** — `generate_level(level) -> DungeonLevel`. 5–15 rooms/level; types: corridors, chambers, traps, treasure, boss. Returns ASCII map.
-
-### Multiplayer (multiplayer/)
-
-**MultiplayerSession** — Hot-seat multiplayer:
-- Shared world state
-- Per-player character
-- Turn management
-- Item trading system
-- Cooperative and PvP combat options
-
-### World Sharing (worlds/)
-
-**WorldExporter** — Package world as `.rqworld`:
-- Exports RAG knowledge graph
-- Includes metadata and configuration
-- Compressed format for distribution
-
-**WorldImporter** — Load `.rqworld` packages:
-- Validation and integrity checking
-- Prevents corrupted worlds
-- Merges knowledge into existing world
+**Memory gotchas**:
+- `Narrator.last_change` / `last_response` / `last_player_input` are the published contract Timeline + Bookmark read from. Don't wipe them on error paths — leave stale values.
+- Notetaker failures (LLM timeout, corrupt sidecar) are silenced in `_save_game()`. Never let the notetaker block a save — memory is additive, not load-bearing.
+- Canonization is one-way per entry (`entry.canonized = True`); `pending_for_canonization` is the player-facing list.
 
 ## Important Implementation Details
 
@@ -811,16 +500,7 @@ Current: `SAVE_FORMAT_VERSION = 3` in `rag_quest/engine/game.py`.
 
 ## Contributing
 
-1. Check beads: `bd list`
-2. Claim work: `bd update <id> --claim`
-3. Create branch
-4. Make changes
-5. Test: `pytest`
-6. Format: `black`, `isort`, `mypy`
-7. Commit: atomic messages
-8. PR & review
-
-See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for full guidelines.
+See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). Tracked in `bd` (`bd ready` → `bd update <id> --claim` → work → `bd close <id>`).
 
 ## Resources
 
