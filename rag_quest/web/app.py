@@ -100,6 +100,38 @@ def _serialize_post_turn(post) -> dict:
     }
 
 
+def _parse_fields(fields: str | None) -> list[str] | None:
+    """Parse a ``?fields=a,b,c`` query param into a clean list.
+
+    Returns ``None`` when the caller didn't supply anything (or passed
+    an empty string), signalling the default "full state" behavior.
+    Otherwise returns a de-duplicated list of stripped, non-empty keys.
+    """
+    if not fields:
+        return None
+    keys = [k.strip() for k in fields.split(",")]
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for k in keys:
+        if k and k not in seen:
+            deduped.append(k)
+            seen.add(k)
+    return deduped or None
+
+
+def _project_state(state_dict: dict, fields: list[str] | None) -> dict:
+    """Return a subset of ``state_dict`` limited to ``fields``.
+
+    When ``fields`` is ``None`` the dict is returned unchanged so default
+    callers keep the full state payload (rag-quest-rkg: projection is
+    opt-in so existing clients aren't broken). Missing keys are silently
+    skipped — the projector never invents data.
+    """
+    if fields is None:
+        return state_dict
+    return {k: state_dict[k] for k in fields if k in state_dict}
+
+
 def _require_fastapi() -> None:
     from importlib.util import find_spec
 
@@ -230,7 +262,11 @@ def _build_app() -> "FastAPI":
         return game_state.to_dict()
 
     @instance.post("/session/{session_id}/turn")
-    def take_turn(session_id: str, payload: TurnRequest) -> dict:
+    def take_turn(
+        session_id: str,
+        payload: TurnRequest,
+        fields: str | None = Query(None),
+    ) -> dict:
         store: SessionStore = instance.state.sessions
         game_state = store.get(session_id)
         if game_state is None:
@@ -255,6 +291,11 @@ def _build_app() -> "FastAPI":
         state_payload = result.post.state_dict
         if state_payload is None:
             state_payload = game_state.to_dict()
+        # Opt-in field projection: `?fields=character,turn_number` slices
+        # the state dict down to just the keys a caching client needs,
+        # cutting per-turn payload size on long campaigns (rag-quest-rkg).
+        # ``fields=None`` preserves full backwards compatibility.
+        state_payload = _project_state(state_payload, _parse_fields(fields))
 
         return {
             "response": result.response,
@@ -268,6 +309,7 @@ def _build_app() -> "FastAPI":
     def take_turn_stream(
         session_id: str,
         player_input: str = Query(..., alias="input"),
+        fields: str | None = Query(None),
     ) -> "StreamingResponse":
         # GET + query-string so browser EventSource (which only speaks
         # GET) can consume the stream directly. Validation fires BEFORE
@@ -309,6 +351,10 @@ def _build_app() -> "FastAPI":
             state_payload = post.state_dict
             if state_payload is None:
                 state_payload = game_state.to_dict()
+            # Opt-in field projection mirrors the non-streaming endpoint
+            # (rag-quest-rkg). Parsed once outside the generator is not
+            # possible because fields comes in via the endpoint closure.
+            state_payload = _project_state(state_payload, _parse_fields(fields))
             done_payload = {
                 "type": "done",
                 "state_change": _serialize_state_change(post.state_change),

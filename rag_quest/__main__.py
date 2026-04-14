@@ -657,24 +657,33 @@ def _main() -> None:
             ui.print_error(f"Could not load modules.yaml: {e}")
         break
 
-    # Determine save path
-    save_dir = Path.home() / ".local/share/rag-quest/saves"
-    save_path = save_dir / f"{world.name}.json"
+    # Mint a SaveManager slot for the new game. Routes CLI autosaves
+    # through the same `saves/{slot_id}/state.json` layout the web UI
+    # reads, so CLI-created worlds show up in `GET /saves` (rag-quest-dbs).
+    from .saves.manager import SaveManager
 
-    # v0.9 Phase 1: attach the SQLite WorldDB alongside the JSON save.
-    # Shadow-writes from the turn helper populate it; nothing reads from
-    # it yet (the memory assembler lands in Phase 2).
+    sm = SaveManager()
+    slot_meta = sm.save_game(
+        game_state.to_dict(),
+        slot_name=f"{game_state.character.name} - {world.name}",
+    )
+    game_state.slot_id = slot_meta.slot_id
+
+    # v0.9 Phase 1: attach the SQLite WorldDB inside the slot directory
+    # next to `state.json`. Shadow-writes from the turn helper populate
+    # it; nothing reads from it yet (the memory assembler lands in
+    # Phase 2).
     try:
         from .knowledge.world_db import WorldDB
 
-        game_state.world_db = WorldDB(save_path.with_suffix(".db"))
+        game_state.world_db = WorldDB(sm.save_paths_for(slot_meta.slot_id).world_db)
     except Exception as exc:
         ui.print_warning(
             f"Could not initialize WorldDB (memory features disabled): {exc}"
         )
 
     # Run the game
-    run_game(game_state, save_path)
+    run_game(game_state)
 
 
 if __name__ == "__main__":
