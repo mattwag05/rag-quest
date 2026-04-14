@@ -250,14 +250,37 @@ def _shadow_write_to_world_db(
 
         for rel in writes.relationships:
             try:
-                world_db.set_relationship(
-                    rel.entity_a,
-                    rel.entity_b,
-                    rel.rel_type,
-                    rel.value,
-                    turn,
-                    cause=rel.cause,
-                )
+                # Fold per-turn deltas into the absolute stored value
+                # (read-modify-write) so every DB row for a given NPC is
+                # a single canonical ``disposition`` — rag-quest-678. If
+                # the existing row is missing, start from 0.0 (neutral).
+                if rel.is_delta:
+                    existing = world_db.get_relationship(
+                        rel.entity_a, rel.entity_b, rel.rel_type
+                    )
+                    base = (
+                        float(existing["value"])
+                        if existing is not None and existing.get("value") is not None
+                        else 0.0
+                    )
+                    folded = max(-1.0, min(1.0, base + rel.value))
+                    world_db.set_relationship(
+                        rel.entity_a,
+                        rel.entity_b,
+                        rel.rel_type,
+                        folded,
+                        turn,
+                        cause=rel.cause,
+                    )
+                else:
+                    world_db.set_relationship(
+                        rel.entity_a,
+                        rel.entity_b,
+                        rel.rel_type,
+                        rel.value,
+                        turn,
+                        cause=rel.cause,
+                    )
             except Exception:
                 log_swallowed_exc("turn.post.world_db_shadow.relationship")
 

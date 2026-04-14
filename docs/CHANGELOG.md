@@ -65,11 +65,41 @@ changelog" for the full convention.
   `tests/test_world_db_integration.py` covering schema, dedup,
   relationships, FTS5 search, migration, and the turn-helper integration.
 
+### Fixed
+- **CLI-created worlds now show up in the web UI's save list**
+  ([rag-quest-dbs]). The CLI and web onboarding used to write flat
+  `saves/{world_name}.json` files that `SaveManager` never indexed, so
+  a world started in the terminal was invisible to `GET /saves` in the
+  browser. All three new-game paths (CLI, web, autosave) now route
+  through `SaveManager.save_game(slot_id=...)` with a single canonical
+  `saves/{slot_id}/{state.json,metadata.json,world.db}` layout.
+- **Per-NPC disposition rows no longer split into two dimensions**
+  ([rag-quest-678]). The WorldDB shadow-write previously emitted
+  `disposition_delta` rows alongside the absolute `disposition` rows
+  from the v3 migration, producing two conflicting entries per NPC
+  that the Phase 2 MemoryAssembler would have to reconcile. Deltas
+  now fold into the absolute `disposition` value via
+  read-modify-write at the DB boundary, clamped to [-1.0, 1.0].
+
 ### Changed
-- **Save format bumped to v4.** Adds a `{world_name}.db` SQLite file
-  next to the existing `{world_name}.json`. Old saves auto-migrate on
-  first load; nothing else changes.
+- **Save format bumped to v4.** Adds a `world.db` SQLite file inside
+  each save slot's directory alongside the existing `state.json`. Old
+  saves auto-migrate on first load; nothing else changes.
 - **Version bumped to 0.9.0.dev1.**
+- **WorldDB `EntityType` / `EventType` are now `StrEnum`s**
+  ([rag-quest-csi]). The CHECK clauses in the schema DDL are derived
+  from the enum members so the validation sets, the SQL constraint,
+  and every call site in `state_event_mapping.py` stay in lockstep
+  automatically.
+
+### Added
+- **Opt-in state projection on the web turn endpoints**
+  ([rag-quest-rkg]). Both `POST /session/{id}/turn` and
+  `GET /session/{id}/turn/stream` accept a `?fields=a,b,c` query param
+  that slices the `state` field of the done payload down to just those
+  top-level keys. Default behavior is unchanged — omit the param to
+  keep receiving the full state dict. Cuts per-turn bandwidth on long
+  campaigns where the sidebar only reads a handful of keys.
 
 ### Fixed
 - **Ollama thinking content leaking into narrator** — models like Gemma 4

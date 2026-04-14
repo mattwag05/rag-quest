@@ -19,6 +19,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from ..knowledge.world_db import EntityType, EventType
+
 
 @dataclass(frozen=True)
 class EntityWrite:
@@ -46,13 +48,24 @@ class EventWrite:
 
 @dataclass(frozen=True)
 class RelationshipWrite:
-    """A disposition / faction relationship update."""
+    """A disposition / faction relationship update.
+
+    ``is_delta=True`` means ``value`` is a per-turn change and the
+    shadow-write consumer must fold it into the existing absolute value
+    before writing (read-modify-write). ``is_delta=False`` means
+    ``value`` is already the absolute target.
+
+    Keeping the fold at the DB boundary instead of in this pure function
+    lets ``state_change_to_writes`` stay side-effect-free and lets Phase 2
+    reuse the same translator for Timeline.
+    """
 
     entity_a: str
     entity_b: str
     rel_type: str
     value: float
     cause: str | None = None
+    is_delta: bool = False
 
 
 @dataclass(frozen=True)
@@ -87,10 +100,10 @@ def state_change_to_writes(
 
     new_location = getattr(change, "location", None)
     if new_location:
-        entities.append(EntityWrite(entity_type="location", name=new_location))
+        entities.append(EntityWrite(entity_type=EntityType.LOCATION, name=new_location))
         events.append(
             EventWrite(
-                event_type="travel",
+                event_type=EventType.TRAVEL,
                 summary=f"Travelled to {new_location}",
                 primary_entity=new_location,
                 location=new_location,
@@ -105,7 +118,7 @@ def state_change_to_writes(
     if damage_taken > 0:
         events.append(
             EventWrite(
-                event_type="combat",
+                event_type=EventType.COMBAT,
                 summary=f"Took {damage_taken} damage",
                 location=location or None,
                 mechanical_changes={"hp_delta": -damage_taken},
@@ -117,7 +130,7 @@ def state_change_to_writes(
     if hp_healed > 0:
         events.append(
             EventWrite(
-                event_type="combat",
+                event_type=EventType.COMBAT,
                 summary=f"Healed {hp_healed} HP",
                 location=location or None,
                 mechanical_changes={"hp_delta": hp_healed},
@@ -126,10 +139,10 @@ def state_change_to_writes(
         )
 
     for item in getattr(change, "items_gained", []) or []:
-        entities.append(EntityWrite(entity_type="item", name=item))
+        entities.append(EntityWrite(entity_type=EntityType.ITEM, name=item))
         events.append(
             EventWrite(
-                event_type="item",
+                event_type=EventType.ITEM,
                 summary=f"Obtained {item}",
                 primary_entity=item,
                 location=location or None,
@@ -140,7 +153,7 @@ def state_change_to_writes(
     for item in getattr(change, "items_lost", []) or []:
         events.append(
             EventWrite(
-                event_type="item",
+                event_type=EventType.ITEM,
                 summary=f"Lost {item}",
                 primary_entity=item,
                 location=location or None,
@@ -151,11 +164,13 @@ def state_change_to_writes(
     quest_offered = getattr(change, "quest_offered", None)
     if quest_offered:
         entities.append(
-            EntityWrite(entity_type="quest", name=quest_offered, status="active")
+            EntityWrite(
+                entity_type=EntityType.QUEST, name=quest_offered, status="active"
+            )
         )
         events.append(
             EventWrite(
-                event_type="quest_offer",
+                event_type=EventType.QUEST_OFFER,
                 summary=f"Quest offered: {quest_offered}",
                 primary_entity=quest_offered,
                 location=location or None,
@@ -166,11 +181,13 @@ def state_change_to_writes(
     quest_completed = getattr(change, "quest_completed", None)
     if quest_completed:
         entities.append(
-            EntityWrite(entity_type="quest", name=quest_completed, status="completed")
+            EntityWrite(
+                entity_type=EntityType.QUEST, name=quest_completed, status="completed"
+            )
         )
         events.append(
             EventWrite(
-                event_type="quest_complete",
+                event_type=EventType.QUEST_COMPLETE,
                 summary=f"Quest completed: {quest_completed}",
                 primary_entity=quest_completed,
                 location=location or None,
@@ -181,11 +198,13 @@ def state_change_to_writes(
     npc_met = getattr(change, "npc_met", None)
     if npc_met:
         entities.append(
-            EntityWrite(entity_type="npc", name=npc_met, location=location or None)
+            EntityWrite(
+                entity_type=EntityType.NPC, name=npc_met, location=location or None
+            )
         )
         events.append(
             EventWrite(
-                event_type="social",
+                event_type=EventType.SOCIAL,
                 summary=f"Met {npc_met}",
                 primary_entity=npc_met,
                 location=location or None,
@@ -197,12 +216,14 @@ def state_change_to_writes(
     if npc_recruited:
         entities.append(
             EntityWrite(
-                entity_type="npc", name=npc_recruited, location=location or None
+                entity_type=EntityType.NPC,
+                name=npc_recruited,
+                location=location or None,
             )
         )
         events.append(
             EventWrite(
-                event_type="social",
+                event_type=EventType.SOCIAL,
                 summary=f"Recruited {npc_recruited}",
                 primary_entity=npc_recruited,
                 location=location or None,
@@ -212,8 +233,11 @@ def state_change_to_writes(
 
     # Relationship deltas. The dict keys are NPC names, values are integer
     # trust deltas (0-100 scale). Normalize to the [-1.0, 1.0] range the
-    # memory architecture doc specifies, emitted as a delta that Phase 2's
-    # assembler will apply on top of the current value.
+    # memory architecture doc specifies, flagged as a delta so the
+    # shadow-write consumer folds it into the absolute ``disposition``
+    # value via read-modify-write (rag-quest-678). Keeping a single
+    # ``disposition`` rel_type on the DB side means Phase 2's
+    # MemoryAssembler sees one canonical row per NPC instead of two.
     rel_changes = getattr(change, "npc_relationship_change", {}) or {}
     for npc_name, delta in rel_changes.items():
         try:
@@ -224,9 +248,10 @@ def state_change_to_writes(
             RelationshipWrite(
                 entity_a="player",
                 entity_b=npc_name,
-                rel_type="disposition_delta",
+                rel_type="disposition",
                 value=norm,
                 cause=player_input[:120] if player_input else None,
+                is_delta=True,
             )
         )
 
@@ -234,7 +259,7 @@ def state_change_to_writes(
     if world_event:
         events.append(
             EventWrite(
-                event_type="world_event",
+                event_type=EventType.WORLD_EVENT,
                 summary=f"World event: {world_event}",
                 location=location or None,
                 is_notable=True,
@@ -246,14 +271,14 @@ def state_change_to_writes(
         if base_location:
             entities.append(
                 EntityWrite(
-                    entity_type="base",
+                    entity_type=EntityType.BASE,
                     name=base_location,
                     location=base_location,
                 )
             )
         events.append(
             EventWrite(
-                event_type="base_claim",
+                event_type=EventType.BASE_CLAIM,
                 summary=(
                     f"Claimed base at {base_location}"
                     if base_location

@@ -1,8 +1,6 @@
 """Main game loop and state management."""
 
-import json
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Optional
 
 from rich.console import Console
@@ -77,6 +75,18 @@ class GameState:
     # want memory-arch features attach it via `game_state.world_db = WorldDB(...)`
     # immediately after construction.
     world_db: Optional[WorldDB] = None
+    # Runtime-only SaveManager slot identifier (never persisted). Set by
+    # __main__.py / web.onboarding at new-game creation and by
+    # web.sessions at load time. `_save_game` uses it to route autosaves
+    # through SaveManager.save_game(slot_id=...) so CLI and web share one
+    # canonical slot layout (`saves/{slot_id}/state.json` + `world.db`).
+    # Kept out of `to_dict` the same way narrator / world_rag / llm are.
+    slot_id: Optional[str] = None
+
+    @property
+    def save_enabled(self) -> bool:
+        """Whether autosaves are wired up for this session."""
+        return self.slot_id is not None
 
     def to_dict(self) -> dict:
         """Serialize game state."""
@@ -188,10 +198,16 @@ class GameState:
 
 def run_game(
     game_state: GameState,
-    save_path: Optional[Path] = None,
 ) -> None:
     """
     Main game loop with comprehensive error handling and auto-save.
+
+    Autosave is gated on ``game_state.slot_id``. Callers that want
+    fire-and-forget autosaves mint a slot via
+    ``SaveManager().save_game(game_state.to_dict(), slot_name=...)``
+    and assign the returned ``slot_id`` to ``game_state.slot_id`` before
+    calling this function. If ``slot_id`` is ``None``, the game runs
+    without any disk persistence.
     """
     console.clear()
     _print_banner(game_state.world)
@@ -219,7 +235,7 @@ def run_game(
 
             # Handle special commands
             if player_input.startswith("/"):
-                if not _handle_command(player_input, game_state, save_path):
+                if not _handle_command(player_input, game_state):
                     break
                 continue
 
@@ -292,11 +308,11 @@ def run_game(
 
             # Auto-save frequently to protect progress
             action_count += 1
-            if save_path:
+            if game_state.save_enabled:
                 # Save every 5 actions
                 if action_count % 5 == 0:
                     try:
-                        _save_game(game_state, save_path)
+                        _save_game(game_state)
                         console.print("[dim]✓ Progress saved[/dim]")
                     except Exception as e:
                         console.print(f"[yellow]⚠ Could not auto-save: {e}[/yellow]")
@@ -304,11 +320,11 @@ def run_game(
     except KeyboardInterrupt:
         # Graceful exit with save prompt
         console.print("\n[yellow][bold]Exiting RAG-Quest[/bold][/yellow]")
-        if save_path and Confirm.ask(
+        if game_state.save_enabled and Confirm.ask(
             "Save your progress before quitting?", default=True
         ):
             try:
-                _save_game(game_state, save_path)
+                _save_game(game_state)
                 console.print("[green]✓ Game saved![/green]")
             except Exception as e:
                 console.print(f"[yellow]Could not save: {e}[/yellow]")
@@ -345,7 +361,6 @@ def run_game(
 def _handle_command(
     command: str,
     game_state: GameState,
-    save_path: Optional[Path] = None,
 ) -> bool:
     """
     Handle special commands.
@@ -377,11 +392,13 @@ def _handle_command(
         ui.print_character_status(game_state.character)
 
     elif cmd == "/save":
-        if save_path:
+        if game_state.save_enabled:
             try:
-                _save_game(game_state, save_path)
+                _save_game(game_state)
                 ui.print_save_confirmation(
-                    save_path.name, game_state.character.name, game_state.world.name
+                    game_state.world.name,
+                    game_state.character.name,
+                    game_state.world.name,
                 )
             except Exception as e:
                 ui.print_error(f"Could not save: {e}")
@@ -537,9 +554,9 @@ def _handle_command(
         return True
 
     elif cmd == "/quit" or cmd == "/exit":
-        if save_path:
+        if game_state.save_enabled:
             if ui.get_yes_no_confirmation("[yellow]Save before quitting?[/yellow]"):
-                _save_game(game_state, save_path)
+                _save_game(game_state)
         return False
 
     # ------------------------------------------------------------------
@@ -1120,12 +1137,26 @@ def _print_game_over(game_state: GameState) -> None:
         )
 
 
-def _save_game(game_state: GameState, save_path: Path) -> None:
-    """Save game state to file.
+def _save_game(game_state: GameState) -> None:
+    """Save game state through SaveManager, keyed on ``game_state.slot_id``.
 
-    v0.6: triggers an incremental Notetaker refresh (if enabled) before writing,
-    so the JSON sidecar stays close to the save file the player just created.
+    v0.6: triggers an incremental Notetaker refresh (if enabled) before
+    writing, so the JSON sidecar stays close to the save file the player
+    just created.
+
+    v0.9 Phase 1 (dbs): routes the write through
+    ``SaveManager.save_game(slot_id=...)`` so CLI autosaves land in the
+    canonical slot directory layout (``saves/{slot_id}/state.json`` +
+    ``metadata.json`` + ``world.db``) instead of the old flat
+    ``saves/{world_name}.json`` path. WorldDB checkpoint uses
+    ``save_paths_for`` so the ``.db`` sits next to ``state.json``.
     """
+    if game_state.slot_id is None:
+        raise RuntimeError(
+            "Cannot save: game_state.slot_id is not set. Callers must "
+            "mint a slot via SaveManager before starting the game loop."
+        )
+
     # Auto-refresh notetaker summary on save events (unless disabled via config).
     try:
         if game_state.notetaker is not None:
@@ -1148,9 +1179,9 @@ def _save_game(game_state: GameState, save_path: Path) -> None:
     except Exception:
         pass  # Notetaker failures never block a save.
 
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(save_path, "w") as f:
-        json.dump(game_state.to_dict(), f, indent=2)
+    from ..saves.manager import SaveManager
+
+    SaveManager().save_game(game_state.to_dict(), slot_id=game_state.slot_id)
 
     # v0.9 Phase 1: checkpoint the WAL so the `.db` file is self-contained
     # after save, matching the JSON save's durability semantics.

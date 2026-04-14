@@ -30,29 +30,72 @@ import json
 import re
 import sqlite3
 from contextlib import contextmanager
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
 SCHEMA_VERSION = 1
 
-_ENTITY_TYPES = {"npc", "location", "faction", "item", "quest", "base"}
-_EVENT_TYPES = {
-    "combat",
-    "quest_offer",
-    "quest_complete",
-    "social",
-    "discovery",
-    "trade",
-    "travel",
-    "world_event",
-    "item",
-    "death",
-    "level_up",
-    "base_claim",
-    "module_unlock",
-    "module_complete",
-    "bookmark",
-}
+
+class EntityType(StrEnum):
+    """Canonical entity kinds stored in ``WorldDB.entities``.
+
+    The ``CHECK(entity_type IN (...))`` clause in the entities DDL is
+    derived from these values, and every call site in
+    ``engine/state_event_mapping.py`` uses the enum instead of string
+    literals so a typo is caught at import time rather than as a runtime
+    CHECK violation (rag-quest-csi).
+    """
+
+    NPC = "npc"
+    LOCATION = "location"
+    FACTION = "faction"
+    ITEM = "item"
+    QUEST = "quest"
+    BASE = "base"
+
+
+class EventType(StrEnum):
+    """Canonical event kinds stored in ``WorldDB.events``.
+
+    Same derivation story as :class:`EntityType` — the CHECK clause in
+    the events DDL is built from these members at schema-creation time.
+    """
+
+    COMBAT = "combat"
+    QUEST_OFFER = "quest_offer"
+    QUEST_COMPLETE = "quest_complete"
+    SOCIAL = "social"
+    DISCOVERY = "discovery"
+    TRADE = "trade"
+    TRAVEL = "travel"
+    WORLD_EVENT = "world_event"
+    ITEM = "item"
+    DEATH = "death"
+    LEVEL_UP = "level_up"
+    BASE_CLAIM = "base_claim"
+    MODULE_UNLOCK = "module_unlock"
+    MODULE_COMPLETE = "module_complete"
+    BOOKMARK = "bookmark"
+
+
+# Derived lookup sets — a single source of truth means the validation
+# sets, the DDL CHECK clauses, and the state_event_mapping literals all
+# agree by construction.
+_ENTITY_TYPES = frozenset(e.value for e in EntityType)
+_EVENT_TYPES = frozenset(e.value for e in EventType)
+
+
+def _sql_check_in_clause(column: str, values: Iterable[str]) -> str:
+    """Render ``column IN ('a','b',...)`` for use inside a DDL CHECK.
+
+    Values are quoted as SQL string literals. Apostrophes are doubled so
+    a member with a ``'`` would still round-trip cleanly (none currently
+    have one, but the helper stays safe if one is added).
+    """
+    escaped = ", ".join("'" + v.replace("'", "''") + "'" for v in sorted(values))
+    return f"{column} IN ({escaped})"
+
 
 _LEADING_ARTICLE = re.compile(r"^(?:the|a|an)\s+", re.IGNORECASE)
 _WHITESPACE = re.compile(r"\s+")
@@ -171,7 +214,9 @@ class WorldDB:
 
     def _create_schema(self) -> None:
         c = self._conn
-        c.executescript("""
+        entity_check = _sql_check_in_clause("entity_type", _ENTITY_TYPES)
+        event_check = _sql_check_in_clause("event_type", _EVENT_TYPES)
+        c.executescript(f"""
             CREATE TABLE IF NOT EXISTS db_metadata (
                 key   TEXT PRIMARY KEY,
                 value TEXT
@@ -180,8 +225,7 @@ class WorldDB:
             CREATE TABLE IF NOT EXISTS entities (
                 id               INTEGER PRIMARY KEY AUTOINCREMENT,
                 entity_type      TEXT NOT NULL
-                                    CHECK(entity_type IN
-                                        ('npc','location','faction','item','quest','base')),
+                                    CHECK({entity_check}),
                 name             TEXT NOT NULL,
                 canonical_name   TEXT NOT NULL,
                 current_location TEXT,
@@ -222,13 +266,7 @@ class WorldDB:
                 id                 INTEGER PRIMARY KEY AUTOINCREMENT,
                 turn_number        INTEGER NOT NULL,
                 event_type         TEXT NOT NULL
-                                      CHECK(event_type IN (
-                                          'combat','quest_offer','quest_complete',
-                                          'social','discovery','trade','travel',
-                                          'world_event','item','death','level_up',
-                                          'base_claim','module_unlock',
-                                          'module_complete','bookmark'
-                                      )),
+                                      CHECK({event_check}),
                 primary_entity     TEXT,
                 location           TEXT,
                 summary            TEXT NOT NULL,

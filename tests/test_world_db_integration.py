@@ -80,10 +80,14 @@ def test_shadow_write_populates_entities_and_events(world_db):
     combat_events = world_db.get_events_by_type("combat")
     assert any(e["is_notable"] for e in combat_events)
 
-    # Relationship delta recorded — delta=-20 / 50 = -0.4
-    rel = world_db.get_relationship("player", "Gareth", "disposition_delta")
+    # Relationship delta folded into the canonical absolute `disposition`
+    # row via read-modify-write (rag-quest-678). With no prior row the
+    # baseline is 0.0, so a -20 delta normalizes to -0.4.
+    rel = world_db.get_relationship("player", "Gareth", "disposition")
     assert rel is not None
     assert pytest.approx(rel["value"], abs=1e-6) == -0.4
+    # The old split rel_type must not exist any more.
+    assert world_db.get_relationship("player", "Gareth", "disposition_delta") is None
 
 
 def test_shadow_write_no_op_when_change_is_none(world_db):

@@ -9,8 +9,6 @@ CLI calls.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -258,18 +256,26 @@ def create_new_session(
     )
     game_state.encyclopedia = LoreEncyclopedia(game_state)
 
-    # --- Persist initial save ---
-    save_dir = Path.home() / ".local/share/rag-quest/saves"
-    save_dir.mkdir(parents=True, exist_ok=True)
-    save_path = save_dir / f"{w_name}.json"
-    save_path.write_text(json.dumps(game_state.to_dict(), indent=2))
+    # --- Persist initial save via SaveManager ---
+    # Mint a slot so the new world shows up in `GET /saves` and autosaves
+    # land in the canonical slot layout instead of a flat file keyed on
+    # world name (rag-quest-dbs).
+    from ..saves.manager import SaveManager
 
-    # v0.9 Phase 1: attach a SQLite WorldDB next to the JSON save. The new
-    # world starts empty — shadow-writes populate it as turns happen.
+    sm = SaveManager()
+    slot_meta = sm.save_game(
+        game_state.to_dict(),
+        slot_name=f"{character.name} - {w_name}",
+    )
+    game_state.slot_id = slot_meta.slot_id
+
+    # v0.9 Phase 1: attach a SQLite WorldDB inside the slot directory next
+    # to `state.json`. The new world starts empty — shadow-writes populate
+    # it as turns happen.
     try:
         from ..knowledge.world_db import WorldDB
 
-        game_state.world_db = WorldDB(save_path.with_suffix(".db"))
+        game_state.world_db = WorldDB(sm.save_paths_for(slot_meta.slot_id).world_db)
     except Exception:
         from .._debug import log_swallowed_exc
 
