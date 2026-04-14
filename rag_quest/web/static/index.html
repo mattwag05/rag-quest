@@ -4,26 +4,54 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>RAG-Quest</title>
+
+    <!--
+      v0.8.3 "Illuminated Terminal" — monospace terminal meets manuscript.
+      Typography is load-bearing. IBM Plex Mono for body/UI, Cormorant
+      Garamond italic for panel titles. No system font fallbacks until
+      both have had a chance to swap in.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
       :root {
-        --bg: #0f0f14;
-        --bg-panel: #16161f;
-        --bg-input: #1c1c28;
-        --bg-hover: #22222f;
-        --fg: #e6e6e6;
-        --fg-dim: #8a8a99;
-        --accent-player: #4fb8d9;
-        --accent-narrator: #6bcb77;
-        --accent-event: #ffd166;
-        --accent-achievement: #d98cff;
-        --accent-quest: #ff9f43;
-        --border: #2a2a38;
-        --danger: #ff6b6b;
-        --hp-high: #6bcb77;
-        --hp-mid: #ffd166;
-        --hp-low: #ff6b6b;
-        --radius: 6px;
-        --transition: 0.15s ease;
+        /* -- Illuminated Terminal palette ---------------------------------
+           Warm ink-black, parchment text, sealing-wax red-orange accent,
+           gold-leaf highlight. Every existing selector routes through
+           these tokens so the v0.8.1 polish stays visually coherent with
+           the new command menu. */
+        --ink: #0c0a08;
+        --ink-deep: #070605;
+        --ink-raise: #15110c;
+        --vellum: #e8e0d0;
+        --vellum-dim: #8a7e68;
+        --vellum-faint: #4c4438;
+        --wax: #c7391a;
+        --ember: #f2643a;
+        --gold: #d4a94a;
+        --gold-dim: #8a6f29;
+        --rule: #2a251f;
+        --rule-soft: #1c1814;
+        --shadow-ink: 0 0 40px rgba(12, 10, 8, 0.9);
+        --radius-soft: 2px;
+
+        /* HP bar semantics map onto the grimoire palette */
+        --hp-high: var(--gold);
+        --hp-mid: var(--ember);
+        --hp-low: var(--wax);
+
+        --font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+        --font-serif: "Cormorant Garamond", "EB Garamond", Georgia, serif;
+
+        --duration-fast: 120ms;
+        --duration-med: 200ms;
+        --duration-slow: 240ms;
+        --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       }
 
       * {
@@ -35,34 +63,50 @@
         margin: 0;
         padding: 0;
         height: 100%;
-        background: var(--bg);
-        color: var(--fg);
-        font-family: "SF Mono", "Menlo", "Consolas", ui-monospace, monospace;
+        background: var(--ink);
+        color: var(--vellum);
+        font-family: var(--font-mono);
         font-size: 14px;
-        line-height: 1.55;
+        line-height: 1.6;
+        /* Subtle grain overlay for the "paper under candlelight" atmosphere.
+           Radial warm glow from the upper-left, hairline grain via repeating
+           linear gradients. No images — pure CSS so there's no extra HTTP. */
+        background-image:
+          radial-gradient(
+            ellipse 900px 600px at 20% -10%,
+            rgba(212, 169, 74, 0.04) 0%,
+            rgba(12, 10, 8, 0) 60%
+          ),
+          repeating-linear-gradient(
+            0deg,
+            rgba(232, 224, 208, 0.012) 0px,
+            rgba(232, 224, 208, 0.012) 1px,
+            transparent 1px,
+            transparent 3px
+          );
       }
 
-      /* Accessibility: skip link */
+      /* Skip-link — accessibility */
       .skip-link {
         position: absolute;
         top: -100px;
         left: 8px;
-        background: var(--accent-player);
-        color: var(--bg);
+        background: var(--wax);
+        color: var(--vellum);
         padding: 6px 12px;
-        border-radius: var(--radius);
         z-index: 100;
         font-size: 12px;
         text-decoration: none;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
       }
 
       .skip-link:focus {
         top: 8px;
       }
 
-      /* Focus ring for keyboard nav */
       :focus-visible {
-        outline: 2px solid var(--accent-player);
+        outline: 1px solid var(--gold);
         outline-offset: 2px;
       }
 
@@ -73,22 +117,33 @@
         height: 100vh;
       }
 
-      /* ----- Header ---------------------------------------------------- */
+      /* ----- Header ----------------------------------------------------- */
       header {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 10px 16px;
-        border-bottom: 1px solid var(--border);
-        background: var(--bg-panel);
+        gap: 14px;
+        padding: 14px 22px;
+        border-bottom: 1px solid var(--rule);
+        background: var(--ink-deep);
         flex-wrap: wrap;
+        /* Hairline warm glow underline — the ink-wash between sections */
+        box-shadow: 0 1px 0 0 rgba(212, 169, 74, 0.04);
       }
 
       header h1 {
-        font-size: 14px;
+        font-family: var(--font-serif);
+        font-style: italic;
+        font-weight: 600;
+        font-size: 22px;
         margin: 0;
-        color: var(--accent-narrator);
-        letter-spacing: 0.08em;
+        color: var(--gold);
+        letter-spacing: 0.02em;
+        line-height: 1;
+      }
+
+      header h1::first-letter {
+        color: var(--wax);
+        font-size: 1.1em;
       }
 
       header .spacer {
@@ -97,29 +152,38 @@
 
       header select,
       header button {
-        background: var(--bg-input);
-        color: var(--fg);
-        border: 1px solid var(--border);
-        padding: 6px 10px;
-        font-family: inherit;
-        font-size: 12px;
+        background: var(--ink);
+        color: var(--vellum);
+        border: 1px solid var(--rule);
+        padding: 7px 12px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
         cursor: pointer;
-        border-radius: var(--radius);
-        transition: border-color var(--transition), background var(--transition);
+        border-radius: 0;
+        transition:
+          border-color var(--duration-fast) var(--ease),
+          background var(--duration-fast) var(--ease),
+          color var(--duration-fast) var(--ease);
       }
 
       header select:hover,
       header button:hover {
-        border-color: var(--accent-narrator);
-        background: var(--bg-hover);
+        border-color: var(--wax);
+        color: var(--vellum);
       }
 
       header #status {
-        color: var(--fg-dim);
-        font-size: 12px;
+        color: var(--vellum-dim);
+        font-size: 11px;
+        font-style: italic;
+        font-family: var(--font-serif);
+        letter-spacing: 0.01em;
       }
 
-      /* ----- Main layout ----------------------------------------------- */
+      /* ----- Main layout ------------------------------------------------ */
       main {
         display: grid;
         grid-template-columns: minmax(0, 1fr) 320px;
@@ -129,56 +193,66 @@
       /* ----- Narrator pane --------------------------------------------- */
       #narrator {
         overflow-y: auto;
-        padding: 16px 20px;
+        padding: 24px 32px;
+        max-width: 760px;
+        margin: 0 auto;
+        width: 100%;
       }
 
       #narrator .line {
-        margin: 0 0 8px 0;
+        margin: 0 0 10px 0;
         white-space: pre-wrap;
         word-wrap: break-word;
       }
 
       #narrator .player {
-        color: var(--accent-player);
+        color: var(--gold);
+        font-weight: 500;
       }
 
       #narrator .player::before {
-        content: "\25B6 ";
-        font-size: 10px;
-        opacity: 0.6;
+        content: "\203A\00a0";
+        color: var(--wax);
+        font-weight: 600;
       }
 
       #narrator .narrator-text {
-        color: var(--accent-narrator);
+        color: var(--vellum);
       }
 
       #narrator .system {
-        color: var(--fg-dim);
+        color: var(--vellum-dim);
         font-style: italic;
+        font-family: var(--font-serif);
+        font-size: 15px;
       }
 
       #narrator .event-banner {
-        color: var(--accent-event);
-        border: 1px solid var(--accent-event);
-        padding: 8px 12px;
-        margin: 4px 0 12px 0;
-        background: rgba(255, 209, 102, 0.06);
-        border-radius: var(--radius);
+        color: var(--gold);
+        border-top: 1px solid var(--gold-dim);
+        border-bottom: 1px solid var(--gold-dim);
+        padding: 10px 14px;
+        margin: 6px 0 14px 0;
+        background: rgba(212, 169, 74, 0.04);
+        letter-spacing: 0.02em;
       }
 
       #narrator .achievement {
-        color: var(--accent-achievement);
+        color: var(--gold);
         margin: 4px 0 8px 0;
+        font-weight: 500;
+        letter-spacing: 0.04em;
       }
 
       #narrator .error {
-        color: var(--danger);
+        color: var(--wax);
       }
 
-      /* Loading indicator */
       #narrator .loading-indicator {
-        color: var(--fg-dim);
+        color: var(--vellum-dim);
         font-style: italic;
+        font-family: var(--font-serif);
+        font-size: 15px;
       }
 
       #narrator .loading-indicator .dot {
@@ -213,96 +287,126 @@
         justify-content: center;
         height: 100%;
         text-align: center;
-        color: var(--fg-dim);
+        color: var(--vellum-dim);
         padding: 32px;
-        gap: 16px;
+        gap: 20px;
       }
 
       .welcome-panel .title {
-        color: var(--accent-narrator);
-        font-size: 20px;
-        font-weight: bold;
-        letter-spacing: 0.12em;
+        font-family: var(--font-serif);
+        font-style: italic;
+        font-weight: 600;
+        color: var(--gold);
+        font-size: 34px;
+        letter-spacing: 0.02em;
+        line-height: 1;
       }
 
       .welcome-panel .subtitle {
-        max-width: 400px;
-        line-height: 1.7;
+        max-width: 420px;
+        line-height: 1.8;
+        color: var(--vellum);
+      }
+
+      .welcome-panel .flourish {
+        color: var(--gold-dim);
+        letter-spacing: 1.2em;
+        font-size: 10px;
       }
 
       /* ----- State sidebar --------------------------------------------- */
       #state {
-        border-left: 1px solid var(--border);
-        background: var(--bg-panel);
+        border-left: 1px solid var(--rule);
+        background: var(--ink-deep);
         overflow-y: auto;
-        padding: 16px;
+        padding: 22px 18px;
       }
 
       #state h2 {
-        margin: 0 0 10px 0;
-        font-size: 11px;
-        color: var(--fg-dim);
+        margin: 0 0 8px 0;
+        font-size: 10px;
+        color: var(--gold-dim);
         text-transform: uppercase;
-        letter-spacing: 0.1em;
+        letter-spacing: 0.22em;
+        font-weight: 600;
+        padding-bottom: 4px;
+        border-bottom: 1px solid var(--rule);
       }
 
       #state .field {
         display: flex;
         justify-content: space-between;
-        padding: 4px 0;
-        border-bottom: 1px solid var(--border);
+        padding: 5px 0;
         font-size: 13px;
       }
 
-      #state .field:last-child {
-        border-bottom: none;
+      #state .field .key {
+        color: var(--vellum-dim);
+        text-transform: lowercase;
+        letter-spacing: 0.04em;
       }
 
-      #state .field .key {
-        color: var(--fg-dim);
+      #state .field .val,
+      #state .field span:not(.key) {
+        color: var(--vellum);
       }
 
       #state section {
-        margin-bottom: 18px;
+        margin-bottom: 22px;
       }
 
       #state ul {
-        margin: 6px 0 0 0;
+        margin: 4px 0 0 0;
         padding: 0;
         list-style: none;
       }
 
       #state li {
-        padding: 3px 0;
-        color: var(--fg);
+        padding: 3px 0 3px 14px;
+        color: var(--vellum);
         font-size: 13px;
+        position: relative;
+      }
+
+      #state li::before {
+        content: "\25B8";
+        color: var(--gold);
+        position: absolute;
+        left: 0;
+        font-size: 11px;
       }
 
       #state li.dim {
-        color: var(--fg-dim);
+        color: var(--vellum-dim);
         font-style: italic;
+        font-family: var(--font-serif);
+        font-size: 14px;
+      }
+
+      #state li.dim::before {
+        display: none;
       }
 
       /* HP bar */
       .hp-bar-container {
         width: 100%;
-        height: 8px;
-        background: var(--bg-input);
-        border-radius: 4px;
+        height: 6px;
+        background: var(--rule-soft);
         overflow: hidden;
-        margin-top: 4px;
+        margin-top: 6px;
       }
 
       .hp-bar-fill {
         height: 100%;
-        border-radius: 4px;
-        transition: width 0.4s ease, background-color 0.4s ease;
+        transition:
+          width 0.4s var(--ease),
+          background-color 0.4s var(--ease);
       }
 
       /* Quest item styling */
       .quest-item {
-        padding: 6px 0;
-        border-bottom: 1px solid var(--border);
+        padding: 7px 0;
+        border-bottom: 1px solid var(--rule);
       }
 
       .quest-item:last-child {
@@ -310,78 +414,436 @@
       }
 
       .quest-title {
-        color: var(--accent-quest);
+        color: var(--gold);
         font-size: 13px;
+        font-weight: 500;
       }
 
-      .quest-status {
-        color: var(--fg-dim);
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-
-      /* ----- Footer / input -------------------------------------------- */
+      /* ----- Footer / input + command bar ------------------------------ */
       footer {
-        border-top: 1px solid var(--border);
-        background: var(--bg-panel);
-        padding: 10px 16px;
+        border-top: 1px solid var(--rule);
+        background: var(--ink-deep);
+        box-shadow: 0 -1px 0 0 rgba(212, 169, 74, 0.04);
       }
 
+      /* Command bar: the row of inked sigils */
+      #command-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        gap: 0;
+        padding: 10px 16px 0 16px;
+        border-bottom: 1px solid var(--rule-soft);
+      }
+
+      .sigil {
+        appearance: none;
+        background: transparent;
+        color: var(--vellum-dim);
+        border: 1px solid var(--rule);
+        border-right-width: 0;
+        padding: 10px 14px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        cursor: pointer;
+        min-height: 44px;
+        min-width: 56px;
+        transition:
+          background-color var(--duration-fast) var(--ease),
+          color var(--duration-fast) var(--ease),
+          letter-spacing var(--duration-fast) var(--ease),
+          transform var(--duration-fast) var(--ease);
+      }
+
+      .sigil:last-of-type {
+        border-right-width: 1px;
+      }
+
+      .sigil:hover,
+      .sigil:focus-visible {
+        background: var(--wax);
+        color: var(--vellum);
+        letter-spacing: 0.16em;
+        outline: none;
+      }
+
+      .sigil:active {
+        background: var(--ember);
+        color: var(--ink);
+        transform: translateY(1px);
+      }
+
+      .sigil--wax {
+        color: var(--wax);
+        border-color: var(--wax);
+        border-right-width: 1px;
+        margin-left: 1px;
+      }
+
+      .sigil--wax:hover,
+      .sigil--wax:focus-visible {
+        background: var(--wax);
+        color: var(--ink);
+      }
+
+      .sigil--wax:active {
+        background: var(--ember);
+      }
+
+      .sigil[hidden] {
+        display: none;
+      }
+
+      /* Input row */
       footer form {
         display: flex;
-        gap: 10px;
+        gap: 12px;
+        padding: 14px 16px 16px 16px;
       }
 
       footer input {
         flex: 1;
-        background: var(--bg-input);
-        color: var(--fg);
-        border: 1px solid var(--border);
-        padding: 10px 12px;
-        font-family: inherit;
+        background: var(--ink);
+        color: var(--vellum);
+        border: 1px solid var(--rule);
+        padding: 12px 14px;
+        font-family: var(--font-mono);
         font-size: 14px;
-        border-radius: var(--radius);
-        transition: border-color var(--transition);
+        transition: border-color var(--duration-fast) var(--ease);
+      }
+
+      footer input::placeholder {
+        color: var(--vellum-faint);
+        font-style: italic;
+        font-family: var(--font-serif);
+        font-size: 15px;
       }
 
       footer input:focus {
         outline: none;
-        border-color: var(--accent-player);
+        border-color: var(--gold);
       }
 
       footer input:disabled {
-        opacity: 0.5;
+        opacity: 0.4;
       }
 
-      footer button {
-        background: var(--accent-player);
-        color: var(--bg);
+      footer form button {
+        background: var(--wax);
+        color: var(--vellum);
         border: none;
-        padding: 10px 20px;
-        font-family: inherit;
-        font-size: 14px;
-        font-weight: bold;
+        padding: 12px 24px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
         cursor: pointer;
-        border-radius: var(--radius);
-        transition: opacity var(--transition), transform var(--transition);
+        transition:
+          background-color var(--duration-fast) var(--ease),
+          opacity var(--duration-fast) var(--ease);
       }
 
-      footer button:hover:not(:disabled) {
-        opacity: 0.9;
-        transform: translateY(-1px);
+      footer form button:hover:not(:disabled) {
+        background: var(--ember);
       }
 
-      footer button:disabled {
-        opacity: 0.5;
+      footer form button:disabled {
+        opacity: 0.3;
         cursor: not-allowed;
       }
 
-      /* ----- Onboarding overlay ----------------------------------------- */
+      /* ----- Panel modal ----------------------------------------------- */
+      #panel-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #panel-modal[hidden] {
+        display: none;
+      }
+
+      .modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(12, 10, 8, 0.82);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        animation: wash-in var(--duration-med) var(--ease);
+      }
+
+      .modal-body {
+        position: relative;
+        max-width: 680px;
+        width: calc(100% - 32px);
+        max-height: calc(100vh - 64px);
+        overflow-y: auto;
+        background: var(--ink);
+        border: 1px solid var(--rule);
+        box-shadow: var(--shadow-ink);
+        padding: 34px 42px 38px 42px;
+        animation: page-unfurl var(--duration-med) var(--ease);
+      }
+
+      @keyframes wash-in {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes page-unfurl {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .modal-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        font-family: var(--font-serif);
+        font-style: italic;
+        font-weight: 600;
+        font-size: 34px;
+        line-height: 1.05;
+        color: var(--vellum);
+        letter-spacing: 0.01em;
+        text-transform: lowercase;
+      }
+
+      .modal-header h2::first-letter {
+        font-size: 1.6em;
+        color: var(--gold);
+        float: left;
+        line-height: 0.88;
+        padding-right: 6px;
+        text-transform: uppercase;
+      }
+
+      .modal-close {
+        appearance: none;
+        background: transparent;
+        color: var(--vellum-dim);
+        border: none;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 4px 8px;
+        transition: color var(--duration-fast) var(--ease);
+        font-family: var(--font-mono);
+      }
+
+      .modal-close:hover,
+      .modal-close:focus-visible {
+        color: var(--wax);
+        outline: none;
+      }
+
+      .modal-divider {
+        display: block;
+        width: 200px;
+        height: 6px;
+        color: var(--gold-dim);
+        margin: 16px 0 22px 0;
+      }
+
+      .modal-content {
+        color: var(--vellum);
+      }
+
+      .modal-content p {
+        margin: 0 0 12px 0;
+      }
+
+      .modal-content p.dim {
+        color: var(--vellum-dim);
+        font-family: var(--font-serif);
+        font-style: italic;
+        font-size: 16px;
+      }
+
+      .modal-content h3 {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--gold-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+        margin: 22px 0 10px 0;
+        font-weight: 600;
+        padding-bottom: 4px;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .modal-content h3:first-child {
+        margin-top: 0;
+      }
+
+      .modal-content ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .modal-content li {
+        padding: 5px 0 5px 18px;
+        position: relative;
+      }
+
+      .modal-content li::before {
+        content: "\25B8";
+        position: absolute;
+        left: 0;
+        color: var(--gold);
+      }
+
+      .modal-content .kv {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .modal-content .kv:last-child {
+        border-bottom: none;
+      }
+
+      .modal-content .kv .k {
+        color: var(--vellum-dim);
+        text-transform: lowercase;
+        letter-spacing: 0.04em;
+      }
+
+      .modal-content .kv .v {
+        color: var(--vellum);
+      }
+
+      .modal-content .kv .v.numeric {
+        color: var(--gold);
+      }
+
+      .modal-content .tag {
+        display: inline-block;
+        padding: 1px 7px;
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--wax);
+        border: 1px solid var(--wax);
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+
+      .modal-content .entry {
+        padding: 12px 0;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .modal-content .entry:last-child {
+        border-bottom: none;
+      }
+
+      .modal-content .entry .turn-label {
+        color: var(--gold-dim);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .modal-content .entry .prose {
+        margin-top: 6px;
+        color: var(--vellum);
+      }
+
+      .modal-content .empty {
+        font-family: var(--font-serif);
+        font-style: italic;
+        font-size: 17px;
+        color: var(--vellum-dim);
+        text-align: center;
+        padding: 24px 0;
+      }
+
+      .modal-content table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .modal-content table td {
+        padding: 6px 12px 6px 0;
+        vertical-align: top;
+        border-bottom: 1px solid var(--rule);
+        font-size: 13px;
+      }
+
+      .modal-content table td:first-child {
+        color: var(--wax);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 11px;
+        width: 130px;
+        white-space: nowrap;
+      }
+
+      .modal-content table td:last-child {
+        color: var(--vellum);
+      }
+
+      /* Transient toast — for save confirmations */
+      #toast {
+        position: fixed;
+        bottom: 88px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--ink-raise);
+        color: var(--gold);
+        border: 1px solid var(--gold-dim);
+        padding: 10px 22px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        z-index: 60;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity var(--duration-med) var(--ease);
+      }
+
+      #toast.visible {
+        opacity: 1;
+      }
+
+      #toast.error {
+        color: var(--wax);
+        border-color: var(--wax);
+      }
+
+      /* ----- Onboarding overlay (preserved, re-tokenized) -------------- */
       #onboarding-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.85);
+        background: rgba(12, 10, 8, 0.9);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -394,11 +856,11 @@
       }
 
       .onboarding-card {
-        background: var(--bg-panel);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 28px 32px;
-        max-width: 520px;
+        background: var(--ink);
+        border: 1px solid var(--rule);
+        box-shadow: var(--shadow-ink);
+        padding: 34px 40px;
+        max-width: 560px;
         width: 100%;
         max-height: 90vh;
         overflow-y: auto;
@@ -406,142 +868,164 @@
 
       .onboarding-card h2 {
         margin: 0 0 6px 0;
-        font-size: 16px;
-        color: var(--accent-narrator);
-        letter-spacing: 0.06em;
+        font-family: var(--font-serif);
+        font-style: italic;
+        font-weight: 600;
+        font-size: 28px;
+        color: var(--vellum);
+        letter-spacing: 0.01em;
+      }
+
+      .onboarding-card h2::first-letter {
+        color: var(--gold);
+        font-size: 1.3em;
       }
 
       .onboarding-card .step-label {
-        color: var(--fg-dim);
-        font-size: 11px;
+        color: var(--gold-dim);
+        font-size: 10px;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
-        margin-bottom: 16px;
+        letter-spacing: 0.22em;
+        margin-bottom: 18px;
+        font-weight: 600;
+      }
+
+      .onboarding-card label {
+        display: block;
+        color: var(--gold-dim);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        margin: 18px 0 6px 0;
+        font-weight: 600;
       }
 
       .onboarding-card .option-grid {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        margin: 12px 0;
+        margin: 10px 0;
       }
 
       .onboarding-card .option-btn {
         display: block;
         width: 100%;
         text-align: left;
-        background: var(--bg-input);
-        color: var(--fg);
-        border: 1px solid var(--border);
-        padding: 10px 14px;
-        font-family: inherit;
+        background: var(--ink-deep);
+        color: var(--vellum);
+        border: 1px solid var(--rule);
+        padding: 12px 16px;
+        font-family: var(--font-mono);
         font-size: 13px;
         cursor: pointer;
-        border-radius: var(--radius);
-        transition: border-color var(--transition), background var(--transition);
+        transition:
+          border-color var(--duration-fast) var(--ease),
+          background var(--duration-fast) var(--ease);
       }
 
       .onboarding-card .option-btn:hover,
       .onboarding-card .option-btn:focus-visible {
-        border-color: var(--accent-narrator);
-        background: var(--bg-hover);
+        border-color: var(--gold);
+        outline: none;
       }
 
       .onboarding-card .option-btn.selected {
-        border-color: var(--accent-narrator);
-        background: rgba(107, 203, 119, 0.1);
+        border-color: var(--wax);
+        background: rgba(199, 57, 26, 0.08);
       }
 
       .onboarding-card .option-btn .opt-name {
-        color: var(--accent-narrator);
-        font-weight: bold;
+        color: var(--gold);
+        font-weight: 600;
+        letter-spacing: 0.04em;
       }
 
       .onboarding-card .option-btn .opt-desc {
-        color: var(--fg-dim);
+        color: var(--vellum-dim);
         font-size: 12px;
       }
 
       .onboarding-card .option-btn .opt-detail {
-        color: var(--fg-dim);
+        color: var(--vellum-faint);
         font-size: 11px;
         margin-top: 2px;
       }
 
       .onboarding-card input[type="text"] {
         width: 100%;
-        background: var(--bg-input);
-        color: var(--fg);
-        border: 1px solid var(--border);
-        padding: 10px 12px;
-        font-family: inherit;
+        background: var(--ink-deep);
+        color: var(--vellum);
+        border: 1px solid var(--rule);
+        padding: 10px 14px;
+        font-family: var(--font-mono);
         font-size: 14px;
-        border-radius: var(--radius);
-        margin: 8px 0 16px 0;
+        margin: 0;
       }
 
       .onboarding-card input[type="text"]:focus {
         outline: none;
-        border-color: var(--accent-player);
+        border-color: var(--gold);
       }
 
       .onboarding-nav {
         display: flex;
         gap: 10px;
-        margin-top: 18px;
+        margin-top: 24px;
         justify-content: flex-end;
       }
 
       .onboarding-nav button {
-        background: var(--bg-input);
-        color: var(--fg);
-        border: 1px solid var(--border);
-        padding: 8px 18px;
-        font-family: inherit;
-        font-size: 13px;
+        background: var(--ink-deep);
+        color: var(--vellum);
+        border: 1px solid var(--rule);
+        padding: 10px 22px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
         cursor: pointer;
-        border-radius: var(--radius);
-        transition: border-color var(--transition), background var(--transition);
+        transition:
+          border-color var(--duration-fast) var(--ease),
+          background var(--duration-fast) var(--ease);
       }
 
       .onboarding-nav button:hover {
-        border-color: var(--accent-narrator);
-        background: var(--bg-hover);
+        border-color: var(--gold);
       }
 
       .onboarding-nav button.primary {
-        background: var(--accent-narrator);
-        color: var(--bg);
-        border-color: var(--accent-narrator);
-        font-weight: bold;
+        background: var(--wax);
+        color: var(--vellum);
+        border-color: var(--wax);
+        font-weight: 600;
       }
 
       .onboarding-nav button.primary:hover {
-        opacity: 0.9;
+        background: var(--ember);
+        border-color: var(--ember);
       }
 
       .onboarding-nav button:disabled {
-        opacity: 0.4;
+        opacity: 0.3;
         cursor: not-allowed;
       }
 
       .onboarding-preview {
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 12px 14px;
-        margin: 12px 0;
+        background: var(--ink-deep);
+        border: 1px solid var(--rule);
+        padding: 14px 18px;
+        margin: 14px 0;
         font-size: 13px;
       }
 
       .onboarding-preview .preview-row {
         display: flex;
         justify-content: space-between;
-        padding: 3px 0;
+        padding: 4px 0;
       }
 
       .onboarding-preview .preview-key {
-        color: var(--fg-dim);
+        color: var(--vellum-dim);
       }
 
       /* ----- Responsive: stack sidebar on narrow screens --------------- */
@@ -553,37 +1037,83 @@
 
         #state {
           border-left: none;
-          border-top: 1px solid var(--border);
-          max-height: 200px;
+          border-top: 1px solid var(--rule);
+          max-height: 180px;
           overflow-y: auto;
         }
 
         header {
           gap: 8px;
-          padding: 8px 12px;
+          padding: 10px 14px;
         }
 
-        footer {
-          padding: 8px 12px;
+        header h1 {
+          font-size: 18px;
+        }
+
+        #narrator {
+          padding: 18px 16px;
+        }
+
+        .modal-body {
+          padding: 24px 20px 28px 20px;
+          width: calc(100% - 16px);
+          max-height: calc(100vh - 32px);
+        }
+
+        .modal-header h2 {
+          font-size: 26px;
+        }
+
+        .sigil {
+          padding: 9px 10px;
+          font-size: 10px;
+          min-width: 48px;
+        }
+
+        #command-bar {
+          padding: 8px 10px 0 10px;
+        }
+
+        footer form {
+          padding: 10px 10px 12px 10px;
         }
 
         footer input {
-          padding: 8px 10px;
+          padding: 10px 12px;
           font-size: 13px;
         }
 
-        footer button {
-          padding: 8px 14px;
-          font-size: 13px;
+        footer form button {
+          padding: 10px 16px;
+        }
+      }
+
+      /* Respect reduced-motion preference. All animations collapse. */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0ms !important;
+          animation-delay: 0ms !important;
+          transition-duration: 0ms !important;
         }
       }
     </style>
   </head>
   <body>
     <a class="skip-link" href="#turn-input">Skip to input</a>
-    <div id="onboarding-overlay" class="hidden" role="dialog" aria-label="New game setup">
+
+    <!-- Onboarding overlay (preserved from v0.8.2) -->
+    <div
+      id="onboarding-overlay"
+      class="hidden"
+      role="dialog"
+      aria-label="New game setup"
+    >
       <div class="onboarding-card" id="onboarding-card"></div>
     </div>
+
     <div id="app">
       <header>
         <h1>RAG-QUEST</h1>
@@ -601,7 +1131,12 @@
       </header>
 
       <main>
-        <div id="narrator" role="log" aria-live="polite" aria-label="Narrator output"></div>
+        <div
+          id="narrator"
+          role="log"
+          aria-live="polite"
+          aria-label="Narrator output"
+        ></div>
         <aside id="state" aria-label="Game state panel">
           <section>
             <h2>Character</h2>
@@ -628,6 +1163,23 @@
       </main>
 
       <footer>
+        <nav id="command-bar" role="toolbar" aria-label="Game commands">
+          <button type="button" class="sigil" data-panel="inventory">INV</button>
+          <button type="button" class="sigil" data-panel="stats">STATS</button>
+          <button type="button" class="sigil" data-panel="quests">QUESTS</button>
+          <button type="button" class="sigil" data-panel="party">PARTY</button>
+          <button type="button" class="sigil" data-panel="relationships">NPCS</button>
+          <button type="button" class="sigil" data-panel="timeline">TIME</button>
+          <button type="button" class="sigil" data-panel="bookmarks">MARKS</button>
+          <button type="button" class="sigil" data-panel="lore">LORE</button>
+          <button type="button" class="sigil" data-panel="achievements">HONORS</button>
+          <button type="button" class="sigil" data-panel="notes">NOTES</button>
+          <button type="button" class="sigil" data-panel="base" data-requires="base" hidden>BASE</button>
+          <button type="button" class="sigil" data-panel="modules" data-requires="modules" hidden>ARCS</button>
+          <button type="button" class="sigil sigil--wax" data-action="save">SAVE</button>
+          <button type="button" class="sigil sigil--wax" data-action="bookmark">MARK</button>
+          <button type="button" class="sigil" data-panel="help">HELP</button>
+        </nav>
         <form id="turn-form">
           <input
             id="turn-input"
@@ -637,12 +1189,50 @@
             disabled
             aria-label="Enter your action"
           />
-          <button id="turn-submit" type="submit" disabled aria-label="Send action">
+          <button
+            id="turn-submit"
+            type="submit"
+            disabled
+            aria-label="Send action"
+          >
             Send
           </button>
         </form>
       </footer>
     </div>
+
+    <!-- Panel modal (v0.8.3) -->
+    <div
+      id="panel-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="panel-title"
+      hidden
+    >
+      <div class="modal-backdrop" data-dismiss="true"></div>
+      <article class="modal-body">
+        <header class="modal-header">
+          <h2 id="panel-title"></h2>
+          <button
+            type="button"
+            class="modal-close"
+            data-dismiss="true"
+            aria-label="Close"
+          >
+            &times;
+          </button>
+        </header>
+        <svg class="modal-divider" viewBox="0 0 200 6" aria-hidden="true">
+          <line x1="0" y1="3" x2="92" y2="3" stroke="currentColor" stroke-width="1" />
+          <path d="M100,0 L106,3 L100,6 L94,3 Z" fill="currentColor" />
+          <line x1="108" y1="3" x2="200" y2="3" stroke="currentColor" stroke-width="1" />
+        </svg>
+        <div id="panel-content" class="modal-content"></div>
+      </article>
+    </div>
+
+    <!-- Toast (save / bookmark confirmation) -->
+    <div id="toast" role="status" aria-live="polite" hidden></div>
 
     <script>
       // ----- Module-level state --------------------------------------------
@@ -651,6 +1241,7 @@
         currentNarratorLine: null, // live element being streamed into
         narratorBuffer: "", // accumulated text for markdown re-render
         loadingEl: null, // loading indicator element
+        latestStateDict: null, // cached most-recent game state for panels
       };
 
       const els = {
@@ -667,14 +1258,18 @@
         turnForm: document.getElementById("turn-form"),
         turnInput: document.getElementById("turn-input"),
         turnSubmit: document.getElementById("turn-submit"),
+        commandBar: document.getElementById("command-bar"),
+        panelModal: document.getElementById("panel-modal"),
+        panelTitle: document.getElementById("panel-title"),
+        panelContent: document.getElementById("panel-content"),
+        toast: document.getElementById("toast"),
       };
 
       // ----- DOM helpers ---------------------------------------------------
       //
-      // NOTE: every place we render server-supplied text uses
-      // ``textContent``/``createElement``, never ``innerHTML``. The web
-      // endpoints return data sourced from LLM output and user saves —
-      // treating any of it as HTML would be an XSS footgun.
+      // Every place we render server-supplied text uses textContent and
+      // createElement only. LLM output and save data flow through these,
+      // so the raw-HTML setter is banned on purpose (XSS footgun).
 
       function removeAllChildren(node) {
         while (node.firstChild) {
@@ -700,18 +1295,14 @@
         return p;
       }
 
-      // -- Safe markdown-to-DOM (no innerHTML) --------------------------------
-      // Converts **bold** and *italic* markers into <strong>/<em> elements.
-      // Everything is created via createElement/textContent so LLM output
-      // can never inject HTML.
+      // -- Safe markdown-to-DOM (bold + italic, no HTML injection) ---------
+      // Uses String.prototype.matchAll so the regex is stateless per call.
       const _MD_PATTERN =
         /\*\*(.+?)\*\*|__(.+?)__|(?<!\w)\*(.+?)\*(?!\w)|(?<!\w)_(.+?)_(?!\w)/g;
 
       function appendMarkdownText(parentEl, text) {
-        _MD_PATTERN.lastIndex = 0;
         let lastIndex = 0;
-        let match;
-        while ((match = _MD_PATTERN.exec(text)) !== null) {
+        for (const match of text.matchAll(_MD_PATTERN)) {
           if (match.index > lastIndex) {
             parentEl.appendChild(
               document.createTextNode(text.substring(lastIndex, match.index)),
@@ -728,7 +1319,7 @@
             el.textContent = italic;
             parentEl.appendChild(el);
           }
-          lastIndex = _MD_PATTERN.lastIndex;
+          lastIndex = match.index + match[0].length;
         }
         if (lastIndex < text.length) {
           parentEl.appendChild(
@@ -772,14 +1363,36 @@
       // -- Welcome panel ------------------------------------------------------
       function showWelcome() {
         const panel = makeEl("div", { cls: "welcome-panel" });
-        panel.appendChild(makeEl("div", { cls: "title", text: "RAG-QUEST" }));
+        panel.appendChild(makeEl("div", { cls: "title", text: "Rag-Quest" }));
+        panel.appendChild(
+          makeEl("div", { cls: "flourish", text: "\u2618 \u2618 \u2618" }),
+        );
         panel.appendChild(
           makeEl("div", {
             cls: "subtitle",
-            text: "AI-powered D&D text RPG with LightRAG knowledge grounding. Choose a save slot above and click Load to begin your adventure.",
+            text: "An adventure log scribed by a knowing dungeon master. Choose a save slot above, or start fresh — the chronicle is waiting.",
           }),
         );
         els.narrator.appendChild(panel);
+      }
+
+      // -- Toast --------------------------------------------------------------
+      let _toastTimer = null;
+      function showToast(message, variant) {
+        els.toast.textContent = message;
+        els.toast.className = variant === "error" ? "error" : "";
+        els.toast.hidden = false;
+        // Force reflow so the CSS transition triggers
+        // eslint-disable-next-line no-unused-expressions
+        els.toast.offsetWidth;
+        els.toast.classList.add("visible");
+        if (_toastTimer) clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => {
+          els.toast.classList.remove("visible");
+          setTimeout(() => {
+            els.toast.hidden = true;
+          }, 220);
+        }, 2200);
       }
 
       // ----- HP bar ----------------------------------------------------------
@@ -817,6 +1430,9 @@
 
       function renderState(stateDict) {
         if (!stateDict) return;
+        // Cache for client-side panels — every panel reads from here so
+        // we don't round-trip to the server for navigation.
+        state.latestStateDict = stateDict;
         const char = stateDict.character || {};
 
         removeAllChildren(els.charFields);
@@ -835,7 +1451,6 @@
         );
         renderStateField(els.charFields, "XP", char.xp);
 
-        // HP bar
         updateHpBar(char.current_hp, char.max_hp);
 
         removeAllChildren(els.locField);
@@ -845,10 +1460,8 @@
           makeEl("span", { cls: "key", text: locLabel }),
         );
 
-        // Inventory
+        // Inventory (sidebar preview, first 20)
         const inv = stateDict.inventory || {};
-        // Inventory.to_dict() returns {items: {name: {...}, ...}} (dict), but
-        // older formats may use a list. Normalise to an array of item objects.
         let items;
         if (Array.isArray(inv.items)) {
           items = inv.items;
@@ -872,8 +1485,8 @@
           }
         }
 
-        // Quests
         renderQuests(stateDict.quest_log);
+        updateCommandBarVisibility(stateDict);
       }
 
       function renderQuests(questLog) {
@@ -929,6 +1542,21 @@
         } catch (err) {
           appendLine(`[state refresh failed: ${err.message}]`, "error");
         }
+      }
+
+      // ----- Command bar contextual visibility ----------------------------
+      function updateCommandBarVisibility(stateDict) {
+        if (!stateDict) return;
+        const bases = (stateDict.world && stateDict.world.bases) || [];
+        const modules =
+          (stateDict.world &&
+            stateDict.world.module_registry &&
+            stateDict.world.module_registry.modules) ||
+          {};
+        const baseBtn = document.querySelector('[data-requires="base"]');
+        const modulesBtn = document.querySelector('[data-requires="modules"]');
+        if (baseBtn) baseBtn.hidden = bases.length === 0;
+        if (modulesBtn) modulesBtn.hidden = Object.keys(modules).length === 0;
       }
 
       // ----- Saves list + session load -------------------------------------
@@ -990,9 +1618,7 @@
         if (payload.type === "pre_turn") {
           hideLoading();
           if (payload.new_event && payload.new_event.name) {
-            const banner = makeEl("div", {
-              cls: "line event-banner",
-            });
+            const banner = makeEl("div", { cls: "line event-banner" });
             banner.appendChild(
               document.createTextNode(
                 "\u26A1 WORLD EVENT: " +
@@ -1022,7 +1648,6 @@
             state.narratorBuffer = "";
           }
           state.narratorBuffer += payload.text || "";
-          // Re-render the full buffer so markdown split across chunks works.
           removeAllChildren(state.currentNarratorLine);
           appendMarkdownText(state.currentNarratorLine, state.narratorBuffer);
           scrollNarratorToBottom();
@@ -1046,7 +1671,6 @@
               "achievement",
             );
           }
-          // Render state from the done payload first (fast path).
           if (payload.state) {
             renderState(payload.state);
             const ch = payload.state.character || {};
@@ -1058,7 +1682,6 @@
               );
             }
           }
-          // Then fetch fresh state from API to guarantee sidebar + header sync.
           refreshState().then(() => {
             if (state.sessionId) {
               fetch(
@@ -1103,9 +1726,6 @@
           }
         };
         source.onerror = () => {
-          // EventSource fires onerror at end-of-stream too; only re-enable
-          // input so the player can continue. The done event above has
-          // already re-enabled input in the happy path.
           source.close();
           hideLoading();
           state.currentNarratorLine = null;
@@ -1113,7 +1733,760 @@
         };
       }
 
-      // ----- Wire up -------------------------------------------------------
+      // ====================================================================
+      // v0.8.3 — Command bar + panel modal
+      // ====================================================================
+
+      const PANEL_TITLES = {
+        inventory: "inventory",
+        stats: "character sheet",
+        quests: "quest log",
+        party: "party",
+        relationships: "relationships",
+        timeline: "campaign timeline",
+        bookmarks: "bookmarks",
+        lore: "lore encyclopedia",
+        achievements: "honors earned",
+        notes: "campaign notes",
+        base: "base of operations",
+        modules: "story arcs",
+        help: "the scribe's guide",
+      };
+
+      // The help modal content is a single source of truth so future
+      // commands can't drift from the guide.
+      const HELP_ENTRIES = [
+        ["INV", "Full inventory list with counts and descriptions."],
+        ["STATS", "Character sheet: attributes, HP, XP, class abilities."],
+        ["QUESTS", "Active and completed quests with objectives."],
+        ["PARTY", "Companions and their loyalty."],
+        ["NPCS", "People you've met and how they feel about you."],
+        ["TIME", "Chronological log of everything that's happened."],
+        ["MARKS", "Saved bookmarks — your favorite moments."],
+        ["LORE", "Places, people, factions, and items — browse the world."],
+        ["HONORS", "Achievements you have earned."],
+        ["NOTES", "AI-authored campaign summaries, refreshed on save."],
+        ["BASE", "Your claimed stronghold (appears once claimed)."],
+        ["ARCS", "Story modules loaded into this world."],
+        ["SAVE", "Manually save the current adventure."],
+        ["MARK", "Bookmark the last scene for later — optional note."],
+        ["HELP", "This guide."],
+      ];
+
+      const panelRenderers = {
+        inventory: renderInventoryPanel,
+        stats: renderStatsPanel,
+        quests: renderQuestsPanel,
+        party: renderPartyPanel,
+        relationships: renderRelationshipsPanel,
+        timeline: renderTimelinePanel,
+        bookmarks: renderBookmarksPanel,
+        lore: renderLorePanel,
+        achievements: renderAchievementsPanel,
+        modules: renderModulesPanel,
+        base: renderBasePanel,
+        notes: renderNotesPanel,
+        help: renderHelpPanel,
+      };
+
+      function openPanel(name) {
+        const renderer = panelRenderers[name];
+        if (!renderer) return;
+        els.panelTitle.textContent = PANEL_TITLES[name] || name;
+        removeAllChildren(els.panelContent);
+        try {
+          const result = renderer(state.latestStateDict);
+          // Async renderer (notes) returns a promise; that's fine — it
+          // populates the panel content itself.
+          if (result && typeof result.then === "function") {
+            result.catch((err) => {
+              removeAllChildren(els.panelContent);
+              const p = makeEl("p", {
+                cls: "dim",
+                text: `Could not load: ${err.message}`,
+              });
+              els.panelContent.appendChild(p);
+            });
+          }
+        } catch (err) {
+          const p = makeEl("p", {
+            cls: "dim",
+            text: `Panel error: ${err.message}`,
+          });
+          els.panelContent.appendChild(p);
+        }
+        els.panelModal.hidden = false;
+        // Focus the close button so Esc/Tab works cleanly
+        const closeBtn = els.panelModal.querySelector(".modal-close");
+        if (closeBtn) closeBtn.focus();
+      }
+
+      function closePanel() {
+        els.panelModal.hidden = true;
+        els.turnInput.focus();
+      }
+
+      // ----- Helpers used by multiple renderers ---------------------------
+
+      function emptyEl(text) {
+        return makeEl("p", { cls: "empty", text });
+      }
+
+      function kvRow(parent, key, value, opts) {
+        if (value === undefined || value === null || value === "") return;
+        const numeric = opts && opts.numeric;
+        const row = makeEl("div", { cls: "kv" });
+        row.appendChild(makeEl("span", { cls: "k", text: key }));
+        row.appendChild(
+          makeEl("span", {
+            cls: numeric ? "v numeric" : "v",
+            text: String(value),
+          }),
+        );
+        parent.appendChild(row);
+      }
+
+      function section(parent, title) {
+        parent.appendChild(makeEl("h3", { text: title }));
+      }
+
+      function bulletList(parent, items, opts) {
+        const empty = (opts && opts.empty) || "(none)";
+        if (!items || items.length === 0) {
+          parent.appendChild(emptyEl(empty));
+          return;
+        }
+        const ul = makeEl("ul");
+        for (const item of items) {
+          ul.appendChild(makeEl("li", { text: item }));
+        }
+        parent.appendChild(ul);
+      }
+
+      function formatItem(item) {
+        if (typeof item === "string") return item;
+        if (!item) return "";
+        const qty = item.quantity && item.quantity > 1 ? ` x${item.quantity}` : "";
+        return `${item.name || "unknown"}${qty}`;
+      }
+
+      function normalizeItems(itemsField) {
+        if (!itemsField) return [];
+        if (Array.isArray(itemsField)) return itemsField;
+        if (typeof itemsField === "object") return Object.values(itemsField);
+        return [];
+      }
+
+      // ----- Panel renderers ----------------------------------------------
+
+      function renderInventoryPanel(stateDict) {
+        const root = els.panelContent;
+        const inv = (stateDict && stateDict.inventory) || {};
+        const items = normalizeItems(inv.items);
+
+        if (items.length === 0) {
+          root.appendChild(emptyEl("No items. Your pack is light."));
+          return;
+        }
+
+        section(root, `Carried (${items.length})`);
+        const ul = makeEl("ul");
+        for (const item of items) {
+          const li = makeEl("li");
+          const name = document.createElement("span");
+          name.textContent = item.name || "unknown";
+          li.appendChild(name);
+          if (item.quantity && item.quantity > 1) {
+            li.appendChild(
+              makeEl("span", {
+                cls: "v numeric",
+                text: ` x${item.quantity}`,
+              }),
+            );
+          }
+          if (item.description) {
+            const desc = makeEl("div", {
+              cls: "dim",
+              text: item.description,
+            });
+            desc.style.fontSize = "12px";
+            desc.style.marginTop = "2px";
+            li.appendChild(desc);
+          }
+          ul.appendChild(li);
+        }
+        root.appendChild(ul);
+      }
+
+      function renderStatsPanel(stateDict) {
+        const root = els.panelContent;
+        const char = (stateDict && stateDict.character) || {};
+
+        section(root, "Identity");
+        kvRow(root, "name", char.name);
+        kvRow(root, "race", char.race);
+        kvRow(root, "class", char.character_class || char.class_);
+        kvRow(root, "level", char.level, { numeric: true });
+        kvRow(root, "xp", char.xp, { numeric: true });
+
+        section(root, "Vitals");
+        kvRow(
+          root,
+          "hp",
+          `${char.current_hp ?? "?"} / ${char.max_hp ?? "?"}`,
+          { numeric: true },
+        );
+        if (char.location) kvRow(root, "location", char.location);
+
+        const attrs = char.attributes || char.stats || null;
+        if (attrs && typeof attrs === "object") {
+          section(root, "Attributes");
+          for (const [k, v] of Object.entries(attrs)) {
+            kvRow(root, k, v, { numeric: true });
+          }
+        }
+
+        const abilities = char.abilities || char.class_abilities || null;
+        if (abilities && Array.isArray(abilities) && abilities.length) {
+          section(root, "Abilities");
+          bulletList(
+            root,
+            abilities.map((a) => (typeof a === "string" ? a : a.name || "")),
+          );
+        }
+      }
+
+      function renderQuestsPanel(stateDict) {
+        const root = els.panelContent;
+        const quests = ((stateDict && stateDict.quest_log) || {}).quests || [];
+
+        if (quests.length === 0) {
+          root.appendChild(emptyEl("No quests yet. Stories are waiting to begin."));
+          return;
+        }
+
+        const buckets = { active: [], pending: [], completed: [], failed: [] };
+        for (const q of quests) {
+          const s = (q.status || "").toString().toLowerCase();
+          if (buckets[s]) buckets[s].push(q);
+          else buckets.active.push(q);
+        }
+
+        function renderBucket(heading, list) {
+          if (list.length === 0) return;
+          section(root, `${heading} (${list.length})`);
+          for (const q of list) {
+            const entry = makeEl("div", { cls: "entry" });
+            const title = makeEl("div", { text: q.title || "Untitled Quest" });
+            title.style.color = "var(--gold)";
+            title.style.fontWeight = "500";
+            entry.appendChild(title);
+            if (q.description) {
+              entry.appendChild(
+                makeEl("div", { cls: "prose", text: q.description }),
+              );
+            }
+            if (Array.isArray(q.objectives) && q.objectives.length) {
+              const ul = makeEl("ul");
+              for (const obj of q.objectives) {
+                const text =
+                  typeof obj === "string"
+                    ? obj
+                    : obj.text || obj.description || "objective";
+                const done =
+                  typeof obj === "object" && (obj.completed || obj.done);
+                const li = makeEl("li", {
+                  text: done ? `${text} [done]` : text,
+                });
+                if (done) li.style.color = "var(--vellum-dim)";
+                ul.appendChild(li);
+              }
+              entry.appendChild(ul);
+            }
+            root.appendChild(entry);
+          }
+        }
+
+        renderBucket("Active", buckets.active);
+        renderBucket("Pending", buckets.pending);
+        renderBucket("Completed", buckets.completed);
+        renderBucket("Failed", buckets.failed);
+      }
+
+      function renderPartyPanel(stateDict) {
+        const root = els.panelContent;
+        const party = (stateDict && stateDict.party) || {};
+        const members = party.members || [];
+
+        if (!members.length) {
+          root.appendChild(emptyEl("You travel alone."));
+          return;
+        }
+
+        section(root, `Companions (${members.length})`);
+        for (const m of members) {
+          const entry = makeEl("div", { cls: "entry" });
+          const name = makeEl("div", { text: m.name || "Unknown" });
+          name.style.color = "var(--gold)";
+          name.style.fontWeight = "500";
+          entry.appendChild(name);
+          const meta = [];
+          if (m.role) meta.push(m.role);
+          if (m.level) meta.push(`lvl ${m.level}`);
+          if (m.hp !== undefined) meta.push(`hp ${m.hp}`);
+          if (m.loyalty !== undefined) meta.push(`loyalty ${m.loyalty}`);
+          if (meta.length) {
+            entry.appendChild(
+              makeEl("div", { cls: "prose dim", text: meta.join(" · ") }),
+            );
+          }
+          root.appendChild(entry);
+        }
+      }
+
+      function renderRelationshipsPanel(stateDict) {
+        const root = els.panelContent;
+        const rel = (stateDict && stateDict.relationships) || {};
+        const npcs = rel.relationships || rel.npcs || {};
+        const factions = rel.factions || {};
+
+        const npcList = Object.values(npcs);
+        const factionList = Object.values(factions);
+
+        if (!npcList.length && !factionList.length) {
+          root.appendChild(
+            emptyEl("No one remembers you yet. Meet some NPCs."),
+          );
+          return;
+        }
+
+        if (npcList.length) {
+          section(root, `People (${npcList.length})`);
+          for (const npc of npcList) {
+            const dispo = npc.disposition;
+            const label =
+              dispo === undefined
+                ? ""
+                : dispo >= 0.5
+                  ? "ally"
+                  : dispo >= 0
+                    ? "friendly"
+                    : dispo >= -0.5
+                      ? "wary"
+                      : "hostile";
+            const entry = makeEl("div", { cls: "kv" });
+            const left = makeEl("span", { cls: "k" });
+            left.textContent = npc.name || "unknown";
+            entry.appendChild(left);
+            const right = makeEl("span", { cls: "v" });
+            if (label) {
+              const tag = makeEl("span", { cls: "tag", text: label });
+              right.appendChild(tag);
+            }
+            if (typeof dispo === "number") {
+              const num = makeEl("span", { text: dispo.toFixed(2) });
+              num.style.color = "var(--gold)";
+              right.appendChild(num);
+            }
+            entry.appendChild(right);
+            root.appendChild(entry);
+          }
+        }
+
+        if (factionList.length) {
+          section(root, `Factions (${factionList.length})`);
+          for (const f of factionList) {
+            kvRow(root, f.name || "unknown", f.reputation ?? 0, {
+              numeric: true,
+            });
+          }
+        }
+      }
+
+      function renderTimelinePanel(stateDict) {
+        const root = els.panelContent;
+        const events = ((stateDict && stateDict.timeline) || {}).events || [];
+
+        if (!events.length) {
+          root.appendChild(
+            emptyEl("The chronicle is empty — write something into it."),
+          );
+          return;
+        }
+
+        section(root, `Last ${Math.min(events.length, 40)} events`);
+        const latest = events.slice(-40);
+        for (const ev of latest) {
+          const entry = makeEl("div", { cls: "entry" });
+          const header = makeEl("div");
+          header.appendChild(
+            makeEl("span", { cls: "tag", text: ev.type || "event" }),
+          );
+          const turnLabel = makeEl("span", {
+            cls: "turn-label",
+            text: `Turn ${ev.turn ?? "?"}`,
+          });
+          header.appendChild(turnLabel);
+          entry.appendChild(header);
+          if (ev.summary) {
+            entry.appendChild(
+              makeEl("div", { cls: "prose", text: ev.summary }),
+            );
+          }
+          root.appendChild(entry);
+        }
+      }
+
+      function renderBookmarksPanel(stateDict) {
+        const root = els.panelContent;
+        const bookmarks =
+          ((stateDict && stateDict.timeline) || {}).bookmarks || [];
+
+        if (!bookmarks.length) {
+          root.appendChild(
+            emptyEl("No bookmarks yet — make some history first."),
+          );
+          return;
+        }
+
+        section(root, `Saved moments (${bookmarks.length})`);
+        for (const bm of bookmarks.slice().reverse()) {
+          const entry = makeEl("div", { cls: "entry" });
+          const header = makeEl("div", {
+            cls: "turn-label",
+            text: `Turn ${bm.turn} · ${bm.location || "unknown"}${
+              bm.note ? ` · ${bm.note}` : ""
+            }`,
+          });
+          entry.appendChild(header);
+          if (bm.narrator_prose) {
+            const prose = makeEl("div", { cls: "prose" });
+            appendMarkdownText(prose, bm.narrator_prose);
+            entry.appendChild(prose);
+          }
+          root.appendChild(entry);
+        }
+      }
+
+      function renderLorePanel(stateDict) {
+        const root = els.panelContent;
+        const world = (stateDict && stateDict.world) || {};
+        const rel = (stateDict && stateDict.relationships) || {};
+        const inv = (stateDict && stateDict.inventory) || {};
+
+        const locations = world.visited_locations || [];
+        const npcsMet = world.npcs_met || Object.keys(rel.relationships || {});
+        const factions = Object.keys(rel.factions || {});
+        const items = normalizeItems(inv.items).map((i) =>
+          typeof i === "string" ? i : i.name || "unknown",
+        );
+
+        const any =
+          locations.length + npcsMet.length + factions.length + items.length;
+        if (!any) {
+          root.appendChild(
+            emptyEl("The world is unwritten. Explore to fill these pages."),
+          );
+          return;
+        }
+
+        if (locations.length) {
+          section(root, `Places (${locations.length})`);
+          bulletList(root, locations);
+        }
+        if (npcsMet.length) {
+          section(root, `People (${npcsMet.length})`);
+          bulletList(root, npcsMet);
+        }
+        if (factions.length) {
+          section(root, `Factions (${factions.length})`);
+          bulletList(root, factions);
+        }
+        if (items.length) {
+          section(root, `Items (${items.length})`);
+          bulletList(root, items);
+        }
+      }
+
+      function renderAchievementsPanel(stateDict) {
+        const root = els.panelContent;
+        const ach = (stateDict && stateDict.achievements) || {};
+        const all = ach.achievements || ach.all || [];
+        const unlocked = Array.isArray(all)
+          ? all.filter((a) => a.unlocked || a.earned)
+          : Object.values(all).filter((a) => a.unlocked || a.earned);
+
+        if (!unlocked.length) {
+          root.appendChild(
+            emptyEl("No honors earned yet. Win a battle. Finish a quest."),
+          );
+          return;
+        }
+
+        section(root, `Honors (${unlocked.length})`);
+        for (const a of unlocked) {
+          const entry = makeEl("div", { cls: "entry" });
+          const title = makeEl("div", { text: a.name || a.id || "Unknown" });
+          title.style.color = "var(--gold)";
+          title.style.fontWeight = "500";
+          entry.appendChild(title);
+          if (a.description) {
+            entry.appendChild(
+              makeEl("div", { cls: "prose dim", text: a.description }),
+            );
+          }
+          root.appendChild(entry);
+        }
+      }
+
+      function renderModulesPanel(stateDict) {
+        const root = els.panelContent;
+        const reg =
+          ((stateDict && stateDict.world) || {}).module_registry || {};
+        const modules = reg.modules || {};
+        const entries = Object.values(modules);
+
+        if (!entries.length) {
+          root.appendChild(emptyEl("No story arcs loaded in this world."));
+          return;
+        }
+
+        section(root, `Arcs (${entries.length})`);
+        for (const m of entries) {
+          const entry = makeEl("div", { cls: "entry" });
+          const header = makeEl("div");
+          header.appendChild(
+            makeEl("span", { cls: "tag", text: m.status || "locked" }),
+          );
+          const title = makeEl("span", {
+            text: m.title || m.id || "Untitled",
+          });
+          title.style.color = "var(--gold)";
+          title.style.fontWeight = "500";
+          header.appendChild(title);
+          entry.appendChild(header);
+          if (m.description) {
+            entry.appendChild(
+              makeEl("div", { cls: "prose", text: m.description }),
+            );
+          }
+          root.appendChild(entry);
+        }
+      }
+
+      function renderBasePanel(stateDict) {
+        const root = els.panelContent;
+        const bases = ((stateDict && stateDict.world) || {}).bases || [];
+
+        if (!bases.length) {
+          root.appendChild(
+            emptyEl("No base claimed yet. Find a stronghold worth keeping."),
+          );
+          return;
+        }
+
+        for (const base of bases) {
+          section(root, base.name || "unnamed base");
+          if (base.location_ref) kvRow(root, "location", base.location_ref);
+
+          const storageItems = normalizeItems(
+            (base.storage || {}).items || base.storage,
+          );
+          if (storageItems.length) {
+            root.appendChild(makeEl("h3", { text: "Stored" }));
+            const ul = makeEl("ul");
+            for (const item of storageItems) {
+              ul.appendChild(makeEl("li", { text: formatItem(item) }));
+            }
+            root.appendChild(ul);
+          }
+
+          const npcs = base.stationed_npcs || [];
+          if (npcs.length) {
+            root.appendChild(makeEl("h3", { text: "Stationed" }));
+            const svc = base.npc_service || {};
+            const ul = makeEl("ul");
+            for (const npc of npcs) {
+              const role = svc[npc];
+              ul.appendChild(
+                makeEl("li", { text: role ? `${npc} — ${role}` : npc }),
+              );
+            }
+            root.appendChild(ul);
+          }
+
+          const services = base.services || [];
+          if (services.length) {
+            root.appendChild(makeEl("h3", { text: "Services" }));
+            bulletList(root, services);
+          }
+        }
+      }
+
+      async function renderNotesPanel() {
+        const root = els.panelContent;
+        if (!state.sessionId) {
+          root.appendChild(emptyEl("No session loaded."));
+          return;
+        }
+
+        const loading = makeEl("p", {
+          cls: "dim",
+          text: "Fetching the scribe's notes...",
+        });
+        root.appendChild(loading);
+
+        const res = await fetch(
+          `/session/${encodeURIComponent(state.sessionId)}/notes`,
+        );
+        if (!res.ok) throw new Error(`notes ${res.status}`);
+        const data = await res.json();
+        removeAllChildren(root);
+
+        const entries = data.entries || [];
+        if (!entries.length) {
+          root.appendChild(
+            emptyEl("No campaign notes yet — save your game to refresh them."),
+          );
+          return;
+        }
+
+        section(root, `Entries (${entries.length})`);
+        for (const e of entries.slice().reverse()) {
+          const entry = makeEl("div", { cls: "entry" });
+          const header = makeEl("div", {
+            cls: "turn-label",
+            text: `Turns ${e.turn_range || "?"} ${
+              e.canonized ? "[canonized]" : ""
+            }`.trim(),
+          });
+          entry.appendChild(header);
+          if (e.session_summary) {
+            entry.appendChild(
+              makeEl("div", { cls: "prose", text: e.session_summary }),
+            );
+          }
+          if ((e.npc_notes || []).length) {
+            entry.appendChild(makeEl("h3", { text: "NPCs" }));
+            bulletList(entry, e.npc_notes);
+          }
+          if ((e.open_hooks || []).length) {
+            entry.appendChild(makeEl("h3", { text: "Open hooks" }));
+            bulletList(entry, e.open_hooks);
+          }
+          if ((e.faction_shifts || []).length) {
+            entry.appendChild(makeEl("h3", { text: "Factions" }));
+            bulletList(entry, e.faction_shifts);
+          }
+          root.appendChild(entry);
+        }
+      }
+
+      function renderHelpPanel() {
+        const root = els.panelContent;
+        root.appendChild(
+          makeEl("p", {
+            cls: "dim",
+            text: "Tap a sigil below to view game state. The input box still accepts plain-English actions and slash commands.",
+          }),
+        );
+        const table = document.createElement("table");
+        for (const [cmd, desc] of HELP_ENTRIES) {
+          const tr = document.createElement("tr");
+          const tdCmd = document.createElement("td");
+          tdCmd.textContent = cmd;
+          const tdDesc = document.createElement("td");
+          tdDesc.textContent = desc;
+          tr.appendChild(tdCmd);
+          tr.appendChild(tdDesc);
+          table.appendChild(tr);
+        }
+        root.appendChild(table);
+      }
+
+      // ----- Mutating actions: save + bookmark ---------------------------
+
+      async function doSave() {
+        if (!state.sessionId) {
+          showToast("No session loaded", "error");
+          return;
+        }
+        try {
+          const res = await fetch(
+            `/session/${encodeURIComponent(state.sessionId)}/save`,
+            { method: "POST" },
+          );
+          if (!res.ok) {
+            const detail = await res.text();
+            throw new Error(detail || `save ${res.status}`);
+          }
+          const data = await res.json();
+          showToast(`Saved · turn ${data.turn}`);
+        } catch (err) {
+          showToast(`Save failed: ${err.message}`, "error");
+        }
+      }
+
+      async function doBookmark() {
+        if (!state.sessionId) {
+          showToast("No session loaded", "error");
+          return;
+        }
+        const note = window.prompt("Mark this moment — optional note:", "");
+        if (note === null) return; // user cancelled
+        try {
+          const res = await fetch(
+            `/session/${encodeURIComponent(state.sessionId)}/bookmark`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ note }),
+            },
+          );
+          if (!res.ok) {
+            const detail = await res.text();
+            throw new Error(detail || `bookmark ${res.status}`);
+          }
+          const data = await res.json();
+          showToast(`Marked turn ${data.bookmark.turn}`);
+        } catch (err) {
+          showToast(`Bookmark failed: ${err.message}`, "error");
+        }
+      }
+
+      // ----- Command bar dispatch ----------------------------------------
+
+      els.commandBar.addEventListener("click", (e) => {
+        const btn = e.target.closest(
+          'button[data-panel], button[data-action]',
+        );
+        if (!btn) return;
+        if (btn.dataset.panel) {
+          openPanel(btn.dataset.panel);
+          return;
+        }
+        if (btn.dataset.action === "save") {
+          doSave();
+        } else if (btn.dataset.action === "bookmark") {
+          doBookmark();
+        }
+      });
+
+      // ----- Modal lifecycle ---------------------------------------------
+
+      els.panelModal.addEventListener("click", (e) => {
+        if (e.target.dataset && e.target.dataset.dismiss) {
+          closePanel();
+        }
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !els.panelModal.hidden) {
+          closePanel();
+        }
+      });
+
+      // ----- Main wire up ------------------------------------------------
       els.loadBtn.addEventListener("click", () => {
         const slot = els.saveSelect.value;
         if (!slot) return;
@@ -1128,14 +2501,16 @@
         sendTurn(text);
       });
 
-      // ----- Onboarding flow -----------------------------------------------
+      // ====================================================================
+      // Onboarding flow (preserved from v0.8.2, re-tokenized colors only)
+      // ====================================================================
+
       const onboarding = {
         step: 0,
         templates: [],
         races: [],
         classes: [],
-        // Selections:
-        mode: null, // "template" | "fresh"
+        mode: null,
         templateId: null,
         worldName: "",
         worldSetting: "",
@@ -1181,35 +2556,30 @@
         else if (onboarding.step === 3) renderStep3_Confirm();
       }
 
-      // Step 1: Choose mode (template or fresh)
       function renderStep1_Mode() {
         const label = makeEl("div", {
           cls: "step-label",
           text: "Step 1 of 3",
         });
         cardEl.appendChild(label);
-        cardEl.appendChild(
-          makeEl("h2", { text: "Choose Your World" }),
-        );
+        cardEl.appendChild(makeEl("h2", { text: "Choose Your World" }));
 
         const grid = makeEl("div", { cls: "option-grid" });
 
-        // Template options
         for (const tpl of onboarding.templates) {
           const btn = makeEl("button", { cls: "option-btn" });
           btn.type = "button";
-          const nameEl = makeEl("div", { cls: "opt-name", text: tpl.name });
-          const descEl = makeEl("div", {
-            cls: "opt-desc",
-            text: tpl.description,
-          });
-          const detEl = makeEl("div", {
-            cls: "opt-detail",
-            text: tpl.setting + " \u00B7 " + tpl.tone + " \u00B7 " + tpl.difficulty,
-          });
-          btn.appendChild(nameEl);
-          btn.appendChild(descEl);
-          btn.appendChild(detEl);
+          btn.appendChild(makeEl("div", { cls: "opt-name", text: tpl.name }));
+          btn.appendChild(
+            makeEl("div", { cls: "opt-desc", text: tpl.description }),
+          );
+          btn.appendChild(
+            makeEl("div", {
+              cls: "opt-detail",
+              text:
+                tpl.setting + " \u00B7 " + tpl.tone + " \u00B7 " + tpl.difficulty,
+            }),
+          );
           btn.addEventListener("click", () => {
             onboarding.mode = "template";
             onboarding.templateId = tpl.id;
@@ -1219,7 +2589,6 @@
           grid.appendChild(btn);
         }
 
-        // Fresh adventure option
         const freshBtn = makeEl("button", { cls: "option-btn" });
         freshBtn.type = "button";
         freshBtn.appendChild(
@@ -1249,22 +2618,16 @@
         cardEl.appendChild(nav);
       }
 
-      // Step 2: Character creation (name, race, class + optional world fields)
       function renderStep2_Character() {
         const label = makeEl("div", {
           cls: "step-label",
           text: "Step 2 of 3",
         });
         cardEl.appendChild(label);
-        cardEl.appendChild(
-          makeEl("h2", { text: "Create Your Character" }),
-        );
+        cardEl.appendChild(makeEl("h2", { text: "Create Your Character" }));
 
-        // Fresh mode: world fields
         if (onboarding.mode === "fresh") {
-          cardEl.appendChild(
-            makeEl("label", { text: "World Name" }),
-          );
+          cardEl.appendChild(makeEl("label", { text: "World Name" }));
           const wnInput = document.createElement("input");
           wnInput.type = "text";
           wnInput.placeholder = "e.g. The Sunken Isles";
@@ -1274,9 +2637,7 @@
           });
           cardEl.appendChild(wnInput);
 
-          cardEl.appendChild(
-            makeEl("label", { text: "Setting" }),
-          );
+          cardEl.appendChild(makeEl("label", { text: "Setting" }));
           const wsInput = document.createElement("input");
           wsInput.type = "text";
           wsInput.placeholder = "e.g. Dark medieval fantasy";
@@ -1286,9 +2647,7 @@
           });
           cardEl.appendChild(wsInput);
 
-          cardEl.appendChild(
-            makeEl("label", { text: "Tone" }),
-          );
+          cardEl.appendChild(makeEl("label", { text: "Tone" }));
           const wtInput = document.createElement("input");
           wtInput.type = "text";
           wtInput.placeholder = "Dark, Heroic, or Whimsical";
@@ -1299,10 +2658,7 @@
           cardEl.appendChild(wtInput);
         }
 
-        // Character name
-        cardEl.appendChild(
-          makeEl("label", { text: "Character Name" }),
-        );
+        cardEl.appendChild(makeEl("label", { text: "Character Name" }));
         const nameInput = document.createElement("input");
         nameInput.type = "text";
         nameInput.id = "onboarding-name";
@@ -1313,21 +2669,15 @@
         });
         cardEl.appendChild(nameInput);
 
-        // Race selection
-        cardEl.appendChild(
-          makeEl("label", { text: "Race" }),
-        );
+        cardEl.appendChild(makeEl("label", { text: "Race" }));
         const raceGrid = makeEl("div", { cls: "option-grid" });
         for (const r of onboarding.races) {
           const btn = makeEl("button", {
             cls:
-              "option-btn" +
-              (onboarding.raceId === r.id ? " selected" : ""),
+              "option-btn" + (onboarding.raceId === r.id ? " selected" : ""),
           });
           btn.type = "button";
-          btn.appendChild(
-            makeEl("span", { cls: "opt-name", text: r.name }),
-          );
+          btn.appendChild(makeEl("span", { cls: "opt-name", text: r.name }));
           btn.appendChild(
             document.createTextNode(" -- " + r.description + " "),
           );
@@ -1342,22 +2692,16 @@
         }
         cardEl.appendChild(raceGrid);
 
-        // Class selection
-        cardEl.appendChild(
-          makeEl("label", { text: "Class" }),
-        );
+        cardEl.appendChild(makeEl("label", { text: "Class" }));
         const classGrid = makeEl("div", { cls: "option-grid" });
         for (const c of onboarding.classes) {
           const btn = makeEl("button", {
             cls:
-              "option-btn" +
-              (onboarding.classId === c.id ? " selected" : ""),
+              "option-btn" + (onboarding.classId === c.id ? " selected" : ""),
           });
           btn.type = "button";
           const row1 = makeEl("div");
-          row1.appendChild(
-            makeEl("span", { cls: "opt-name", text: c.name }),
-          );
+          row1.appendChild(makeEl("span", { cls: "opt-name", text: c.name }));
           row1.appendChild(
             document.createTextNode(
               " -- " + c.description + " (HP: " + c.hp + ")",
@@ -1365,10 +2709,7 @@
           );
           btn.appendChild(row1);
           btn.appendChild(
-            makeEl("div", {
-              cls: "opt-detail",
-              text: c.abilities,
-            }),
+            makeEl("div", { cls: "opt-detail", text: c.abilities }),
           );
           btn.addEventListener("click", () => {
             onboarding.classId = c.id;
@@ -1378,7 +2719,6 @@
         }
         cardEl.appendChild(classGrid);
 
-        // Nav
         const nav = makeEl("div", { cls: "onboarding-nav" });
         const backBtn = makeEl("button", { text: "Back" });
         backBtn.type = "button";
@@ -1388,10 +2728,7 @@
         });
         nav.appendChild(backBtn);
 
-        const nextBtn = makeEl("button", {
-          cls: "primary",
-          text: "Next",
-        });
+        const nextBtn = makeEl("button", { cls: "primary", text: "Next" });
         nextBtn.type = "button";
         nextBtn.disabled =
           !onboarding.characterName.trim() ||
@@ -1404,22 +2741,18 @@
         nav.appendChild(nextBtn);
         cardEl.appendChild(nav);
 
-        // Focus the name input if empty
         if (!onboarding.characterName) {
           nameInput.focus();
         }
       }
 
-      // Step 3: Confirmation + create
       function renderStep3_Confirm() {
         const label = makeEl("div", {
           cls: "step-label",
           text: "Step 3 of 3",
         });
         cardEl.appendChild(label);
-        cardEl.appendChild(
-          makeEl("h2", { text: "Confirm Your Adventure" }),
-        );
+        cardEl.appendChild(makeEl("h2", { text: "Confirm Your Adventure" }));
 
         const tpl = onboarding.templates.find(
           (t) => t.id === onboarding.templateId,
@@ -1428,9 +2761,8 @@
           (onboarding.races.find((r) => r.id === onboarding.raceId) || {})
             .name || onboarding.raceId;
         const className =
-          (
-            onboarding.classes.find((c) => c.id === onboarding.classId) || {}
-          ).name || onboarding.classId;
+          (onboarding.classes.find((c) => c.id === onboarding.classId) || {})
+            .name || onboarding.classId;
 
         const preview = makeEl("div", { cls: "onboarding-preview" });
         function addRow(key, val) {
@@ -1519,7 +2851,9 @@
         }
       }
 
-      document.getElementById("new-game-btn").addEventListener("click", openOnboarding);
+      document
+        .getElementById("new-game-btn")
+        .addEventListener("click", openOnboarding);
 
       loadSavesList();
       showWelcome();

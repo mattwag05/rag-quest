@@ -168,15 +168,27 @@ def test_responsive_media_query(client):
 
 
 def test_border_radius_variable(client):
-    """CSS custom property for consistent border radius."""
+    """CSS custom property for consistent border radius.
+
+    v0.8.3 renamed ``--radius`` to ``--radius-soft`` as part of the
+    Illuminated Terminal redesign — most surfaces are intentionally
+    sharp-cornered now, so the token is used only where the HP bar
+    and residual elements still need rounding.
+    """
     html = _get_html(client)
-    assert "--radius:" in html
+    assert "--radius-soft:" in html
 
 
 def test_transition_variable(client):
-    """CSS custom property for consistent transitions."""
+    """CSS custom property for consistent motion tokens.
+
+    v0.8.3 split the single ``--transition`` shorthand into semantic
+    duration + easing tokens (``--duration-fast``, ``--duration-med``,
+    ``--ease``) so each component can pick an appropriate speed.
+    """
     html = _get_html(client)
-    assert "--transition:" in html
+    assert "--duration-fast:" in html
+    assert "--ease:" in html
 
 
 def test_player_input_prefix_removed(client):

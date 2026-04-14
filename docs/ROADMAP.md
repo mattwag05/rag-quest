@@ -10,18 +10,34 @@ This philosophy shapes every version.
 
 ---
 
-## v0.8.3 (Next) — Web UI Command Menus
+## v0.8.3 — Web UI Command Menus & "Illuminated Terminal" Redesign
 
-**Status**: Planned
+**Status**: ✅ Complete — shipping as part of the v0.9.0 pre-release cycle.
 
-### Planned Features
+### What's New in v0.8.3
 
-**Slash Command Button Menus**
-- Clickable button bar or dropdown menu in the WebUI footer exposing available slash commands (`/inventory`, `/stats`, `/quests`, `/party`, `/relationships`, `/help`, `/save`, `/base`, `/modules`, `/timeline`, `/lore`, `/notes`, `/bookmark`)
-- Removes the need for players to memorize or type slash commands in the browser
-- Contextual visibility: base commands only shown when a base is claimed, module commands only when modules are loaded
-- Mobile-friendly: touch targets sized for phone use
-- Status: Pre-development
+**Sigil Command Bar**
+- ✅ Clickable sigil row in the WebUI footer exposing every major panel: INV, STATS, QUESTS, PARTY, NPCS, TIME, MARKS, LORE, HONORS, NOTES, BASE, ARCS, SAVE, MARK, HELP
+- ✅ Infocom-style uppercase verbs — touch-friendly, no chatty labels
+- ✅ Contextual visibility: BASE and ARCS sigils stay hidden until a base is claimed or modules are loaded
+- ✅ Mobile reflow at <768px with 44px minimum touch targets
+
+**Panel Modal System**
+- ✅ Every navigation panel (inventory, stats, quests, party, relationships, timeline, bookmarks, lore, achievements, modules, base, notes, help) renders client-side from the cached turn state — zero server round-trip
+- ✅ Manuscript-style modal with gold drop-cap title and hand-drawn SVG divider
+- ✅ Esc/backdrop dismiss, focus management, `aria-modal` dialog semantics
+
+**Mutating Endpoints**
+- ✅ `POST /session/{id}/save` — manual save from browser, handles both coexisting save layouts
+- ✅ `POST /session/{id}/bookmark` — capture narrator's last scene with optional note
+- ✅ `GET /session/{id}/notes` — read notetaker entries for the Notes panel
+
+**Illuminated Terminal Design System**
+- ✅ Full palette re-tokenization: warm ink-black, parchment vellum, sealing-wax red, gold leaf
+- ✅ IBM Plex Mono for body, Cormorant Garamond italic for panel titles
+- ✅ Inline SVG divider ornament, gold drop-caps via `::first-letter`, sharp corners
+- ✅ `prefers-reduced-motion` collapses every animation
+- ✅ Design regression assertions in `tests/test_v083_web_command_menu.py` pin tokens, fonts, and banned generic fonts (Inter, Roboto, Arial, Space Grotesk)
 
 ---
 
@@ -508,4 +524,4 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-**Last Updated**: April 13, 2026 (v0.8.1 shipped)
+**Last Updated**: April 13, 2026 (v0.8.3 Illuminated Terminal complete; rolling into the v0.9.0 pre-release cycle alongside the WorldDB memory architecture)

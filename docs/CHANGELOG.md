@@ -13,6 +13,39 @@ changelog" for the full convention.
 ## [Unreleased]
 
 ### Added
+- **WebUI command menu — "Illuminated Terminal" redesign.** The browser
+  client's footer gains a clickable sigil bar exposing inventory,
+  stats, quests, party, relationships, timeline, bookmarks, lore,
+  achievements, notes, base, story arcs, save, mark, and help. Each
+  navigation panel opens in a manuscript-style modal with a gold
+  drop-cap title and hand-drawn SVG divider. All navigation panels
+  render client-side from the cached turn state — no server round-trip
+  — so the browser UI matches the CLI slash commands without a new
+  dispatcher. Contextual visibility: the BASE and ARCS sigils stay
+  hidden until a base is claimed or modules are loaded.
+- **Mobile-friendly command bar** — the sigil row wraps onto multiple
+  rows below 768px with 44px minimum touch targets; the modal uses a
+  near-full-screen overlay on narrow viewports. `prefers-reduced-motion`
+  collapses every animation.
+- **`POST /session/{id}/save`** endpoint — manual save from the browser.
+  Resolves the on-disk path to work against both layouts that coexist
+  today: flat `saves/{session}.json` (CLI + onboarding) and slot-dir
+  `saves/{session}/state.json` (`/session/load`). The `rag-quest-dbs`
+  bug tracks the real unification.
+- **`POST /session/{id}/bookmark`** endpoint — capture the narrator's
+  last scene as a `Bookmark` with an optional note, reusing the
+  existing dataclass and timeline container.
+- **`GET /session/{id}/notes`** endpoint — lightweight read of the
+  in-session notetaker entries for the Notes panel.
+- **Illuminated Terminal design system** — the whole web client is
+  re-tokenized onto a new palette (warm ink-black, parchment vellum,
+  sealing-wax red, gold leaf) with IBM Plex Mono for body and
+  Cormorant Garamond italic for panel titles. Divider ornaments are
+  hand-drawn SVG. No rounded corners on new components. Regression
+  assertions in `tests/test_v083_web_command_menu.py` pin the aesthetic
+  (tokens, fonts, uppercase sigil labels, `prefers-reduced-motion`,
+  banned generic fonts) so future edits can't drift into generic SaaS
+  slop.
 - **`WorldDB` SQLite store** — Phase 1 of the v0.9 memory architecture
   redesign. Adds a typed entity registry (NPCs, locations, factions,
   items, quests, bases) and an append-only event log alongside the

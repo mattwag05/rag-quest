@@ -14,7 +14,9 @@ TYPE_CHECKING-only for engine imports without the future import.
 """
 
 import dataclasses
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 from .. import __version__
@@ -107,6 +109,56 @@ def _require_fastapi() -> None:
         raise ImportError(_INSTALL_HINT)
 
 
+# ---------------------------------------------------------------------------
+# Save path resolution (v0.8.3)
+#
+# The CLI and web onboarding write flat files to ``saves/{world_name}.json``
+# while ``sessions.load_session_from_slot`` reads slot-dir layouts at
+# ``saves/{uuid}/state.json`` via ``SaveManager``. The two layouts coexist
+# today (tracked by rag-quest-dbs) — until that's unified, the /save endpoint
+# has to detect which layout the session was loaded from and write back to
+# whichever path exists. These module-level helpers are monkeypatched from
+# tests to keep filesystem work injectable.
+# ---------------------------------------------------------------------------
+
+
+def _web_saves_dir() -> Path:
+    """Directory where both save layouts live. Monkeypatched in tests."""
+    return Path.home() / ".local" / "share" / "rag-quest" / "saves"
+
+
+def _resolve_save_path(session_id: str, game_state) -> Path:
+    """Pick the on-disk save path to use for this session.
+
+    Priority:
+      1. Flat file ``saves/{session_id}.json`` if it already exists
+         (onboarding / CLI layout).
+      2. Slot dir ``saves/{session_id}/state.json`` if it already exists
+         (``/session/load`` layout).
+      3. Fall back to flat file named after ``game_state.world.name`` —
+         matches what the onboarding endpoint writes on first save.
+    """
+    saves_dir = _web_saves_dir()
+    flat = saves_dir / f"{session_id}.json"
+    if flat.exists():
+        return flat
+    slot_state = saves_dir / session_id / "state.json"
+    if slot_state.exists():
+        return slot_state
+    world_name = getattr(getattr(game_state, "world", None), "name", None) or session_id
+    return saves_dir / f"{world_name}.json"
+
+
+def _write_save_file(path: Path, payload: dict) -> None:
+    """Write a game_state dict to the resolved save path.
+
+    Kept as a module-level helper so tests can monkeypatch it to simulate
+    disk failures without touching the real filesystem.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2))
+
+
 @dataclass
 class SessionStore:
     """In-memory registry of loaded campaigns keyed by save name.
@@ -153,8 +205,6 @@ class SessionStore:
 
 def _build_app() -> "FastAPI":
     _require_fastapi()
-    import json
-    from pathlib import Path
 
     from fastapi import FastAPI, HTTPException, Query
     from fastapi.responses import StreamingResponse
@@ -188,6 +238,9 @@ def _build_app() -> "FastAPI":
         world_name: Optional[str] = None
         world_setting: Optional[str] = None
         world_tone: Optional[str] = None
+
+    class BookmarkRequest(BaseModel):
+        note: Optional[str] = ""
 
     @instance.get("/healthz")
     def healthz() -> dict:
@@ -365,6 +418,93 @@ def _build_app() -> "FastAPI":
             "character": game_state.character.name,
             "turn_number": game_state.turn_number,
         }
+
+    # --- v0.8.3: command-menu endpoints -------------------------------------
+    # These are the only mutating actions surfaced by the new command bar.
+    # Navigation panels read the cached state dict client-side, so they
+    # don't need their own endpoints.
+
+    @instance.post("/session/{session_id}/save")
+    def save_session(session_id: str) -> dict:
+        store: SessionStore = instance.state.sessions
+        game_state = store.get(session_id)
+        if game_state is None:
+            raise HTTPException(
+                status_code=404, detail=f"No active session with id {session_id!r}"
+            )
+
+        # Module-level indirection so tests can monkeypatch the resolver
+        # and the write helper without touching the real filesystem.
+        path = _resolve_save_path(session_id, game_state)
+        try:
+            _write_save_file(path, game_state.to_dict())
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+        return {
+            "saved": True,
+            "session_id": session_id,
+            "path": str(path),
+            "turn": game_state.turn_number,
+        }
+
+    @instance.post("/session/{session_id}/bookmark")
+    def add_session_bookmark(session_id: str, payload: BookmarkRequest) -> dict:
+        store: SessionStore = instance.state.sessions
+        game_state = store.get(session_id)
+        if game_state is None:
+            raise HTTPException(
+                status_code=404, detail=f"No active session with id {session_id!r}"
+            )
+
+        prose = (
+            getattr(getattr(game_state, "narrator", None), "last_response", "") or ""
+        )
+        if not prose:
+            raise HTTPException(
+                status_code=400,
+                detail="Nothing to bookmark yet — take a turn first.",
+            )
+
+        from datetime import datetime
+
+        from ..engine.timeline import Bookmark
+
+        narrator = getattr(game_state, "narrator", None)
+        location = getattr(getattr(game_state, "character", None), "location", "") or ""
+        bm = Bookmark(
+            turn=int(getattr(game_state, "turn_number", 0) or 0),
+            timestamp=datetime.now().isoformat(timespec="seconds"),
+            note=(payload.note or "").strip(),
+            player_input=getattr(narrator, "last_player_input", "") or "",
+            narrator_prose=prose,
+            location=location,
+        )
+        game_state.timeline.add_bookmark(bm)
+        return {"bookmark": bm.to_dict()}
+
+    @instance.get("/session/{session_id}/notes")
+    def get_session_notes(session_id: str) -> dict:
+        store: SessionStore = instance.state.sessions
+        game_state = store.get(session_id)
+        if game_state is None:
+            raise HTTPException(
+                status_code=404, detail=f"No active session with id {session_id!r}"
+            )
+
+        notetaker = getattr(game_state, "notetaker", None)
+        if notetaker is None:
+            return {"entries": []}
+
+        entries = []
+        for entry in getattr(notetaker, "entries", []) or []:
+            try:
+                entries.append(entry.to_dict())
+            except Exception:
+                # Zero-traceback policy: a malformed entry degrades to
+                # omission rather than a 500.
+                continue
+        return {"entries": entries}
 
     # Mount the static web client last so it cannot shadow API routes.
     # FastAPI matches routes in definition order, and StaticFiles with
