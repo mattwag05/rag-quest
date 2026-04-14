@@ -171,6 +171,9 @@ shared `StateChange→writes` translator lives in `engine/state_event_mapping.py
 narrator does NOT yet read from `WorldDB` — Phase 2 will add a `MemoryAssembler` that
 will. Authoritative spec: `docs/MEMORY_ARCHITECTURE.md`. v3 saves auto-migrate on
 first load via `WorldDB.migrate_from_game_state` (idempotent via metadata flag).
+Multi-write hot paths should wrap loops in `with world_db.transaction():` — inline
+commits inside individual write methods become no-ops and the whole block commits
+once on exit (rolls back on exception). Collapses ~7 commits/turn to 1 fsync.
 
 ### Character System
 
@@ -716,6 +719,10 @@ python -m py_compile rag_quest/**/*.py
 - **`Read` before `Edit`, not `bash cat/head`**: the `Edit` tool only tracks files viewed via the `Read` tool. Using `bash head -20 file.py` to preview a file and then calling `Edit` errors with "File has not been read yet". If you plan to edit, use `Read`.
 - **State parser regex compilation is uniform** (rag-quest-40q): every `*_patterns` list on `StateParser` is pre-compiled at `__init__` via `re.compile(p, re.IGNORECASE)` and call sites use `pattern.search(response)` / `pattern.finditer(response)` — no raw strings + `re.search(..., re.IGNORECASE)` on the hot path. `_strip_markdown` and the shared trailing-punct / leading-article cleanup regexes live as module-level compiled constants (`_MD_*`, `_TRAILING_PUNCT`, `_LEADING_ARTICLE`). When adding a new pattern or cleanup regex, follow the same idiom — don't drop a raw `re.sub(...)` or `re.search(...)` into an extractor.
 - **`innerHTML` is blocked by a PreToolUse security hook**: writing `innerHTML = ...` anywhere (HTML, JS, `.py` string templates) fails with an XSS warning from `security_reminder_hook.py`. Use `textContent` + `createElement` for all DOM construction. `rag_quest/web/static/index.html` uses a tiny `makeEl(tag, {cls, text})` + `removeAllChildren(node)` pair — copy that pattern rather than fighting the hook.
+- **Cross-cutting per-turn hooks belong in `engine/turn.py::collect_post_turn_effects`**, not `Narrator._parse_and_apply_changes`. The narrator has no `game_state` backreference (no `turn_number`, no `world_db`, no timeline), but `collect_post_turn_effects(game_state, player_input)` already has all of them plus `narrator.last_change`. Every new per-turn subsystem (Timeline, module re-eval, achievements, WorldDB shadow write) lives there for the same reason.
+- **`tests/conftest.py::wire_turn_subsystems(gs)`** is the shared fixture for MagicMock-driven turn-helper tests — wires `character`, `events`, `party`, `timeline`, `world.module_registry`, `achievements` to safe defaults. Don't re-wire from scratch; override individual subsystems after calling the helper.
+- **CLI has no save-load flow** — `rag_quest/__main__.py` only *creates* fresh GameStates via the setup wizard. The only `GameState.from_dict` caller is `rag_quest/web/sessions.py::load_session_from_slot`. New-game features need wiring at three sites: `__main__.py`, `web/onboarding.py`, and the load path `web/sessions.py`. JSON saves written by the CLI are never read back by the CLI — the auto-save is fire-and-forget.
+- **PEP 440 dev suffix uses `.devN`, not `-devN`** — `pyproject.toml` rejects `0.9.0-dev1` as an invalid version. Use `0.9.0.dev1` in both `pyproject.toml` and `rag_quest/__init__.py`.
 
 ## Known Design Limitations
 
