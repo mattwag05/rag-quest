@@ -9,7 +9,6 @@ Covers three new endpoints and the static HTML extension:
 """
 
 import importlib
-import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -21,9 +20,9 @@ pytest.importorskip("fastapi")
 # rag_quest/web/__init__.py re-exports ``app`` (the FastAPI instance) as
 # an attribute, which shadows the ``rag_quest.web.app`` submodule name.
 # ``importlib.import_module`` bypasses the ambiguity and gives us the
-# module object — the one we want for monkeypatching module-level
-# helpers like ``_resolve_save_path``.
+# module object — the one we want for monkeypatching ``SaveManager``.
 web_app = importlib.import_module("rag_quest.web.app")
+from rag_quest.saves.manager import SaveManager, SaveSlot  # noqa: E402
 from rag_quest.web.app import SessionStore, app  # noqa: E402
 
 
@@ -46,10 +45,15 @@ def _isolate_session_store():
 # ---------------------------------------------------------------------------
 
 
-def _make_saveable_game_state(*, to_dict_payload: dict | None = None) -> MagicMock:
+def _make_saveable_game_state(
+    *,
+    slot_id: str | None = "slot-uuid-1",
+    to_dict_payload: dict | None = None,
+) -> MagicMock:
     gs = MagicMock(name="game_state")
     gs.turn_number = 7
     gs.world = SimpleNamespace(name="Ashfall")
+    gs.slot_id = slot_id
     gs.to_dict.return_value = to_dict_payload or {
         "turn_number": 7,
         "character": {"name": "Hero"},
@@ -58,15 +62,42 @@ def _make_saveable_game_state(*, to_dict_payload: dict | None = None) -> MagicMo
     return gs
 
 
-def test_save_endpoint_writes_game_state_to_resolved_path(
-    client, tmp_path, monkeypatch
-):
-    gs = _make_saveable_game_state()
+def test_save_endpoint_routes_through_save_manager(client, tmp_path, monkeypatch):
+    """POST /save calls SaveManager.save_game(slot_id=...) for the session.
+
+    This is the core dbs regression guard — the endpoint must use the
+    unified slot layout instead of writing directly to a flat path.
+    """
+    gs = _make_saveable_game_state(slot_id="slot-uuid-1")
     app.state.sessions.put("Ashfall", gs)
 
-    target = tmp_path / "Ashfall.json"
+    captured: dict = {}
+
+    def _fake_save_game(self, state_dict, slot_id=None, **kwargs):
+        captured["state_dict"] = state_dict
+        captured["slot_id"] = slot_id
+        return SaveSlot(
+            slot_id=slot_id,
+            name="Hero - Ashfall",
+            character_name="Hero",
+            character_level=1,
+            world_name="Ashfall",
+            turn_number=7,
+            created_at="2026-04-13T00:00:00",
+            updated_at="2026-04-13T00:00:07",
+            playtime_seconds=0.0,
+        )
+
+    monkeypatch.setattr(SaveManager, "save_game", _fake_save_game)
     monkeypatch.setattr(
-        web_app, "_resolve_save_path", lambda session_id, game_state: target
+        SaveManager,
+        "save_paths_for",
+        lambda self, sid: SimpleNamespace(
+            slot_dir=tmp_path / sid,
+            state=tmp_path / sid / "state.json",
+            metadata=tmp_path / sid / "metadata.json",
+            world_db=tmp_path / sid / "world.db",
+        ),
     )
 
     response = client.post("/session/Ashfall/save")
@@ -75,12 +106,14 @@ def test_save_endpoint_writes_game_state_to_resolved_path(
     body = response.json()
     assert body["saved"] is True
     assert body["session_id"] == "Ashfall"
+    assert body["slot_id"] == "slot-uuid-1"
     assert body["turn"] == 7
-    assert body["path"].endswith("Ashfall.json")
+    assert body["path"].endswith(str(tmp_path / "slot-uuid-1" / "state.json"))
 
-    assert target.exists()
-    on_disk = json.loads(target.read_text())
-    assert on_disk == gs.to_dict.return_value
+    # The endpoint must pass the slot_id kwarg so SaveManager updates in
+    # place instead of minting a fresh UUID.
+    assert captured["slot_id"] == "slot-uuid-1"
+    assert captured["state_dict"] == gs.to_dict.return_value
 
 
 def test_save_endpoint_404_for_unknown_session(client):
@@ -89,63 +122,29 @@ def test_save_endpoint_404_for_unknown_session(client):
     assert "nope" in response.json()["detail"]
 
 
-def test_save_endpoint_500_bubbles_to_user_friendly_error(
-    client, tmp_path, monkeypatch
-):
-    gs = _make_saveable_game_state()
+def test_save_endpoint_500_when_session_missing_slot_id(client):
+    """A session in the store without a slot_id is an inconsistent state."""
+    gs = _make_saveable_game_state(slot_id=None)
     app.state.sessions.put("Ashfall", gs)
 
-    def _boom(*_args, **_kwargs):
+    response = client.post("/session/Ashfall/save")
+    assert response.status_code == 500
+    assert "slot_id" in response.json()["detail"]
+
+
+def test_save_endpoint_500_bubbles_disk_errors(client, monkeypatch):
+    """OSError from SaveManager surfaces as a 500 with the error text."""
+    gs = _make_saveable_game_state(slot_id="slot-uuid-1")
+    app.state.sessions.put("Ashfall", gs)
+
+    def _boom(self, *args, **kwargs):
         raise OSError("disk full")
 
-    monkeypatch.setattr(
-        web_app,
-        "_resolve_save_path",
-        lambda session_id, game_state: tmp_path / "x.json",
-    )
-    monkeypatch.setattr(web_app, "_write_save_file", _boom)
+    monkeypatch.setattr(SaveManager, "save_game", _boom)
 
     response = client.post("/session/Ashfall/save")
     assert response.status_code == 500
     assert "disk full" in response.json()["detail"]
-
-
-def test_resolve_save_path_prefers_existing_flat_file(tmp_path, monkeypatch):
-    saves_dir = tmp_path / "saves"
-    saves_dir.mkdir()
-    flat = saves_dir / "Ashfall.json"
-    flat.write_text("{}")
-
-    monkeypatch.setattr(web_app, "_web_saves_dir", lambda: saves_dir)
-
-    gs = _make_saveable_game_state()
-    path = web_app._resolve_save_path("Ashfall", gs)
-    assert path == flat
-
-
-def test_resolve_save_path_prefers_existing_slot_dir(tmp_path, monkeypatch):
-    saves_dir = tmp_path / "saves"
-    slot_dir = saves_dir / "abc-123"
-    slot_dir.mkdir(parents=True)
-    (slot_dir / "state.json").write_text("{}")
-
-    monkeypatch.setattr(web_app, "_web_saves_dir", lambda: saves_dir)
-
-    gs = _make_saveable_game_state()
-    path = web_app._resolve_save_path("abc-123", gs)
-    assert path == slot_dir / "state.json"
-
-
-def test_resolve_save_path_falls_back_to_flat_by_world_name(tmp_path, monkeypatch):
-    saves_dir = tmp_path / "saves"
-
-    monkeypatch.setattr(web_app, "_web_saves_dir", lambda: saves_dir)
-
-    gs = _make_saveable_game_state()
-    path = web_app._resolve_save_path("brand-new-session-id", gs)
-    # Neither flat nor slot dir exists: fall back to flat-by-world-name
-    # since that's the onboarding layout used for fresh sessions.
-    assert path == saves_dir / "Ashfall.json"
 
 
 # ---------------------------------------------------------------------------

@@ -141,56 +141,6 @@ def _require_fastapi() -> None:
         raise ImportError(_INSTALL_HINT)
 
 
-# ---------------------------------------------------------------------------
-# Save path resolution (v0.8.3)
-#
-# The CLI and web onboarding write flat files to ``saves/{world_name}.json``
-# while ``sessions.load_session_from_slot`` reads slot-dir layouts at
-# ``saves/{uuid}/state.json`` via ``SaveManager``. The two layouts coexist
-# today (tracked by rag-quest-dbs) — until that's unified, the /save endpoint
-# has to detect which layout the session was loaded from and write back to
-# whichever path exists. These module-level helpers are monkeypatched from
-# tests to keep filesystem work injectable.
-# ---------------------------------------------------------------------------
-
-
-def _web_saves_dir() -> Path:
-    """Directory where both save layouts live. Monkeypatched in tests."""
-    return Path.home() / ".local" / "share" / "rag-quest" / "saves"
-
-
-def _resolve_save_path(session_id: str, game_state) -> Path:
-    """Pick the on-disk save path to use for this session.
-
-    Priority:
-      1. Flat file ``saves/{session_id}.json`` if it already exists
-         (onboarding / CLI layout).
-      2. Slot dir ``saves/{session_id}/state.json`` if it already exists
-         (``/session/load`` layout).
-      3. Fall back to flat file named after ``game_state.world.name`` —
-         matches what the onboarding endpoint writes on first save.
-    """
-    saves_dir = _web_saves_dir()
-    flat = saves_dir / f"{session_id}.json"
-    if flat.exists():
-        return flat
-    slot_state = saves_dir / session_id / "state.json"
-    if slot_state.exists():
-        return slot_state
-    world_name = getattr(getattr(game_state, "world", None), "name", None) or session_id
-    return saves_dir / f"{world_name}.json"
-
-
-def _write_save_file(path: Path, payload: dict) -> None:
-    """Write a game_state dict to the resolved save path.
-
-    Kept as a module-level helper so tests can monkeypatch it to simulate
-    disk failures without touching the real filesystem.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2))
-
-
 @dataclass
 class SessionStore:
     """In-memory registry of loaded campaigns keyed by save name.
@@ -479,18 +429,30 @@ def _build_app() -> "FastAPI":
                 status_code=404, detail=f"No active session with id {session_id!r}"
             )
 
-        # Module-level indirection so tests can monkeypatch the resolver
-        # and the write helper without touching the real filesystem.
-        path = _resolve_save_path(session_id, game_state)
+        # Route through SaveManager so metadata.json (`updated_at`,
+        # `turn_number`) stays in sync with state.json. The sprint's dbs
+        # work retired the flat-file compat layout, so `game_state.slot_id`
+        # is always set for any session the store holds.
+        from ..saves.manager import SaveManager
+
+        slot_id = getattr(game_state, "slot_id", None)
+        if slot_id is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Session has no slot_id; session_store is in an inconsistent state.",
+            )
+
+        sm = SaveManager()
         try:
-            _write_save_file(path, game_state.to_dict())
+            sm.save_game(game_state.to_dict(), slot_id=slot_id)
         except OSError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
 
         return {
             "saved": True,
             "session_id": session_id,
-            "path": str(path),
+            "slot_id": slot_id,
+            "path": str(sm.save_paths_for(slot_id).state),
             "turn": game_state.turn_number,
         }
 
