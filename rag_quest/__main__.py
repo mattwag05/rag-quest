@@ -661,6 +661,18 @@ def _main() -> None:
     save_dir = Path.home() / ".local/share/rag-quest/saves"
     save_path = save_dir / f"{world.name}.json"
 
+    # v0.9 Phase 1: attach the SQLite WorldDB alongside the JSON save.
+    # Shadow-writes from the turn helper populate it; nothing reads from
+    # it yet (the memory assembler lands in Phase 2).
+    try:
+        from .knowledge.world_db import WorldDB
+
+        game_state.world_db = WorldDB(save_path.with_suffix(".db"))
+    except Exception as exc:
+        ui.print_warning(
+            f"Could not initialize WorldDB (memory features disabled): {exc}"
+        )
+
     # Run the game
     run_game(game_state, save_path)
 

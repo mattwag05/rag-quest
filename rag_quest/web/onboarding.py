@@ -223,9 +223,7 @@ def create_new_session(
     world = World(name=w_name, setting=w_setting, tone=w_tone)
 
     try:
-        world_rag = WorldRAG(
-            w_name, llm_config, llm_provider, rag_profile=rag_profile
-        )
+        world_rag = WorldRAG(w_name, llm_config, llm_provider, rag_profile=rag_profile)
     except Exception as exc:
         raise OnboardingError(f"Could not initialize WorldRAG: {exc}") from exc
 
@@ -265,5 +263,16 @@ def create_new_session(
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / f"{w_name}.json"
     save_path.write_text(json.dumps(game_state.to_dict(), indent=2))
+
+    # v0.9 Phase 1: attach a SQLite WorldDB next to the JSON save. The new
+    # world starts empty — shadow-writes populate it as turns happen.
+    try:
+        from ..knowledge.world_db import WorldDB
+
+        game_state.world_db = WorldDB(save_path.with_suffix(".db"))
+    except Exception:
+        from .._debug import log_swallowed_exc
+
+        log_swallowed_exc("web.onboarding.world_db_open")
 
     return game_state

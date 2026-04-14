@@ -12,8 +12,12 @@ from rag_quest.engine.world import World
 from rag_quest.worlds.modules import Module, ModuleRegistry, ModuleStatus
 
 
-def test_save_format_version_is_three():
-    assert SAVE_FORMAT_VERSION == 3
+def test_save_format_version_is_at_least_three():
+    """v0.7 added bases + module_registry at v3. v0.9 Phase 1 bumped to v4
+    (SQLite WorldDB). The bases/modules round-trip below is what this file
+    is actually guarding — the version constant just needs to stay >= 3 so
+    those fields are still part of the serialized format."""
+    assert SAVE_FORMAT_VERSION >= 3
 
 
 def test_world_dict_contains_bases_and_module_registry():

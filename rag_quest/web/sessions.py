@@ -59,9 +59,11 @@ def load_session_from_slot(slot_id: str) -> "GameState":
     from ..engine.quests import QuestLog
     from ..engine.world import World
     from ..knowledge import WorldRAG
+    from ..knowledge.world_db import WorldDB
     from ..saves.manager import SaveManager
 
-    save_dict = SaveManager().load_game(slot_id)
+    save_manager = SaveManager()
+    save_dict = save_manager.load_game(slot_id)
     if save_dict is None:
         raise SessionLoadError(f"No save slot with id {slot_id!r}")
 
@@ -99,8 +101,26 @@ def load_session_from_slot(slot_id: str) -> "GameState":
     )
     narrator = Narrator(llm_provider, world_rag, character, world, inventory, quest_log)
 
+    # v0.9 Phase 1: open the WorldDB alongside the JSON save. SaveManager
+    # keeps each slot in its own directory, so the DB is colocated with
+    # `state.json`. A fresh v3 save triggers the one-time migration inside
+    # `GameState.from_dict`.
     try:
-        game_state = GameState.from_dict(save_dict, narrator, world_rag, llm_provider)
+        slot_dir = save_manager.save_dir / slot_id
+        world_db: WorldDB | None = WorldDB(slot_dir / "world.db")
+    except Exception as exc:
+        world_db = None
+        # Non-fatal: the game still runs with JSON saves, just without the
+        # memory architecture features. Log via the debug channel so
+        # RAG_QUEST_DEBUG=1 surfaces the failure.
+        from .._debug import log_swallowed_exc
+
+        log_swallowed_exc(f"web.sessions.world_db_open: {exc}")
+
+    try:
+        game_state = GameState.from_dict(
+            save_dict, narrator, world_rag, llm_provider, world_db=world_db
+        )
     except Exception as exc:
         raise SessionLoadError(f"Could not hydrate GameState: {exc}") from exc
 

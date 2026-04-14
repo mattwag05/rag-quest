@@ -12,6 +12,32 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+### Added
+- **`WorldDB` SQLite store** — Phase 1 of the v0.9 memory architecture
+  redesign. Adds a typed entity registry (NPCs, locations, factions,
+  items, quests, bases) and an append-only event log alongside the
+  existing JSON save. Populated via shadow-writes from the per-turn
+  state parser; the narrator does not yet read from it. Phase 2 will
+  add the `MemoryAssembler` that consumes this store. See
+  `docs/MEMORY_ARCHITECTURE.md` for the full architecture.
+- **One-time migration from v3 saves** — loading a save that predates
+  v0.9 walks the in-memory `GameState` and seeds the new database with
+  visited locations, NPCs met, factions, inventory, quests, bases, and
+  Timeline events. Idempotent via a metadata flag.
+- **`engine/state_event_mapping.py`** — shared `StateChange → writes`
+  translator used by the new `WorldDB` shadow write. Phase 3 will retire
+  the duplicate translator in `Timeline.record_from_state_change` and
+  point both consumers at this module.
+- 30+ new tests across `tests/test_world_db.py` and
+  `tests/test_world_db_integration.py` covering schema, dedup,
+  relationships, FTS5 search, migration, and the turn-helper integration.
+
+### Changed
+- **Save format bumped to v4.** Adds a `{world_name}.db` SQLite file
+  next to the existing `{world_name}.json`. Old saves auto-migrate on
+  first load; nothing else changes.
+- **Version bumped to 0.9.0.dev1.**
+
 ### Fixed
 - **Ollama thinking content leaking into narrator** — models like Gemma 4
   E2B that ignore `think=False` and inline chain-of-thought directly in

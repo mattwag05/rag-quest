@@ -1,6 +1,7 @@
 """Knowledge graph and world lore management."""
 
+from .ingest import ingest_directory, ingest_file
+from .world_db import WorldDB
 from .world_rag import WorldRAG
-from .ingest import ingest_file, ingest_directory
 
-__all__ = ["WorldRAG", "ingest_file", "ingest_directory"]
+__all__ = ["WorldRAG", "WorldDB", "ingest_file", "ingest_directory"]

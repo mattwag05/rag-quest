@@ -113,12 +113,13 @@ def collect_post_turn_effects(
     """
     change: Optional["StateChange"] = getattr(game_state.narrator, "last_change", None)
 
+    location = ""
+    character = getattr(game_state, "character", None)
+    if character is not None:
+        location = getattr(character, "location", "") or ""
+
     if change is not None:
         try:
-            location = ""
-            character = getattr(game_state, "character", None)
-            if character is not None:
-                location = getattr(character, "location", "") or ""
             game_state.timeline.record_from_state_change(
                 turn=game_state.turn_number,
                 change=change,
@@ -127,6 +128,24 @@ def collect_post_turn_effects(
             )
         except Exception:
             log_swallowed_exc("turn.post.timeline_record")
+
+        # v0.9 Phase 1 — shadow-write the same StateChange into WorldDB so
+        # the SQLite entity registry + event log stays in lockstep with
+        # Timeline. Nothing reads from WorldDB yet; the assembler lands in
+        # Phase 2. Every failure is swallowed — a flaky DB can never kill
+        # a turn, and `RAG_QUEST_DEBUG=1` surfaces the traceback.
+        world_db = getattr(game_state, "world_db", None)
+        if world_db is not None:
+            try:
+                _shadow_write_to_world_db(
+                    world_db=world_db,
+                    change=change,
+                    turn=game_state.turn_number,
+                    player_input=player_input,
+                    location=location,
+                )
+            except Exception:
+                log_swallowed_exc("turn.post.world_db_shadow")
 
     module_transitions: List[Any] = []
     try:
@@ -170,6 +189,77 @@ def collect_post_turn_effects(
         achievements_unlocked=achievements_unlocked,
         state_dict=state_dict,
     )
+
+
+def _shadow_write_to_world_db(
+    *,
+    world_db: Any,
+    change: "StateChange",
+    turn: int,
+    player_input: str,
+    location: str,
+) -> None:
+    """Translate a ``StateChange`` into ``WorldDB`` writes.
+
+    Uses ``engine.state_event_mapping.state_change_to_writes`` as the
+    single source of truth for the field mapping so Timeline (Phase 3)
+    can reuse the same translator later without drift. Each of the three
+    write kinds (entity / event / relationship) is individually caught so
+    a bad row in one category doesn't silently drop the others.
+    """
+    from .state_event_mapping import state_change_to_writes
+
+    writes = state_change_to_writes(
+        change, player_input=player_input, location=location
+    )
+
+    # Single transaction for the whole turn's worth of writes — flushes one
+    # fsync instead of one per row. Saves ~5–15 ms per turn on local SSDs.
+    # Each row's swallow block is still per-statement so a single bad row
+    # doesn't drop the rest, but the failure rolls back its own statement
+    # and the surrounding transaction still commits the good ones.
+    with world_db.transaction():
+        for entity in writes.entities:
+            try:
+                world_db.upsert_entity(
+                    entity.entity_type,
+                    entity.name,
+                    turn=turn,
+                    location=entity.location,
+                    status=entity.status,
+                    summary=entity.summary,
+                )
+            except Exception:
+                log_swallowed_exc("turn.post.world_db_shadow.entity")
+
+        for event in writes.events:
+            try:
+                world_db.record_event(
+                    turn=turn,
+                    event_type=event.event_type,
+                    summary=event.summary,
+                    primary_entity=event.primary_entity,
+                    location=event.location,
+                    player_input=player_input,
+                    mechanical_changes=event.mechanical_changes,
+                    secondary_entities=event.secondary_entities,
+                    is_notable=event.is_notable,
+                )
+            except Exception:
+                log_swallowed_exc("turn.post.world_db_shadow.event")
+
+        for rel in writes.relationships:
+            try:
+                world_db.set_relationship(
+                    rel.entity_a,
+                    rel.entity_b,
+                    rel.rel_type,
+                    rel.value,
+                    turn,
+                    cause=rel.cause,
+                )
+            except Exception:
+                log_swallowed_exc("turn.post.world_db_shadow.relationship")
 
 
 def advance_one_turn(game_state: "GameState", player_input: str) -> TurnResult:

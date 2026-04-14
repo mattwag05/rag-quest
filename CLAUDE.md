@@ -163,6 +163,15 @@ Config location: `~/.config/rag-quest/config.json`
 
 **GameState** — Central state container: `character`, `world`, `inventory`, `quest_log`, `party`, `relationships`, `conversation_history`. Fully serializable via `to_dict()` / `from_dict()`. Saves are JSON at: `~/.local/share/rag-quest/saves/{world_name}.json`
 
+**WorldDB (v0.9 Phase 1, save v4)** — `rag_quest/knowledge/world_db.py`. SQLite store
+that lives at `{save_path}.db` next to the JSON save. Holds a typed entity registry
+(NPCs, locations, factions, items, quests, bases) and an append-only event log,
+populated via shadow-writes from `engine/turn.py::collect_post_turn_effects`. The
+shared `StateChange→writes` translator lives in `engine/state_event_mapping.py`. The
+narrator does NOT yet read from `WorldDB` — Phase 2 will add a `MemoryAssembler` that
+will. Authoritative spec: `docs/MEMORY_ARCHITECTURE.md`. v3 saves auto-migrate on
+first load via `WorldDB.migrate_from_game_state` (idempotent via metadata flag).
+
 ### Character System
 
 **Character** — Player character with:

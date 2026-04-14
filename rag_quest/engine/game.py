@@ -11,6 +11,7 @@ from rich.prompt import Confirm
 
 from .. import ui
 from ..knowledge import WorldRAG
+from ..knowledge.world_db import WorldDB
 from ..llm import BaseLLMProvider
 from ..worlds.modules import ModuleStatus
 from .achievements import AchievementManager
@@ -31,7 +32,13 @@ from .tts import TTSNarrator
 from .turn import collect_post_turn_effects, collect_pre_turn_effects
 from .world import World
 
-SAVE_FORMAT_VERSION = 3
+SAVE_FORMAT_VERSION = 4
+# v4 (v0.9, Phase 1 of the memory architecture redesign): adds a SQLite
+# `{world_name}.db` file alongside the JSON save. `WorldDB` is populated via
+# shadow-writes from the state parser — nothing reads from it yet. Phase 2
+# builds the MemoryAssembler that will actually consume this store. Old v3
+# saves load cleanly; the first load after upgrading creates the DB and runs
+# a one-time migration from the in-memory `GameState` objects.
 
 
 console = Console()
@@ -64,6 +71,12 @@ class GameState:
     # v0.7 (save v3): bases and modules live on `World`, so they round-trip via
     # `World.to_dict/from_dict`. v2 saves load with empty collections — same
     # clean-break policy as v0.6: new features on new saves only, no migration.
+    # v0.9 Phase 1 (save v4): SQLite entity registry + event log. Populated via
+    # shadow-writes from the turn helper. Optional on the dataclass so existing
+    # construction sites that don't yet wire WorldDB still work — callers that
+    # want memory-arch features attach it via `game_state.world_db = WorldDB(...)`
+    # immediately after construction.
+    world_db: Optional[WorldDB] = None
 
     def to_dict(self) -> dict:
         """Serialize game state."""
@@ -93,6 +106,7 @@ class GameState:
         world_rag: WorldRAG,
         llm: BaseLLMProvider,
         tts_enabled: bool = False,
+        world_db: Optional[WorldDB] = None,
     ) -> "GameState":
         """Deserialize game state."""
         character = Character.from_dict(data.get("character", {}))
@@ -151,8 +165,24 @@ class GameState:
             playtime_seconds=data.get("playtime_seconds", 0.0),
             timeline=timeline,
             notetaker=notetaker,
+            world_db=world_db,
         )
         gs.encyclopedia = LoreEncyclopedia(gs)
+
+        # v0.9 Phase 1: one-time migration from v3 saves. The method is
+        # self-guarding (checks the `migrated_from_v3_save` flag) and atomic
+        # (the whole walk + flag-set runs in a single SQLite transaction),
+        # so a crash mid-migration rolls back cleanly and the next load
+        # retries from an empty slate. Any failure is still swallowed here
+        # so a bad migration can never block a load.
+        if world_db is not None:
+            try:
+                world_db.migrate_from_game_state(gs)
+            except Exception:
+                from .._debug import log_swallowed_exc
+
+                log_swallowed_exc("game.from_dict.world_db_migrate")
+
         return gs
 
 
@@ -302,6 +332,12 @@ def run_game(
             game_state.llm.close()
         except Exception:
             log_swallowed_exc("game.cleanup.llm")
+
+        try:
+            if game_state.world_db is not None:
+                game_state.world_db.close()
+        except Exception:
+            log_swallowed_exc("game.cleanup.world_db")
 
     ui.print_game_over(game_state.character, game_state.world)
 
@@ -1115,3 +1151,13 @@ def _save_game(game_state: GameState, save_path: Path) -> None:
     save_path.parent.mkdir(parents=True, exist_ok=True)
     with open(save_path, "w") as f:
         json.dump(game_state.to_dict(), f, indent=2)
+
+    # v0.9 Phase 1: checkpoint the WAL so the `.db` file is self-contained
+    # after save, matching the JSON save's durability semantics.
+    if game_state.world_db is not None:
+        try:
+            game_state.world_db.checkpoint()
+        except Exception:
+            from .._debug import log_swallowed_exc
+
+            log_swallowed_exc("game._save_game.world_db_checkpoint")
