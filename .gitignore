@@ -172,6 +172,7 @@ V052_BUG_FIX_SUMMARY.md
 .claude/agents/
 .claude/skills/
 .claude/worktrees/
+.worktrees/
 .remember/
 
 # Session artifacts
