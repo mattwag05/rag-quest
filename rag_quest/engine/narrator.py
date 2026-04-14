@@ -1,7 +1,7 @@
 """AI narrator for the game."""
 
 import random
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from ..knowledge import WorldRAG
 from ..llm import BaseLLMProvider
@@ -11,6 +11,9 @@ from .inventory import Inventory
 from .quests import QuestLog
 from .state_parser import StateParser
 from .world import World
+
+if TYPE_CHECKING:
+    from ..knowledge.memory_assembler import MemoryAssembler
 
 
 class Narrator:
@@ -24,6 +27,8 @@ class Narrator:
         world: World,
         inventory: Optional[Inventory] = None,
         quest_log: Optional[QuestLog] = None,
+        *,
+        memory_assembler: Optional["MemoryAssembler"] = None,
     ):
         self.llm = llm
         self.world_rag = world_rag
@@ -31,6 +36,7 @@ class Narrator:
         self.world = world
         self.inventory = inventory
         self.quest_log = quest_log
+        self.memory_assembler = memory_assembler
         self.conversation_history: list[dict] = []
         self.state_parser = StateParser()
         # Last parsed StateChange + the prose that produced it — consumed by
@@ -134,18 +140,7 @@ class Narrator:
             for msg in self.conversation_history[-8:]:
                 history_context += f"\n{msg['role'].upper()}: {msg['content'][:100]}"
 
-        rag_context = ""
-        if self.world_rag:
-            try:
-                rag_lore = self.world_rag.query_world(player_input)
-                if rag_lore:
-                    rag_context = (
-                        "\n\n=== RELEVANT WORLD LORE ===\n" + str(rag_lore)[:800]
-                    )
-            except Exception:
-                from .._debug import log_swallowed_exc
-
-                log_swallowed_exc("narrator._build_llm_messages.world_rag")
+        rag_context = self._gather_external_context(player_input)
 
         system_content = f"""{system_prompt}
 
@@ -158,6 +153,35 @@ Provide a vivid, engaging narrative response to the character's action. Keep it 
             {"role": "system", "content": system_content},
             {"role": "user", "content": player_input},
         ]
+
+    def _gather_external_context(self, player_input: str) -> str:
+        """Return the formatted context block to drop into the system prompt.
+
+        Prefers ``MemoryAssembler.assemble`` when wired (v0.9 Phase 2);
+        falls back to the legacy ``WorldRAG.query_world`` injection so
+        existing callers and saves keep working unchanged. Both paths
+        swallow exceptions via the debug channel — context is optional.
+        """
+        if self.memory_assembler is not None:
+            try:
+                block = self.memory_assembler.assemble(player_input, self)
+                if block:
+                    return "\n\n" + block
+            except Exception:
+                from .._debug import log_swallowed_exc
+
+                log_swallowed_exc("narrator.memory_assembler")
+            return ""
+        if self.world_rag:
+            try:
+                rag_lore = self.world_rag.query_world(player_input)
+                if rag_lore:
+                    return "\n\n=== RELEVANT WORLD LORE ===\n" + str(rag_lore)[:800]
+            except Exception:
+                from .._debug import log_swallowed_exc
+
+                log_swallowed_exc("narrator._gather_external_context.world_rag")
+        return ""
 
     def _generate_response(self, player_input: str) -> str:
         """Generate a narrative response using the real LLM with fallback to canned responses."""
@@ -286,24 +310,7 @@ Provide a vivid, engaging narrative response to the character's action. Keep it 
                         f"\n{msg['role'].upper()}: {msg['content'][:100]}"
                     )
 
-            # Query RAG for relevant lore if available. `WorldRAG.query_world`
-            # returns a string (LightRAG does its own chunking/synthesis),
-            # which we cap to ~800 chars to keep the LLM context budget sane.
-            rag_context = ""
-            if self.world_rag:
-                try:
-                    rag_lore = self.world_rag.query_world(player_input)
-                    if rag_lore:
-                        rag_context = (
-                            "\n\n=== RELEVANT WORLD LORE ===\n" + str(rag_lore)[:800]
-                        )
-                except Exception:
-                    # RAG unavailable — continue without lore context. This
-                    # block previously hid a method-name typo (rag-quest-aem);
-                    # debug flag surfaces future regressions of the same shape.
-                    from .._debug import log_swallowed_exc
-
-                    log_swallowed_exc("narrator.world_rag.query_world")
+            rag_context = self._gather_external_context(player_input)
 
             # Build the full system context
             system_content = f"""{system_prompt}

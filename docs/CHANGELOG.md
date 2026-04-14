@@ -12,7 +12,32 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-04-13
+
 ### Added
+- **`MemoryAssembler` — v0.9 Phase 2.** New `rag_quest/knowledge/memory_assembler.py`
+  composes a structured §4.3 context block for the narrator from WorldDB
+  facts (current state, entities present, recent events, relevant
+  history) and a single LightRAG lore call. Replaces the raw
+  `WorldRAG.query_world()` injection in the narrator system prompt when
+  enabled. Opt-in via two new config keys:
+  - `memory.assembler_enabled` (bool, default `false`)
+  - `memory.profile` (`fast` | `balanced` | `deep`, default `balanced`)
+
+  Profiles tune the §4.2 token budgets (recent turns, entity snapshot
+  cap, historical event cap, lore cap). The narrator's
+  `_gather_external_context` helper transparently falls back to the
+  legacy LightRAG-only path when the assembler isn't wired, so existing
+  saves and users see no behavior change until they flip the flag.
+  `MemoryAssembler.assemble()` is the only place in the engine that
+  *reads* from `WorldDB`; shadow-writes still happen in
+  `engine/turn.py::collect_post_turn_effects`. See
+  `docs/MEMORY_ARCHITECTURE.md` §4 for the full pipeline. Step 5
+  (narrative echoes via FTS5) is intentionally deferred to a v0.9.x
+  follow-up. 18 new tests in `tests/test_memory_assembler.py` and
+  `tests/test_memory_assembler_narrator_integration.py`.
+
+### Added (carried over from 0.9.0.dev1)
 - **WebUI command menu — "Illuminated Terminal" redesign.** The browser
   client's footer gains a clickable sigil bar exposing inventory,
   stats, quests, party, relationships, timeline, bookmarks, lore,

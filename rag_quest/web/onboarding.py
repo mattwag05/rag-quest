@@ -281,4 +281,16 @@ def create_new_session(
 
         log_swallowed_exc("web.onboarding.world_db_open")
 
+    # v0.9 Phase 2: opt-in MemoryAssembler attachment. No-op when
+    # memory.assembler_enabled is false, so existing browser onboarding
+    # flows are unchanged.
+    try:
+        from ..knowledge.memory_assembler import maybe_attach_to_narrator
+
+        maybe_attach_to_narrator(narrator, game_state, game_config)
+    except Exception:
+        from .._debug import log_swallowed_exc
+
+        log_swallowed_exc("web.onboarding.memory_assembler_attach")
+
     return game_state

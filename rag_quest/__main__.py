@@ -682,6 +682,16 @@ def _main() -> None:
             f"Could not initialize WorldDB (memory features disabled): {exc}"
         )
 
+    # v0.9 Phase 2: opt-in memory assembler. No-op when the config flag
+    # is off or WorldDB failed to open above, so legacy users see no
+    # behavior change.
+    try:
+        from .knowledge.memory_assembler import maybe_attach_to_narrator
+
+        maybe_attach_to_narrator(narrator, game_state, game_config)
+    except Exception as exc:
+        ui.print_warning(f"Could not attach MemoryAssembler: {exc}")
+
     # Run the game
     run_game(game_state)
 

@@ -104,6 +104,6 @@ def test_narrator_rag_failure_surfaces_under_debug_flag(monkeypatch, capsys):
     narrator = _narrator_with_broken_rag()
     narrator.process_action("look around")
     captured = capsys.readouterr()
-    assert "narrator.world_rag.query_world" in captured.err
+    assert "narrator._gather_external_context.world_rag" in captured.err
     assert "RuntimeError" in captured.err
     assert "rag is offline" in captured.err

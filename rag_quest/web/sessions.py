@@ -133,4 +133,18 @@ def load_session_from_slot(slot_id: str) -> "GameState":
     narrator.world = game_state.world
     narrator.inventory = game_state.inventory
     narrator.quest_log = game_state.quest_log
+
+    # v0.9 Phase 2: opt-in MemoryAssembler. No-op when
+    # memory.assembler_enabled is false. Must run after the narrator is
+    # rebound to the hydrated game_state.character, so the assembler's
+    # location lookup sees the right values.
+    try:
+        from ..knowledge.memory_assembler import maybe_attach_to_narrator
+
+        maybe_attach_to_narrator(narrator, game_state, game_config)
+    except Exception:
+        from .._debug import log_swallowed_exc
+
+        log_swallowed_exc("web.sessions.memory_assembler_attach")
+
     return game_state

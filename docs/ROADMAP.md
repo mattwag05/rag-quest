@@ -469,18 +469,65 @@ This philosophy shapes every version.
 
 ---
 
+## v0.9.0 — WorldDB Memory Architecture (Phases 1 + 2)
+
+**Status**: ✅ Shipping — Phase 1 (shadow-write SQLite store) and Phase 2
+(MemoryAssembler) both ready. Phase 3 (cut over `record_event` away from
+LightRAG) is pending and will land as v0.9.x.
+
+### What's New in v0.9.0
+
+**WorldDB SQLite store (Phase 1)**
+- ✅ Typed entity registry (NPCs, locations, factions, items, quests, bases) +
+  append-only event log alongside the JSON save at
+  `~/.local/share/rag-quest/saves/{slot}/world_db.sqlite`
+- ✅ Shadow-writes from `engine/turn.py::collect_post_turn_effects` populate
+  it from every `StateChange`, batched inside a single `with world_db.transaction():`
+  block to collapse ~7 fsyncs/turn down to 1
+- ✅ Shared `engine/state_event_mapping.py::state_change_to_writes` translator
+  is the single source of truth for the `StateChange → WorldDB` mapping
+- ✅ One-time migration from v3 saves (idempotent via metadata flag)
+- ✅ FTS5 entity + event search (with LIKE fallback when FTS5 isn't compiled in)
+
+**MemoryAssembler (Phase 2)**
+- ✅ New `rag_quest/knowledge/memory_assembler.py` composes the §4.3 structured
+  context block (CURRENT STATE / ENTITIES PRESENT / RECENT EVENTS / RELEVANT
+  HISTORY / WORLD LORE / PLAYER ACTION) for the narrator
+- ✅ Reads structured facts from WorldDB; LightRAG queried exactly once per
+  turn, scoped to lore (Step 6 of the §4.1 pipeline)
+- ✅ Three RAG profiles tune the §4.2 token budgets: `fast` (5 recent turns,
+  small budgets), `balanced` (10, defaults), `deep` (15, larger budgets)
+- ✅ Opt-in via `memory.assembler_enabled = true` and `memory.profile = ...`
+  in `~/.config/rag-quest/config.json`. Default off so existing users see no
+  behavior change until they flip the flag
+- ✅ Narrator's new `_gather_external_context` helper transparently falls back
+  to the legacy `WorldRAG.query_world` injection when the assembler isn't wired
+- ✅ Step 5 (narrative echoes via FTS5) intentionally deferred to a v0.9.x
+  follow-up — spec lists it as optional and the entity registry + event log
+  already provide dramatically better continuity
+
+**Authoritative spec**: [`docs/MEMORY_ARCHITECTURE.md`](MEMORY_ARCHITECTURE.md)
+
+---
+
 ## Future Roadmap
 
-### v0.9 — iOS App & Offline Distribution
+### v0.9.x — Phase 3 cut-over + narrative echoes
 
-**Planned** (shifted from v0.7):
+- Stop writing game events to LightRAG; the assembler is the sole context source
+- Step 5 narrative echoes via FTS5 (rag-quest-50j)
+- Status: Post-Phase-2 follow-up
+
+### v0.10 — iOS App & Offline Distribution
+
+**Planned** (shifted from v0.9):
 - SwiftUI iOS app
 - Offline model distribution
 - Apple ecosystem integration
 - Touch UI for mobile
 - Status: Pre-development
 
-### v0.10 — Voice & Apple Intelligence
+### v0.11 — Voice & Apple Intelligence
 
 **Planned** (shifted from v0.8):
 - Voice input (speak your actions)

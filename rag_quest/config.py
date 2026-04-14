@@ -39,6 +39,15 @@ class ConfigManager:
         "rag": {
             "profile": "balanced",
         },
+        # v0.9 Phase 2 — opt-in narrator memory assembler. When
+        # `assembler_enabled` is true, `MemoryAssembler` reads structured
+        # facts from WorldDB + LightRAG lore and replaces the raw
+        # `query_world()` injection in the system prompt. Profile picks
+        # the §4.2 token budgets (fast/balanced/deep).
+        "memory": {
+            "assembler_enabled": False,
+            "profile": "balanced",
+        },
         "audio": {
             "tts_enabled": False,
             "tts_engine": "pyttsx3",
@@ -132,6 +141,8 @@ class ConfigManager:
             merged["llm"].update(config["llm"])
         if "rag" in config:
             merged["rag"].update(config["rag"])
+        if "memory" in config:
+            merged["memory"].update(config["memory"])
         if "audio" in config:
             merged["audio"].update(config["audio"])
         if "game" in config:

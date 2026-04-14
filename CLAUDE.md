@@ -75,13 +75,27 @@ Fresh Adventure / Quick Start template / Upload Lore.
 that lives at `{save_path}.db` next to the JSON save. Holds a typed entity registry
 (NPCs, locations, factions, items, quests, bases) and an append-only event log,
 populated via shadow-writes from `engine/turn.py::collect_post_turn_effects`. The
-shared `StateChange→writes` translator lives in `engine/state_event_mapping.py`. The
-narrator does NOT yet read from `WorldDB` — Phase 2 will add a `MemoryAssembler` that
-will. Authoritative spec: `docs/MEMORY_ARCHITECTURE.md`. v3 saves auto-migrate on
+shared `StateChange→writes` translator lives in `engine/state_event_mapping.py`.
+Authoritative spec: `docs/MEMORY_ARCHITECTURE.md`. v3 saves auto-migrate on
 first load via `WorldDB.migrate_from_game_state` (idempotent via metadata flag).
 Multi-write hot paths should wrap loops in `with world_db.transaction():` — inline
 commits inside individual write methods become no-ops and the whole block commits
 once on exit (rolls back on exception). Collapses ~7 commits/turn to 1 fsync.
+
+**MemoryAssembler (v0.9 Phase 2)** — `rag_quest/knowledge/memory_assembler.py`. The
+narrator's *read* path into WorldDB. Composes the §4.3 structured context block
+(`## CURRENT STATE / ENTITIES PRESENT / RECENT EVENTS / RELEVANT HISTORY / WORLD LORE
+/ PLAYER ACTION`) by calling WorldDB's `get_entity` / `get_entities_at` /
+`get_recent_events` / `get_events_for_entity` / `get_relationship` and then a single
+`WorldRAG.query_world` for lore. Three profiles tune §4.2 token budgets: `fast`
+(5 recent turns), `balanced` (10), `deep` (15). Opt-in via `memory.assembler_enabled`
++ `memory.profile` in `~/.config/rag-quest/config.json`; default off.
+`maybe_attach_to_narrator(narrator, game_state, config)` is the wiring helper called
+from `__main__.py`, `web/onboarding.py`, and `web/sessions.py` after WorldDB opens —
+keeps the three construction sites in sync. Narrator routes through new
+`Narrator._gather_external_context`, which prefers the assembler when wired and
+falls back to raw `WorldRAG.query_world` otherwise. Step 5 (FTS5 narrative echoes)
+is intentionally deferred — see beads `rag-quest-50j`.
 
 ### Engine subsystems (`engine/`)
 
@@ -413,11 +427,12 @@ python -m py_compile rag_quest/**/*.py
 - **`rag_quest/web/__init__.py` shadows the `rag_quest.web.app` submodule** by re-exporting the FastAPI `app` instance as an attribute. Tests that need to monkeypatch module-level symbols in `web/app.py` must use `importlib.import_module("rag_quest.web.app")`. `from rag_quest.web import app as web_app` silently gives you the FastAPI instance instead of the module, and `monkeypatch.setattr` fails with `AttributeError: FastAPI object has no attribute '<symbol>'`.
 - **`SaveManager.save_game` supports update-in-place via `slot_id=` kwarg** (`rag_quest/saves/manager.py`, post-dbs). Called without it, it mints a fresh UUID; called with an existing slot_id, it preserves `created_at` and bumps `updated_at`. Every write path (CLI autosave, web `POST /save`, web onboarding re-save) passes the session's `game_state.slot_id`. `SaveManager.save_paths_for(slot_id)` returns the canonical `{state, metadata, world_db}` paths inside the slot dir — use it instead of re-deriving the layout.
 - **`Bookmark` dataclass requires six fields**, not four: `turn, timestamp, note, player_input, narrator_prose, location` (`engine/timeline.py:50-58`). Don't omit `timestamp` and `player_input` — constructor raises `TypeError`. Generate timestamp with `datetime.now().isoformat(timespec="seconds")` and pull `player_input` from `getattr(narrator, "last_player_input", "") or ""`. Canonical call site: `_cmd_bookmark` in `engine/game.py:612`.
-- **Cross-cutting per-turn hooks belong in `engine/turn.py::collect_post_turn_effects`**, not `Narrator._parse_and_apply_changes`. The narrator has no `game_state` backreference (no `turn_number`, no `world_db`, no timeline), but `collect_post_turn_effects(game_state, player_input)` already has all of them plus `narrator.last_change`. Every new per-turn subsystem (Timeline, module re-eval, achievements, WorldDB shadow write) lives there for the same reason.
+- **Cross-cutting per-turn hooks belong in `engine/turn.py::collect_post_turn_effects`**, not `Narrator._parse_and_apply_changes`. As of v0.9 Phase 2 the narrator *does* hold an optional `_game_state` backref (set by `maybe_attach_to_narrator` when the MemoryAssembler is wired), but that backref is for **read paths only** — letting the assembler look up `character.location` and friends at prompt-build time. *Write* paths (timeline, module re-eval, achievements, WorldDB shadow write) still belong in `collect_post_turn_effects(game_state, player_input)` because that helper already has the canonical `game_state` + `narrator.last_change` and runs after every turn regardless of streaming/non-streaming, CLI/web.
 - **`tests/conftest.py::wire_turn_subsystems(gs)`** is the shared fixture for MagicMock-driven turn-helper tests — wires `character`, `events`, `party`, `timeline`, `world.module_registry`, `achievements` to safe defaults. Don't re-wire from scratch; override individual subsystems after calling the helper.
 - **`monkeypatch.setattr(Cls, "method", fn)` requires `self` in the replacement**: the descriptor protocol still passes `self` when the mocked method is called via `instance.method(...)`, so replacement callables must take it as their first positional arg or you'll see `TypeError: got multiple values for argument`. Pattern: `def _fake(self, state_dict, slot_id=None, **kw): ...`.
 - **CLI has no save-load flow** — `rag_quest/__main__.py` only *creates* fresh GameStates via the setup wizard. The only `GameState.from_dict` caller is `rag_quest/web/sessions.py::load_session_from_slot`. New-game features need wiring at three sites: `__main__.py`, `web/onboarding.py`, and the load path `web/sessions.py`. Each site must mint a slot via `SaveManager().save_game(state_dict, slot_name=...)` and assign the returned `slot_id` to `game_state.slot_id` before entering the game loop — `_save_game` uses that slot_id to route autosaves through `SaveManager.save_game(slot_id=...)` for update-in-place semantics.
 - **PEP 440 dev suffix uses `.devN`, not `-devN`** — `pyproject.toml` rejects `0.9.0-dev1` as an invalid version. Use `0.9.0.dev1` in both `pyproject.toml` and `rag_quest/__init__.py`.
+- **MemoryAssembler is opt-in** — the v0.9 Phase 2 read path (`memory.assembler_enabled`) defaults to `false` so existing users see no behavior change. Flip the flag in `~/.config/rag-quest/config.json` to enable. The narrator's `_gather_external_context` helper handles both code paths in one place; don't add a third gating site.
 
 ## Known Design Limitations
 
