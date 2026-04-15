@@ -469,11 +469,43 @@ This philosophy shapes every version.
 
 ---
 
+## v0.9.1 — WorldDB cutover + MemoryAssembler tuning
+
+**Status**: ✅ Shipping — Phase 3 cutover complete. The MemoryAssembler is
+now default-on and the four tuning beads (batch snapshot, batch refs,
+one-slot cache, narrator dedupe) are closed. No new mechanics; this is a
+perf + polish release that finishes the v0.9 story.
+
+### What's New in v0.9.1
+
+- ✅ `memory.assembler_enabled` defaults to `True`. The WorldDB-backed
+  MemoryAssembler is the narrator's primary context source out of the box.
+  Set the flag to `false` to restore the legacy `WorldRAG.query_world`
+  injection.
+- ✅ Dead `WorldRAG.record_event` method deleted. It was defined but
+  never called after v0.9 Phase 1 wired `_shadow_write_to_world_db` —
+  Phase 3 was effectively complete the day Phase 1 landed.
+- ✅ `MemoryAssembler._extract_entity_references` now issues a single FTS5
+  OR-match per turn instead of one query per token (rag-quest-pvt).
+- ✅ `MemoryAssembler._pull_entity_snapshots` now delegates to the new
+  `WorldDB.get_entity_snapshot_batch` helper — one LEFT JOIN query in place
+  of `get_entity` + `get_relationship` + `get_events_for_entity` per
+  reference (rag-quest-696).
+- ✅ `MemoryAssembler.assemble` memoizes the last block on
+  `(turn_number, hash(input), location)` so repeated `look`/`wait` turns
+  skip the whole rebuild (rag-quest-g13).
+- ✅ `Narrator._call_llm` now delegates to `_build_llm_messages` instead
+  of duplicating the prompt-building logic — removes a future divergence
+  footgun (rag-quest-7uc).
+
+---
+
 ## v0.9.0 — WorldDB Memory Architecture (Phases 1 + 2)
 
-**Status**: ✅ Shipping — Phase 1 (shadow-write SQLite store) and Phase 2
-(MemoryAssembler) both ready. Phase 3 (cut over `record_event` away from
-LightRAG) is pending and will land as v0.9.x.
+**Status**: ✅ Shipped — Phase 1 (shadow-write SQLite store) and Phase 2
+(MemoryAssembler) both landed opt-in. Phase 3 (cut over `record_event`
+away from LightRAG) was a side-effect of Phase 1 and was finished in
+v0.9.1.
 
 ### What's New in v0.9.0
 
@@ -512,11 +544,12 @@ LightRAG) is pending and will land as v0.9.x.
 
 ## Future Roadmap
 
-### v0.9.x — Phase 3 cut-over + narrative echoes
+### v0.9.2 — Narrative echoes + Timeline cutover
 
-- Stop writing game events to LightRAG; the assembler is the sole context source
-- Step 5 narrative echoes via FTS5 (rag-quest-50j)
-- Status: Post-Phase-2 follow-up
+- Step 5 narrative echoes via FTS5 on `events.summary` (rag-quest-50j)
+- Point `Timeline.record_from_state_change` at `state_event_mapping` and
+  make Timeline a query/view layer over `WorldDB.events`
+- Status: Scoped, awaiting v0.9.1 playtesting feedback
 
 ### v0.10 — iOS App & Offline Distribution
 
@@ -571,4 +604,4 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-**Last Updated**: April 13, 2026 (v0.8.3 Illuminated Terminal complete; rolling into the v0.9.0 pre-release cycle alongside the WorldDB memory architecture)
+**Last Updated**: April 15, 2026 (v0.9.1 shipped — MemoryAssembler default-on, four tuning beads closed, dead `WorldRAG.record_event` removed)

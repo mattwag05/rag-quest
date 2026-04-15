@@ -104,3 +104,19 @@ def test_narrator_caps_lore_string_length():
     lore_block_end = system_content.find("\n\n=== CURRENT SITUATION ===")
     lore_block = system_content[lore_block_start:lore_block_end]
     assert len(lore_block) < 1000
+
+
+def test_call_llm_delegates_to_build_llm_messages():
+    """rag-quest-7uc: _call_llm must route through _build_llm_messages, not
+    duplicate the prompt-building logic. Patching the shared builder must
+    intercept the messages _call_llm sends to the LLM."""
+    narrator = _make_narrator()
+    sentinel = [
+        {"role": "system", "content": "SENTINEL_SYSTEM"},
+        {"role": "user", "content": "SENTINEL_USER"},
+    ]
+    narrator._build_llm_messages = lambda player_input: sentinel  # type: ignore[method-assign]
+
+    narrator.process_action("anything")
+
+    assert narrator.llm.last_messages == sentinel

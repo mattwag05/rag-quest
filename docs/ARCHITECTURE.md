@@ -125,15 +125,18 @@ def process_action(self, action: str, game_state: GameState) -> str:
     
     # 3. Call LLM (synchronous)
     response = self.llm_provider.complete(messages)
-    
-    # 4. Record event to RAG
-    self.world_rag.record_event(f"Player: {action}\nNarrator: {response}")
-    
-    # 5. Update conversation history
+
+    # 4. Update conversation history
     self.conversation_history.append({"role": "assistant", "content": response})
-    
+
     return response
 ```
+
+Post-turn, `engine/turn.py::collect_post_turn_effects` reads
+`narrator.last_change` and shadow-writes the structured state delta
+into `WorldDB` (events, entities, relationships). LightRAG is no
+longer written per turn — v0.9+ treats LightRAG as a read-only lore
+store and keeps per-turn facts in SQLite.
 
 **Key insight**: The RAG knowledge graph provides world context. The LLM just needs to be a good storyteller.
 
@@ -161,11 +164,11 @@ class WorldRAG:
         # 1. Entity matching (exact entity names)
         # 2. Vector similarity (semantic matching)
         return self.rag.query(question, param=QueryParam(...))
-    
-    def record_event(self, event: str):
-        """Insert an event into the knowledge graph."""
-        self.rag.insert_event(event)
-    
+
+    # (v0.9+: per-turn event writes moved to WorldDB.
+    # WorldRAG is now a read-only lore store. ingest_text / ingest_file
+    # are the only write paths — used for world lore and /canonize.)
+
     def ingest_text(self, text: str, source: str = "manual"):
         """Add knowledge from text (lore)."""
         self.rag.insert_text(text, source)
@@ -499,21 +502,23 @@ class WorldImporter:
    response = llm_provider.complete(messages)
    → "The fireball erupts from your hands, engulfing the
       dragon in flames. It roars in pain..."
-   
-6. Record to RAG
-   world_rag.record_event("Player casts fireball at dragon.
-   Dragon takes damage, roars in pain.")
-   
+
+6. Shadow-write to WorldDB
+   collect_post_turn_effects(game_state, player_input)
+   → state_parser.parse_narrator_response(response) → StateChange
+   → state_event_mapping.translate(change) → typed writes
+   → world_db.record_event(...) + upsert_entity(...) + ...
+
 7. Update game state
    character.mana -= cost
    enemy.hp -= damage
-   
+
 8. Auto-save
    save_game(game_state)
-   
+
 9. Print response
    "The fireball erupts..."
-   
+
 10. Loop (back to step 2)
 ```
 

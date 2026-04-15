@@ -245,12 +245,16 @@ def process_action(self, action: str, game_state: GameState) -> str:
     
     # 3. Call LLM provider (synchronous)
     response = self.llm_provider.complete(messages)
-    
-    # 4. Record event to RAG
-    self.world_rag.record_event(response)
-    
+
     return response
 ```
+
+After the narrator returns, the per-turn shadow-write in
+`rag_quest/engine/turn.py::collect_post_turn_effects` translates
+`narrator.last_change` into typed `WorldDB` writes (events, entities,
+relationships). LightRAG is no longer written from the turn loop —
+v0.9+ uses the SQLite-backed WorldDB as the authoritative event store
+and consults LightRAG only for lore lookups during assembly.
 
 **Key Point**: The LLM is called with **game state + RAG context + player action**. The RAG knowledge graph ensures consistency, so even a small model produces coherent narratives.
 

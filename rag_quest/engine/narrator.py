@@ -284,56 +284,12 @@ Provide a vivid, engaging narrative response to the character's action. Keep it 
             return random.choice(responses)
 
     def _call_llm(self, player_input: str) -> Optional[str]:
-        """Call the LLM to generate a response."""
         if not self.llm:
             return None
-
         try:
-            # Build the prompt with game context
-            system_prompt = NARRATOR_SYSTEM
-            if self.service_context:
-                system_prompt = f"{system_prompt}\n\n{self.service_context}"
-
-            # Build context about current state
-            char = self.character
-            location = char.location or "Unknown Location"
-            hp_status = f"{char.current_hp}/{char.max_hp} HP"
-
-            # Build context from conversation history (last 4 exchanges)
-            history_context = ""
-            if self.conversation_history:
-                recent_exchanges = self.conversation_history[
-                    -8:
-                ]  # Last 4 exchanges (2 messages each)
-                for msg in recent_exchanges:
-                    history_context += (
-                        f"\n{msg['role'].upper()}: {msg['content'][:100]}"
-                    )
-
-            rag_context = self._gather_external_context(player_input)
-
-            # Build the full system context
-            system_content = f"""{system_prompt}
-
-=== CURRENT SITUATION ===
-Location: {location}
-Character HP: {hp_status}{rag_context}{history_context}
-
-Provide a vivid, engaging narrative response to the character's action. Keep it to 2-3 sentences."""
-
-            # Build proper messages list for the LLM provider
-            messages = [
-                {"role": "system", "content": system_content},
-                {"role": "user", "content": player_input},
-            ]
-
+            messages = self._build_llm_messages(player_input)
             response = self.llm.complete(messages)
-
-            if response and len(response.strip()) > 0:
-                return response
-
-            return None
-
+            return response if response and response.strip() else None
         except Exception:
             return None
 

@@ -8,6 +8,26 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 
+class CountingConn:
+    """Wrap a ``sqlite3.Connection`` and count ``execute`` calls.
+
+    Used by MemoryAssembler / WorldDB tests to assert that a hot path
+    hits the DB exactly N times (cache / batch regressions). Delegates
+    every other attribute to the wrapped connection.
+    """
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.count = 0
+
+    def execute(self, sql, *args, **kwargs):
+        self.count += 1
+        return self._inner.execute(sql, *args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
 def wire_turn_subsystems(
     gs: MagicMock,
     *,

@@ -187,102 +187,60 @@ class MemoryAssembler:
         self.world_db = world_db
         self.world_rag = world_rag
         self.profile = PROFILES.get(profile, PROFILES["balanced"])
+        # One-slot (turn_number, hash(player_input), location) → assembled
+        # block. Turn advance invalidates automatically; repeated `look` /
+        # `wait` inputs hit the cache and skip the full rebuild.
+        self._cache: tuple[tuple, str] | None = None
 
     def _extract_entity_references(self, player_input: str) -> list[str]:
         """Step 1: name-match player input tokens against the registry.
 
-        N+1 today — beads ``rag-quest-pvt`` tracks the OR'd FTS5
-        single-query rewrite.
+        Strips stopwords + sub-2-char tokens, then issues a single
+        ``WorldDB.search_entities_any`` OR-match and dedupes by canonical
+        name so the same entity doesn't appear twice when multiple tokens
+        point at it.
         """
-        tokens = _WORD_RE.findall(player_input or "")
-        seen: set[str] = set()
-        out: list[str] = []
-        for token in tokens:
+        tokens: list[str] = []
+        for token in _WORD_RE.findall(player_input or ""):
             if token.lower() in _STOPWORDS:
                 continue
             if len(token) < 2:
                 continue
-            try:
-                hits = self.world_db.search_entities(token, limit=3)
-            except Exception:
-                from .._debug import log_swallowed_exc
+            tokens.append(token)
+        if not tokens:
+            return []
+        try:
+            hits = self.world_db.search_entities_any(tokens, limit_per_token=3)
+        except Exception:
+            from .._debug import log_swallowed_exc
 
-                log_swallowed_exc("memory_assembler.search_entities")
+            log_swallowed_exc("memory_assembler.search_entities_any")
+            return []
+        seen: set[str] = set()
+        out: list[str] = []
+        for hit in hits:
+            if not hit:
                 continue
-            for hit in hits:
-                if not hit:
-                    continue
-                canon = hit.get("canonical_name") or canonical_name(hit.get("name", ""))
-                if canon in seen:
-                    continue
-                seen.add(canon)
-                out.append(hit.get("name") or canon)
+            canon = hit.get("canonical_name") or canonical_name(hit.get("name", ""))
+            if canon in seen:
+                continue
+            seen.add(canon)
+            out.append(hit.get("name") or canon)
         return out
 
     def _pull_entity_snapshots(self, refs: Iterable[str], location: str) -> list[dict]:
         """Step 2: snapshot referenced entities + everyone at ``location``.
 
-        3 queries per entity (disposition + last event). Beads
-        ``rag-quest-696`` tracks the WorldDB batch helper.
+        Delegates to ``WorldDB.get_entity_snapshot_batch`` which folds
+        entity lookup + disposition + last event into a single SQL query.
         """
-        snapshots: list[dict] = []
-        seen: set[str] = set()
+        try:
+            return self.world_db.get_entity_snapshot_batch(list(refs), location)
+        except Exception:
+            from .._debug import log_swallowed_exc
 
-        def _add(entity: dict | None) -> None:
-            if not entity:
-                return
-            canon = entity.get("canonical_name") or canonical_name(
-                entity.get("name", "")
-            )
-            if not canon or canon in seen:
-                return
-            seen.add(canon)
-            disposition = None
-            try:
-                rel = self.world_db.get_relationship(
-                    "player", entity.get("name", ""), "disposition"
-                )
-                if rel is not None:
-                    disposition = float(rel.get("value", 0.0))
-            except Exception:
-                from .._debug import log_swallowed_exc
-
-                log_swallowed_exc("memory_assembler.get_relationship")
-            last_event = None
-            try:
-                events = self.world_db.get_events_for_entity(
-                    entity.get("name", ""), limit=1
-                )
-                if events:
-                    last_event = events[0]
-            except Exception:
-                from .._debug import log_swallowed_exc
-
-                log_swallowed_exc("memory_assembler.get_events_for_entity")
-            snapshots.append(
-                {
-                    "entity": entity,
-                    "disposition": disposition,
-                    "last_event": last_event,
-                }
-            )
-
-        for name in refs:
-            try:
-                ent = self.world_db.get_entity(name)
-            except Exception:
-                ent = None
-            _add(ent)
-
-        if location:
-            try:
-                here = self.world_db.get_entities_at(location)
-            except Exception:
-                here = []
-            for ent in here:
-                _add(ent)
-
-        return snapshots
+            log_swallowed_exc("memory_assembler.get_entity_snapshot_batch")
+            return []
 
     def _pull_recent_events(self) -> list[dict]:
         """Step 3: continuity tail. Always included, never dropped."""
@@ -383,6 +341,11 @@ class MemoryAssembler:
         character = getattr(game_state, "character", None)
         location = getattr(character, "location", "") or ""
 
+        turn_number = getattr(game_state, "turn_number", None)
+        cache_key = (turn_number, player_input or "", location)
+        if self._cache is not None and self._cache[0] == cache_key:
+            return self._cache[1]
+
         refs = self._extract_entity_references(player_input)
         snapshots = self._pull_entity_snapshots(refs, location)
         recent = self._pull_recent_events()
@@ -426,7 +389,9 @@ class MemoryAssembler:
 
         sections.append(f'## PLAYER ACTION\n"{player_input}"')
 
-        return "\n\n".join(sections)
+        block = "\n\n".join(sections)
+        self._cache = (cache_key, block)
+        return block
 
     def _format_current_state(self, character: Any) -> str:
         location = getattr(character, "location", None) or "Unknown"

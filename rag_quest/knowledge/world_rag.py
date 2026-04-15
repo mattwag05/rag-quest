@@ -176,14 +176,6 @@ class WorldRAG:
             print(f"[!] Warning: RAG query failed: {e}")
             return ""
 
-    def record_event(self, event: str) -> None:
-        """Record a new game event in the knowledge graph."""
-        if not self.initialized:
-            self.initialize()
-
-        # Record game event in RAG system asynchronously
-        self._run_async(self.rag.ainsert(f"GAME EVENT: {event}"))
-
     def close(self) -> None:
         """Clean up resources."""
         if self.rag:
