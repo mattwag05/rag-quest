@@ -1,17 +1,17 @@
-"""Tests for ``WorldDB.get_entity_snapshot_batch`` (rag-quest-696).
+"""Tests for ``WorldDB.get_entity_snapshot_batch`` and ``search_entities_any``.
 
-The batch helper collapses the three queries per entity that
-``MemoryAssembler._pull_entity_snapshots`` issues today
-(``get_entity`` + ``get_relationship`` + ``get_events_for_entity``) into
-a single round-trip. These tests pin the return shape to the one the
-assembler consumes and exercise the edge cases the original fan-out
-handled implicitly: unknown entities, no disposition, location-only
-mode, and location-entities that overlap with the referenced set.
+These helpers collapse the per-entity / per-token fan-out that the
+MemoryAssembler previously did into single round-trips. The tests pin
+the return shape to what the assembler consumes and exercise edge
+cases the original fan-out handled implicitly: unknown entities, no
+disposition, location-only mode, and location-entities that overlap
+with the referenced set.
 """
 
 from __future__ import annotations
 
 import pytest
+from conftest import CountingConn
 
 from rag_quest.knowledge.world_db import EntityType, EventType, WorldDB
 
@@ -146,25 +146,12 @@ def test_search_any_issues_single_query_for_multi_token_input(world_db, monkeypa
     world_db.upsert_entity(EntityType.NPC.value, "Gareth", turn=1)
     world_db.upsert_entity(EntityType.NPC.value, "Elena", turn=1)
 
-    call_count = {"n": 0}
-    real_conn = world_db._conn
-
-    class CountingConn:
-        def __init__(self, inner):
-            self._inner = inner
-
-        def execute(self, sql, *args, **kwargs):
-            call_count["n"] += 1
-            return self._inner.execute(sql, *args, **kwargs)
-
-        def __getattr__(self, name):
-            return getattr(self._inner, name)
-
-    monkeypatch.setattr(world_db, "_conn", CountingConn(real_conn))
+    counter = CountingConn(world_db._conn)
+    monkeypatch.setattr(world_db, "_conn", counter)
 
     world_db.search_entities_any(["Gareth", "Elena", "Rurik", "Bran"])
 
-    assert call_count["n"] == 1
+    assert counter.count == 1
 
 
 def test_search_any_fts5_fallback_still_matches(world_db, monkeypatch):

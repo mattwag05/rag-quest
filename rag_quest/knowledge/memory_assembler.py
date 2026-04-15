@@ -187,20 +187,18 @@ class MemoryAssembler:
         self.world_db = world_db
         self.world_rag = world_rag
         self.profile = PROFILES.get(profile, PROFILES["balanced"])
-        # One-slot cache keyed on (turn_number, hash(player_input), location).
-        # Turn advance auto-invalidates; duplicate `look` / `wait` turns skip
-        # the whole ~20-query rebuild (rag-quest-g13).
-        self._cache_key: tuple | None = None
-        self._cache_value: str = ""
+        # One-slot (turn_number, hash(player_input), location) → assembled
+        # block. Turn advance invalidates automatically; repeated `look` /
+        # `wait` inputs hit the cache and skip the full rebuild.
+        self._cache: tuple[tuple, str] | None = None
 
     def _extract_entity_references(self, player_input: str) -> list[str]:
         """Step 1: name-match player input tokens against the registry.
 
-        Tokenizes the player input locally, strips stopwords + tiny
-        tokens, then issues a single ``WorldDB.search_entities_any``
-        OR-match for the whole batch (rag-quest-pvt). Dedupes by
-        canonical name so the same entity doesn't appear twice when
-        multiple tokens point at it.
+        Strips stopwords + sub-2-char tokens, then issues a single
+        ``WorldDB.search_entities_any`` OR-match and dedupes by canonical
+        name so the same entity doesn't appear twice when multiple tokens
+        point at it.
         """
         tokens: list[str] = []
         for token in _WORD_RE.findall(player_input or ""):
@@ -234,8 +232,7 @@ class MemoryAssembler:
         """Step 2: snapshot referenced entities + everyone at ``location``.
 
         Delegates to ``WorldDB.get_entity_snapshot_batch`` which folds
-        entity lookup + disposition + last event into a single SQL query
-        (rag-quest-696).
+        entity lookup + disposition + last event into a single SQL query.
         """
         try:
             return self.world_db.get_entity_snapshot_batch(list(refs), location)
@@ -346,8 +343,8 @@ class MemoryAssembler:
 
         turn_number = getattr(game_state, "turn_number", None)
         cache_key = (turn_number, hash(player_input or ""), location)
-        if self._cache_key == cache_key and self._cache_value:
-            return self._cache_value
+        if self._cache is not None and self._cache[0] == cache_key:
+            return self._cache[1]
 
         refs = self._extract_entity_references(player_input)
         snapshots = self._pull_entity_snapshots(refs, location)
@@ -393,8 +390,7 @@ class MemoryAssembler:
         sections.append(f'## PLAYER ACTION\n"{player_input}"')
 
         block = "\n\n".join(sections)
-        self._cache_key = cache_key
-        self._cache_value = block
+        self._cache = (cache_key, block)
         return block
 
     def _format_current_state(self, character: Any) -> str:

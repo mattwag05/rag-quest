@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from conftest import CountingConn
 
 from rag_quest.knowledge.memory_assembler import (
     PROFILES,
@@ -263,28 +264,15 @@ def test_assemble_cache_hit_skips_db_and_lore(world_db, mock_world_rag, monkeypa
     assembler = MemoryAssembler(world_db, mock_world_rag, profile="balanced")
     state = _fake_game_state()
 
-    call_count = {"n": 0}
-    real_conn = world_db._conn
-
-    class CountingConn:
-        def __init__(self, inner):
-            self._inner = inner
-
-        def execute(self, sql, *args, **kwargs):
-            call_count["n"] += 1
-            return self._inner.execute(sql, *args, **kwargs)
-
-        def __getattr__(self, name):
-            return getattr(self._inner, name)
-
     first = assembler.assemble("I greet Gareth", state)
-    monkeypatch.setattr(world_db, "_conn", CountingConn(real_conn))
+    counter = CountingConn(world_db._conn)
+    monkeypatch.setattr(world_db, "_conn", counter)
     mock_world_rag.query_world.reset_mock()
 
     second = assembler.assemble("I greet Gareth", state)
 
     assert first == second
-    assert call_count["n"] == 0
+    assert counter.count == 0
     assert mock_world_rag.query_world.call_count == 0
 
 
@@ -296,26 +284,13 @@ def test_assemble_cache_invalidated_on_turn_advance(
 
     assembler.assemble("I look around", state)
 
-    call_count = {"n": 0}
-    real_conn = world_db._conn
-
-    class CountingConn:
-        def __init__(self, inner):
-            self._inner = inner
-
-        def execute(self, sql, *args, **kwargs):
-            call_count["n"] += 1
-            return self._inner.execute(sql, *args, **kwargs)
-
-        def __getattr__(self, name):
-            return getattr(self._inner, name)
-
-    monkeypatch.setattr(world_db, "_conn", CountingConn(real_conn))
+    counter = CountingConn(world_db._conn)
+    monkeypatch.setattr(world_db, "_conn", counter)
 
     state.turn_number = state.turn_number + 1
     assembler.assemble("I look around", state)
 
-    assert call_count["n"] > 0
+    assert counter.count > 0
 
 
 def test_assemble_cache_invalidated_on_input_change(
@@ -326,22 +301,9 @@ def test_assemble_cache_invalidated_on_input_change(
 
     assembler.assemble("I look around", state)
 
-    call_count = {"n": 0}
-    real_conn = world_db._conn
-
-    class CountingConn:
-        def __init__(self, inner):
-            self._inner = inner
-
-        def execute(self, sql, *args, **kwargs):
-            call_count["n"] += 1
-            return self._inner.execute(sql, *args, **kwargs)
-
-        def __getattr__(self, name):
-            return getattr(self._inner, name)
-
-    monkeypatch.setattr(world_db, "_conn", CountingConn(real_conn))
+    counter = CountingConn(world_db._conn)
+    monkeypatch.setattr(world_db, "_conn", counter)
 
     assembler.assemble("I draw my sword", state)
 
-    assert call_count["n"] > 0
+    assert counter.count > 0

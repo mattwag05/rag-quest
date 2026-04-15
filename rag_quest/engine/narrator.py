@@ -284,11 +284,6 @@ Provide a vivid, engaging narrative response to the character's action. Keep it 
             return random.choice(responses)
 
     def _call_llm(self, player_input: str) -> Optional[str]:
-        """Call the LLM to generate a response.
-
-        Delegates to :meth:`_build_llm_messages` so the prompt-building
-        logic lives in exactly one place (rag-quest-7uc).
-        """
         if not self.llm:
             return None
         try:
