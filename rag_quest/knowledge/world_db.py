@@ -685,11 +685,13 @@ class WorldDB:
         seen_emitted: set[str] = set()
         ref_buckets: dict[int, dict] = {}
         for row in rows:
-            entity = self._entity_row(row)
-            if entity is None:
-                continue
-            canon = entity.get("canonical_name") or ""
-            if canon in seen_emitted:
+            # Strip the ``_disposition`` / ``_ev_*`` join aliases before
+            # building the entity dict so ``snap["entity"]`` matches the
+            # shape returned by ``get_entity()``.
+            entity_fields = {k: row[k] for k in row.keys() if not k.startswith("_")}
+            entity_fields["metadata"] = _from_json(entity_fields.get("metadata"), {})
+            canon = entity_fields.get("canonical_name") or ""
+            if not canon or canon in seen_emitted:
                 continue
             seen_emitted.add(canon)
             disposition = (
@@ -699,7 +701,7 @@ class WorldDB:
             if row["_ev_id"] is not None:
                 last_event = self._snapshot_event_row(row)
             snap = {
-                "entity": entity,
+                "entity": entity_fields,
                 "disposition": disposition,
                 "last_event": last_event,
             }

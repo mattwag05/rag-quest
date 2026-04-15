@@ -201,3 +201,31 @@ def test_batch_matches_three_query_fan_out_for_same_inputs(world_db):
     assert snap["disposition"] == pytest.approx(float(fan_rel["value"]))
     assert snap["last_event"]["id"] == fan_events[0]["id"]
     assert snap["last_event"]["summary"] == fan_events[0]["summary"]
+
+
+def test_batch_entity_dict_only_contains_entity_columns(world_db):
+    """``snap['entity']`` must not leak join aliases (``_disposition``, ``_ev_*``).
+
+    Regression guard: the SELECT uses ``e.*`` plus aliased columns from the
+    joined ``relationships`` and ``events`` rows. Naive ``dict(row)`` would
+    pull every aliased column into the entity dict and diverge from
+    ``get_entity()``'s shape.
+    """
+    world_db.upsert_entity(EntityType.NPC.value, "Gareth", turn=1, location="Millhaven")
+    world_db.set_relationship("player", "Gareth", "disposition", 0.3, turn=2)
+    world_db.record_event(
+        turn=3,
+        event_type=EventType.SOCIAL.value,
+        summary="Gareth nodded",
+        primary_entity="Gareth",
+    )
+
+    batch = world_db.get_entity_snapshot_batch(["Gareth"])
+    assert len(batch) == 1
+    entity = batch[0]["entity"]
+
+    leaked = [k for k in entity if k.startswith("_")]
+    assert leaked == [], f"entity dict leaked join aliases: {leaked}"
+
+    reference = world_db.get_entity("Gareth")
+    assert set(entity.keys()) == set(reference.keys())

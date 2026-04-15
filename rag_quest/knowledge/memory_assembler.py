@@ -342,7 +342,7 @@ class MemoryAssembler:
         location = getattr(character, "location", "") or ""
 
         turn_number = getattr(game_state, "turn_number", None)
-        cache_key = (turn_number, hash(player_input or ""), location)
+        cache_key = (turn_number, player_input or "", location)
         if self._cache is not None and self._cache[0] == cache_key:
             return self._cache[1]
 

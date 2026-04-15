@@ -5,8 +5,6 @@ silently regress. A fresh ConfigManager (no config file, no env vars)
 must put the MemoryAssembler in the default-on state.
 """
 
-import os
-
 from rag_quest.config import ConfigManager
 
 
