@@ -251,3 +251,97 @@ def test_unknown_profile_falls_back_to_balanced(world_db, mock_world_rag):
     assembler = MemoryAssembler(world_db, mock_world_rag, profile="nonsense")
 
     assert assembler.profile.name == "balanced"
+
+
+# ---------------------------------------------------------------------------
+# rag-quest-g13: one-slot memoization
+# ---------------------------------------------------------------------------
+
+
+def test_assemble_cache_hit_skips_db_and_lore(world_db, mock_world_rag, monkeypatch):
+    world_db.upsert_entity(EntityType.NPC.value, "Gareth", turn=1, location="Millhaven")
+    assembler = MemoryAssembler(world_db, mock_world_rag, profile="balanced")
+    state = _fake_game_state()
+
+    call_count = {"n": 0}
+    real_conn = world_db._conn
+
+    class CountingConn:
+        def __init__(self, inner):
+            self._inner = inner
+
+        def execute(self, sql, *args, **kwargs):
+            call_count["n"] += 1
+            return self._inner.execute(sql, *args, **kwargs)
+
+        def __getattr__(self, name):
+            return getattr(self._inner, name)
+
+    first = assembler.assemble("I greet Gareth", state)
+    monkeypatch.setattr(world_db, "_conn", CountingConn(real_conn))
+    mock_world_rag.query_world.reset_mock()
+
+    second = assembler.assemble("I greet Gareth", state)
+
+    assert first == second
+    assert call_count["n"] == 0
+    assert mock_world_rag.query_world.call_count == 0
+
+
+def test_assemble_cache_invalidated_on_turn_advance(
+    world_db, mock_world_rag, monkeypatch
+):
+    assembler = MemoryAssembler(world_db, mock_world_rag, profile="balanced")
+    state = _fake_game_state()
+
+    assembler.assemble("I look around", state)
+
+    call_count = {"n": 0}
+    real_conn = world_db._conn
+
+    class CountingConn:
+        def __init__(self, inner):
+            self._inner = inner
+
+        def execute(self, sql, *args, **kwargs):
+            call_count["n"] += 1
+            return self._inner.execute(sql, *args, **kwargs)
+
+        def __getattr__(self, name):
+            return getattr(self._inner, name)
+
+    monkeypatch.setattr(world_db, "_conn", CountingConn(real_conn))
+
+    state.turn_number = state.turn_number + 1
+    assembler.assemble("I look around", state)
+
+    assert call_count["n"] > 0
+
+
+def test_assemble_cache_invalidated_on_input_change(
+    world_db, mock_world_rag, monkeypatch
+):
+    assembler = MemoryAssembler(world_db, mock_world_rag, profile="balanced")
+    state = _fake_game_state()
+
+    assembler.assemble("I look around", state)
+
+    call_count = {"n": 0}
+    real_conn = world_db._conn
+
+    class CountingConn:
+        def __init__(self, inner):
+            self._inner = inner
+
+        def execute(self, sql, *args, **kwargs):
+            call_count["n"] += 1
+            return self._inner.execute(sql, *args, **kwargs)
+
+        def __getattr__(self, name):
+            return getattr(self._inner, name)
+
+    monkeypatch.setattr(world_db, "_conn", CountingConn(real_conn))
+
+    assembler.assemble("I draw my sword", state)
+
+    assert call_count["n"] > 0

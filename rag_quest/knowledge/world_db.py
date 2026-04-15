@@ -3,9 +3,11 @@
 Phase 1 of the v0.9 memory architecture redesign (see
 ``docs/MEMORY_ARCHITECTURE.md``). ``WorldDB`` is populated by shadow-writes
 from the existing ``StateChange`` flow in ``engine/turn.py::collect_post_turn_effects``.
-Nothing reads from ``WorldDB`` yet — the narrator still pulls context via
-``WorldRAG.query_world()``. Phase 2 will add ``MemoryAssembler`` as the narrator's
-context source, and Phase 3 will cut over ``WorldRAG.record_event()``.
+Phase 2 wired ``MemoryAssembler`` as the narrator's read path. Phase 3
+(shipped in v0.9.1) retired the dead ``WorldRAG.record_event`` method and
+flipped ``memory.assembler_enabled`` on by default, so the shadow-write
+is now the only per-turn write path and WorldDB is the authoritative
+event store.
 
 Design rules:
 
@@ -509,6 +511,200 @@ class WorldDB:
         d = dict(row)
         d["metadata"] = _from_json(d.get("metadata"), {})
         return d
+
+    def search_entities_any(
+        self, tokens: Iterable[str], limit_per_token: int = 3
+    ) -> list[dict]:
+        """Match any of ``tokens`` against the entity registry in one query.
+
+        Replaces ``MemoryAssembler._extract_entity_references``'s per-token
+        fan-out (one ``search_entities`` per word) with a single FTS5
+        ``MATCH`` on ``token1 OR token2 OR ...`` (rag-quest-pvt). When
+        FTS5 isn't compiled in, falls back to a single ``LIKE ? OR LIKE ? ...``
+        query over ``name`` / ``canonical_name`` / ``summary``.
+
+        Tokens are sanitized via ``[^A-Za-z0-9' -]`` before reaching the
+        FTS5 parser so special characters from state parser output can't
+        break the query (and can't be used as an injection vector when the
+        raw player input is forwarded). Empty / whitespace-only tokens are
+        dropped.
+        """
+        sanitized: list[str] = []
+        seen: set[str] = set()
+        for token in tokens or []:
+            if not token:
+                continue
+            for part in re.findall(r"[A-Za-z0-9'-]+", str(token)):
+                if len(part) < 2:
+                    continue
+                key = part.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                sanitized.append(part)
+        if not sanitized:
+            return []
+
+        total_limit = max(1, int(limit_per_token) * len(sanitized))
+
+        if self._fts5_available:
+            match_expr = " OR ".join(f'"{t}"' for t in sanitized)
+            try:
+                rows = self._conn.execute(
+                    "SELECT e.* FROM entities_fts f "
+                    "JOIN entities e ON e.id = f.rowid "
+                    "WHERE entities_fts MATCH ? "
+                    "ORDER BY e.last_seen_turn DESC "
+                    "LIMIT ?",
+                    (match_expr, total_limit),
+                ).fetchall()
+                return [self._entity_row(r) for r in rows if r is not None]
+            except sqlite3.OperationalError:
+                from .._debug import log_swallowed_exc
+
+                log_swallowed_exc("worlddb.search_entities_any_fts")
+
+        like_clauses: list[str] = []
+        params: list[Any] = []
+        for token in sanitized:
+            like = f"%{token.lower()}%"
+            like_clauses.append(
+                "LOWER(name) LIKE ? OR canonical_name LIKE ? "
+                "OR LOWER(COALESCE(summary, '')) LIKE ?"
+            )
+            params.extend([like, like, like])
+        sql = (
+            "SELECT * FROM entities WHERE "
+            + " OR ".join(f"({c})" for c in like_clauses)
+            + " ORDER BY last_seen_turn DESC LIMIT ?"
+        )
+        params.append(total_limit)
+        rows = self._conn.execute(sql, params).fetchall()
+        return [self._entity_row(r) for r in rows if r is not None]
+
+    def get_entity_snapshot_batch(
+        self, names: Iterable[str], location: str = ""
+    ) -> list[dict]:
+        """Batch the entity + disposition + last-event fan-out into one query.
+
+        Replaces ``MemoryAssembler._pull_entity_snapshots``'s ~3 queries per
+        entity (``get_entity`` + ``get_relationship`` + ``get_events_for_entity``)
+        with a single ``LEFT JOIN`` across entities / relationships / events.
+        Return shape matches what the assembler already consumes:
+
+            ``[{"entity": {...}, "disposition": float|None, "last_event": {...}|None}, ...]``
+
+        Order contract: referenced entities in the order they appear in
+        ``names`` first, then any additional entities at ``location`` (in
+        ``last_seen_turn`` DESC order). Entities that are both referenced
+        and present at ``location`` appear exactly once, in the referenced
+        slot.
+        """
+        ref_canons: list[str] = []
+        seen_canons: set[str] = set()
+        for name in names or []:
+            canon = canonical_name(name or "")
+            if not canon or canon in seen_canons:
+                continue
+            seen_canons.add(canon)
+            ref_canons.append(canon)
+
+        if not ref_canons and not location:
+            return []
+
+        player_row = self._conn.execute(
+            "SELECT id FROM entities WHERE canonical_name = ? LIMIT 1",
+            ("player",),
+        ).fetchone()
+        player_id = int(player_row["id"]) if player_row is not None else None
+
+        where_clauses: list[str] = []
+        params: list[Any] = [player_id if player_id is not None else -1]
+        if ref_canons:
+            placeholders = ",".join("?" * len(ref_canons))
+            where_clauses.append(f"e.canonical_name IN ({placeholders})")
+            params.extend(ref_canons)
+        if location:
+            where_clauses.append("e.current_location = ?")
+            params.append(location)
+        where_sql = " OR ".join(where_clauses)
+
+        sql = f"""
+            SELECT
+                e.*,
+                r.value AS _disposition,
+                ev.id                 AS _ev_id,
+                ev.turn_number        AS _ev_turn,
+                ev.event_type         AS _ev_type,
+                ev.primary_entity     AS _ev_primary,
+                ev.location           AS _ev_location,
+                ev.summary            AS _ev_summary,
+                ev.player_input       AS _ev_player_input,
+                ev.mechanical_changes AS _ev_mechanical,
+                ev.secondary_entities AS _ev_secondary,
+                ev.is_notable         AS _ev_notable
+            FROM entities e
+            LEFT JOIN relationships r
+                ON r.entity_a_id = ?
+               AND r.entity_b_id = e.id
+               AND r.relationship_type = 'disposition'
+            LEFT JOIN events ev
+                ON ev.id = (
+                    SELECT id FROM events
+                    WHERE primary_entity = e.canonical_name
+                    ORDER BY turn_number DESC, id DESC
+                    LIMIT 1
+                )
+            WHERE {where_sql}
+            ORDER BY e.last_seen_turn DESC
+        """
+
+        rows = self._conn.execute(sql, params).fetchall()
+
+        by_canon: dict[str, dict] = {}
+        for row in rows:
+            entity = self._entity_row(row)
+            if entity is None:
+                continue
+            canon = entity.get("canonical_name") or ""
+            disposition = (
+                float(row["_disposition"]) if row["_disposition"] is not None else None
+            )
+            last_event: dict | None = None
+            if row["_ev_id"] is not None:
+                last_event = self._event_row(
+                    {  # type: ignore[arg-type]
+                        "id": row["_ev_id"],
+                        "turn_number": row["_ev_turn"],
+                        "event_type": row["_ev_type"],
+                        "primary_entity": row["_ev_primary"],
+                        "location": row["_ev_location"],
+                        "summary": row["_ev_summary"],
+                        "player_input": row["_ev_player_input"],
+                        "mechanical_changes": row["_ev_mechanical"],
+                        "secondary_entities": row["_ev_secondary"],
+                        "is_notable": row["_ev_notable"],
+                    }
+                )
+            by_canon[canon] = {
+                "entity": entity,
+                "disposition": disposition,
+                "last_event": last_event,
+            }
+
+        out: list[dict] = []
+        emitted: set[str] = set()
+        for canon in ref_canons:
+            snap = by_canon.get(canon)
+            if snap is None:
+                continue
+            out.append(snap)
+            emitted.add(canon)
+        for canon, snap in by_canon.items():
+            if canon in emitted:
+                continue
+            out.append(snap)
+        return out
 
     # ------------------------------------------------------------------
     # Relationships

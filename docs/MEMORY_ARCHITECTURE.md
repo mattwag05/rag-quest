@@ -473,20 +473,31 @@ in parallel during development; log both outputs for comparison.
 quality against the old LightRAG-only path. If the assembler produces better context
 (it should), proceed to Phase 3.
 
-#### Phase 3: Remove `record_event()` and Cut Over
+#### Phase 3: Remove `record_event()` and Cut Over — ✅ complete in v0.9.1
 
-**Scope**: Stop writing game events to LightRAG. The assembler is now the sole context
+**Scope**: Stop writing game events to LightRAG. The assembler is the sole context
 source. LightRAG is scoped to lore-only.
 
-**Files to modify**:
-- `rag_quest/knowledge/world_rag.py` — Remove or deprecate `record_event()`. Retain
-  `ingest_text()`, `ingest_file()`, and `query_world()`.
-- `rag_quest/engine/narrator.py` — Remove the `self.world_rag.record_event()` call
-  after each turn.
-- `rag_quest/engine/turn.py` — Event recording goes to `WorldDB` only.
-- `rag_quest/engine/timeline.py` — Becomes a view/query layer over `WorldDB.events`
-  rather than maintaining its own in-memory list. `/timeline` and `/bookmarks` commands
-  query the database.
+**Discovery during v0.9.1 work**: Phase 3 was already de-facto achieved as a
+side-effect of Phase 1. Wiring `engine/turn.py::_shadow_write_to_world_db`
+immediately made `WorldRAG.record_event` a zero-caller method — no narrator
+code path ever invoked it in v0.9.0. The cutover work reduced to:
+
+1. Delete the dead `WorldRAG.record_event` method from
+   `rag_quest/knowledge/world_rag.py`.
+2. Flip `memory.assembler_enabled` to `True` in `ConfigManager.DEFAULT_CONFIG`
+   so the `MemoryAssembler` read path is the default.
+3. Clean up stale doc references (this doc, `AGENTS.md`, `docs/ARCHITECTURE.md`).
+
+**Not in Phase 3** (intentionally deferred):
+
+- `rag_quest/engine/timeline.py` still owns its own in-memory list and its own
+  translator from `StateChange` → `TimelineEvent`. Pointing it at
+  `state_event_mapping` + `WorldDB.events` is a Phase 3.1 cleanup (beads
+  `rag-quest-50j` or a successor). Current duplication is tolerable because
+  timeline writes are cheap and the translator output shapes differ slightly.
+- Step 5 narrative echoes via FTS5 on `events.summary` remain on the
+  assembler TODO list (`rag-quest-50j`) for v0.9.2.
 
 #### Phase 4: SQLite as Save Format (optional, high-value)
 
@@ -629,12 +640,12 @@ stdlib `sqlite3` is sufficient for all described functionality.
 
 | Subsystem | Phase 1-2 (coexistence) | Phase 3 (cutover) |
 |---|---|---|
-| `WorldRAG` | Unchanged. Still receives `record_event()` calls. | `record_event()` removed. Scoped to lore ingestion + lore queries only. |
+| `WorldRAG` | Phase 1-2: defined `record_event()` but nothing called it post-Phase-1. | ✅ v0.9.1: `record_event()` deleted. Scoped to lore ingestion + lore queries only. |
 | `GameState` | Unchanged. Still the in-memory authority. SQLite writes shadow it. | Still the in-memory authority, but populated from SQLite on load. |
 | `StateParser` | Unchanged. Its `StateChange` output feeds both `GameState` and `WorldDB`. | Unchanged in Phase 3. Future: fallback for structured narrator output (§6.1). |
-| `Timeline` | Unchanged. Maintains its own in-memory list. | Becomes a query/view layer over `WorldDB.events`. In-memory list removed. |
-| `Notetaker` | Unchanged. Reads from `Timeline` and conversation history. | Reads from `WorldDB.events` instead of `Timeline`. |
-| `Narrator` | Phase 2: uses `MemoryAssembler` for context. Still calls `record_event()`. | Uses `MemoryAssembler` only. No `record_event()`. |
+| `Timeline` | Unchanged. Maintains its own in-memory list. | Still owns its own list in v0.9.1 — Timeline cutover deferred to a v0.9.2 cleanup. |
+| `Notetaker` | Unchanged. Reads from `Timeline` and conversation history. | Unchanged in v0.9.1. Will follow Timeline's cutover. |
+| `Narrator` | Phase 2: uses `MemoryAssembler` when wired. | ✅ v0.9.1: `MemoryAssembler` is the default context source. `record_event()` call removed. |
 | `Canonize` | Unchanged. Writes to LightRAG via `WorldRAG.ingest_text()`. | Unchanged. This is the correct path — canonized notes are lore. |
 | `Saves` | JSON save continues. SQLite DB is an additional file. | JSON save continues (or replaced in Phase 4). |
 | `Web endpoints` | Unchanged. `GameState.to_dict()` still works. | Unchanged unless Phase 4 replaces JSON saves. |

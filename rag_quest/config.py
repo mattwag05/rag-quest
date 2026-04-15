@@ -39,13 +39,14 @@ class ConfigManager:
         "rag": {
             "profile": "balanced",
         },
-        # v0.9 Phase 2 — opt-in narrator memory assembler. When
-        # `assembler_enabled` is true, `MemoryAssembler` reads structured
-        # facts from WorldDB + LightRAG lore and replaces the raw
-        # `query_world()` injection in the system prompt. Profile picks
-        # the §4.2 token budgets (fast/balanced/deep).
+        # v0.9 — narrator memory assembler (default-on as of v0.9.1).
+        # `MemoryAssembler` reads structured facts from WorldDB + LightRAG
+        # lore and replaces the raw `query_world()` injection in the
+        # system prompt. Profile picks the §4.2 token budgets
+        # (fast/balanced/deep). Set `assembler_enabled` to `false` in
+        # `~/.config/rag-quest/config.json` to restore the legacy path.
         "memory": {
-            "assembler_enabled": False,
+            "assembler_enabled": True,
             "profile": "balanced",
         },
         "audio": {

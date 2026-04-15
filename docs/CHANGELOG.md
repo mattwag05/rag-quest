@@ -12,6 +12,31 @@ changelog" for the full convention.
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-04-15
+
+### Changed
+- **`memory.assembler_enabled` now defaults to `True`.** The WorldDB-backed
+  `MemoryAssembler` is the narrator's primary context source out of the box.
+  Existing users who want the legacy path can set the flag to `false` in
+  `~/.config/rag-quest/config.json`.
+- **`MemoryAssembler` is measurably faster on every turn.** Reference
+  extraction now issues a single FTS5 OR-match per turn (was one query
+  per token); entity snapshots go through a single `LEFT JOIN` helper
+  (was three queries per entity); and repeated identical
+  `(turn_number, player_input, location)` tuples return a memoized block
+  without touching WorldDB or LightRAG. Internal beads: rag-quest-696,
+  rag-quest-pvt, rag-quest-g13.
+- **`Narrator._call_llm` now delegates to `_build_llm_messages`** instead
+  of maintaining a near-duplicate copy of the prompt-building logic. No
+  runtime change; removes a future divergence footgun. Internal bead:
+  rag-quest-7uc.
+
+### Removed
+- **`WorldRAG.record_event` method.** It was defined but never called in
+  v0.9.0 — every per-turn write already routes through `WorldDB.record_event`
+  via the Phase 1 shadow-write. v0.9.1 deletes the dead method and marks
+  the v0.9 Phase 3 cutover complete.
+
 ## [0.9.0] — 2026-04-13
 
 ### Added
